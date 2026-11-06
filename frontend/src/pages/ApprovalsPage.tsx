@@ -1,0 +1,199 @@
+import { useCallback, useEffect, useState } from 'react'
+import { api } from '../api/client'
+import { useAuth } from '../auth/AuthContext'
+import { useBranchScope, withBranchQuery } from '../branch/BranchContext'
+import { ActionButton } from '../components/ActionButton'
+import { ApprovalNotesDialog } from '../components/ApprovalNotesDialog'
+import { LoadingTableRow } from '../components/ListLoading'
+import { StatusTag } from '../components/StatusTag'
+import type { ApprovalItem } from '../types'
+import { notifyLoansChanged } from './LoansPage'
+import { notifyPaymentSchedulesChanged } from './PaymentSchedulePage'
+
+export function notifyApprovalsChanged() {
+  window.dispatchEvent(new Event('ml:approvals-changed'))
+}
+
+type PendingDecision = {
+  id: number
+  action: 'approve' | 'reject'
+  loanNumber: string
+  customerName: string
+  stageName: string
+}
+
+export function ApprovalsPage() {
+  const { can } = useAuth()
+  const { filterBranchId } = useBranchScope()
+  const canAct = can('approvals.manage')
+  const [items, setItems] = useState<ApprovalItem[]>([])
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [actingId, setActingId] = useState<number | null>(null)
+  const [mineOnly, setMineOnly] = useState(true)
+  const [pending, setPending] = useState<PendingDecision | null>(null)
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    setError('')
+    try {
+      const path = mineOnly ? '/api/approvals?mineOnly=true' : '/api/approvals'
+      setItems(await api<ApprovalItem[]>(withBranchQuery(path, filterBranchId)))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load approvals')
+    } finally {
+      setLoading(false)
+    }
+  }, [mineOnly, filterBranchId])
+
+  useEffect(() => {
+    void load()
+  }, [load])
+
+  const decide = async (notes: string) => {
+    if (!pending) return
+    const { id, action } = pending
+    setActingId(id)
+    setError('')
+    try {
+      await api(`/api/approvals/${id}/${action}`, {
+        method: 'POST',
+        body: JSON.stringify({ comments: notes }),
+      })
+      setPending(null)
+      setItems((prev) => prev.filter((x) => x.id !== id))
+      notifyApprovalsChanged()
+      notifyLoansChanged()
+      notifyPaymentSchedulesChanged()
+      await load()
+      notifyApprovalsChanged()
+      notifyLoansChanged()
+      notifyPaymentSchedulesChanged()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Action failed')
+      await load()
+    } finally {
+      setActingId(null)
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="text-xl font-semibold">Approvals</h2>
+          <p className="text-sm text-slate-500">Pending loan stage approvals for designated approvers.</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <label className="flex items-center gap-2 text-sm text-slate-600">
+            <input
+              type="checkbox"
+              checked={mineOnly}
+              onChange={(e) => setMineOnly(e.target.checked)}
+            />
+            Only mine
+          </label>
+          <ActionButton type="button" onClick={() => void load()} loading={loading} loadingText="Refreshing…">
+            Refresh
+          </ActionButton>
+        </div>
+      </div>
+
+      {error && <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
+
+      <div className="overflow-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+        <table className="min-w-full text-left text-sm">
+          <thead className="bg-slate-50 text-slate-600">
+            <tr>
+              <th className="px-4 py-3 font-medium">Loan #</th>
+              <th className="px-4 py-3 font-medium">Customer</th>
+              <th className="px-4 py-3 font-medium">Stage</th>
+              <th className="px-4 py-3 font-medium">Amount</th>
+              <th className="px-4 py-3 font-medium">Status</th>
+              <th className="px-4 py-3 font-medium">Requested</th>
+              <th className="px-4 py-3 font-medium">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading && items.length === 0 && (
+              <LoadingTableRow colSpan={7} label="Loading approvals..." />
+            )}
+            {items.map((item) => (
+              <tr key={item.id} className="border-t border-slate-100">
+                <td className="px-4 py-3 font-medium">{item.loanNumber}</td>
+                <td className="px-4 py-3">{item.customerName}</td>
+                <td className="px-4 py-3">{item.stageName}</td>
+                <td className="px-4 py-3">{item.amount.toLocaleString()}</td>
+                <td className="px-4 py-3">
+                  <StatusTag status={item.decision || 'Pending'} />
+                </td>
+                <td className="px-4 py-3">{new Date(item.requestedAt).toLocaleString()}</td>
+                <td className="px-4 py-3">
+                  {canAct && item.canAct ? (
+                    <div className="flex flex-wrap gap-2">
+                      <ActionButton
+                        type="button"
+                        loading={actingId === item.id}
+                        loadingText="Working…"
+                        onClick={() =>
+                          setPending({
+                            id: item.id,
+                            action: 'approve',
+                            loanNumber: item.loanNumber,
+                            customerName: item.customerName,
+                            stageName: item.stageName,
+                          })
+                        }
+                        className="px-3 py-1.5 text-xs"
+                      >
+                        Approve
+                      </ActionButton>
+                      <ActionButton
+                        type="button"
+                        variant="danger"
+                        loading={actingId === item.id}
+                        loadingText="Working…"
+                        onClick={() =>
+                          setPending({
+                            id: item.id,
+                            action: 'reject',
+                            loanNumber: item.loanNumber,
+                            customerName: item.customerName,
+                            stageName: item.stageName,
+                          })
+                        }
+                      >
+                        Reject
+                      </ActionButton>
+                    </div>
+                  ) : (
+                    <span className="text-xs text-slate-500">
+                      {!canAct ? 'No permission' : 'Not assigned to you'}
+                    </span>
+                  )}
+                </td>
+              </tr>
+            ))}
+            {!loading && items.length === 0 && (
+              <tr>
+                <td className="px-4 py-6 text-slate-500" colSpan={7}>
+                  {mineOnly ? 'No approvals waiting for you.' : 'No pending approvals.'}
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      <ApprovalNotesDialog
+        open={pending != null}
+        action={pending?.action ?? 'approve'}
+        title={pending ? `${pending.action === 'approve' ? 'Approve' : 'Reject'} ${pending.loanNumber}` : undefined}
+        subtitle={pending ? `${pending.customerName} · ${pending.stageName}` : undefined}
+        busy={actingId != null}
+        onCancel={() => setPending(null)}
+        onConfirm={(notes) => void decide(notes)}
+      />
+    </div>
+  )
+}
