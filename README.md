@@ -49,3 +49,18 @@ UI: `http://localhost:5173` (proxies `/api` to the backend)
 ## Connection string
 
 Default LocalDB in `backend/appsettings.json`. Point `DefaultConnection` at your office SQL Server for LAN deploy.
+
+## Test deployment
+
+`https://lending.enovasoftware.com` is the test site. Jenkins job
+`MicroLending-Staging` builds only the lowercase `staging` branch, checking for
+changes every two minutes. There is no production job or `main` deployment trigger.
+
+The pipeline builds the API and frontend, then invokes the administrator-installed
+`/usr/local/bin/deploy-microlending-staging` helper from `deploy/deploy-staging.py`.
+The helper is root-owned and must be updated separately by an administrator.
+SQL credentials and the JWT key remain in `/etc/microlending/appsettings.Production.json`.
+Uploads remain in `/var/www/lending/Uploads`; deployments do not restore the repository's database files.
+Each deployment backs up the live `MicroLending` database before applying migrations.
+Releases live in `/var/www/lending/releases`, with `current` selecting the active release.
+Failed startup restores the prior application release; database migrations are not automatically reversed.

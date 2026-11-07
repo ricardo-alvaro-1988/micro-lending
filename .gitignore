@@ -6,6 +6,8 @@
 *.suo
 
 ## Node
+.deploy/
+.pipeline-artifacts/
 **/node_modules/
 **/dist/
 .env

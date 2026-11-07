@@ -147,7 +147,7 @@ public class DashboardController : ControllerBase
 
         days = Math.Clamp(days, 7, 90);
         var to = (asOf ?? DateTime.UtcNow).Date;
-        var from = to.AddDays(1 - days);
+        var fromDate = to.AddDays(1 - days);
 
         var customers = BranchScopeService.Customers(_db.Customers.AsNoTracking(), scope);
         var customerIds = await customers.Select(c => c.Id).ToListAsync();
@@ -162,7 +162,7 @@ public class DashboardController : ControllerBase
                 from item in _db.LoanScheduleItems.AsNoTracking()
                 join loan in _db.Loans.AsNoTracking() on item.LoanId equals loan.Id
                 where customerIds.Contains(loan.CustomerId)
-                      && item.DueDate >= from
+                      && item.DueDate >= fromDate
                       && item.DueDate < to.AddDays(1)
                       && (loan.Status == LoanStatus.ApprovedFinal
                           || loan.Status == LoanStatus.Closed
@@ -182,7 +182,7 @@ public class DashboardController : ControllerBase
                 from pay in _db.LoanPayments.AsNoTracking()
                 join loan in _db.Loans.AsNoTracking() on pay.LoanId equals loan.Id
                 where customerIds.Contains(loan.CustomerId)
-                      && pay.PaidAt >= from
+                      && pay.PaidAt >= fromDate
                       && pay.PaidAt < to.AddDays(1)
                 select new { pay.PaidAt, pay.Amount, pay.Method }
             ).ToListAsync();
@@ -197,7 +197,7 @@ public class DashboardController : ControllerBase
         }
 
         var points = new List<DashboardTrendPointDto>(days);
-        for (var d = from; d <= to; d = d.AddDays(1))
+        for (var d = fromDate; d <= to; d = d.AddDays(1))
         {
             var due = dueByDay.GetValueOrDefault(d);
             var collected = collectedByDay.GetValueOrDefault(d);
@@ -205,6 +205,6 @@ public class DashboardController : ControllerBase
             points.Add(new DashboardTrendPointDto(d, due, collected, cash, collected - due));
         }
 
-        return Ok(new DashboardTrendDto(from, to, points));
+        return Ok(new DashboardTrendDto(fromDate, to, points));
     }
 }
