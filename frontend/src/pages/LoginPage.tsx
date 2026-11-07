@@ -39,6 +39,7 @@ export function LoginPage() {
           <div className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-700">Micro Lending</div>
           <h1 className="mt-2 text-2xl font-semibold text-slate-900">Sign in</h1>
           <p className="mt-1 text-sm text-slate-500">Office console — works on your local network.</p>
+          <p className="mt-1 text-xs text-slate-400">Version 0.1.0</p>
         </div>
 
         {error && (
