@@ -12,10 +12,14 @@ pipeline {
         stage('Checkout staging') {
             steps {
                 deleteDir()
-                checkout scm
+                script {
+                    def revision = checkout scm
+                    if (revision.GIT_BRANCH != 'origin/staging') {
+                        error('Only origin/staging may deploy this test site')
+                    }
+                }
                 sh '''
                     set -eu
-                    test "$GIT_BRANCH" = "origin/staging"
                     test "$(git rev-parse HEAD)" = "$(git rev-parse refs/remotes/origin/staging)"
                 '''
             }
