@@ -75,11 +75,11 @@ const STEPS: Step[] = [
   {
     id: '6',
     n: 6,
-    title: 'Disbursement',
+    title: 'Disbursement stage',
     kind: 'staff',
     where: 'Loan Application',
     do: 'Click Move next',
-    result: 'Stage name only; not a cash transfer',
+    result: 'Workflow step only — not the cash release',
     href: '/lending/loans',
     permission: 'loans.view',
   },
@@ -89,8 +89,8 @@ const STEPS: Step[] = [
     title: 'Approved-Final',
     kind: 'ready',
     where: 'System status',
-    do: 'Automatic on final stage',
-    result: 'Counts as released / disbursed',
+    do: 'Reached by Move next from Disbursement',
+    result: 'Loan released; ready for payment terms',
     href: '/reports/loan-releases',
     permission: 'reports.view',
   },
@@ -101,7 +101,7 @@ const STEPS: Step[] = [
     kind: 'ready',
     where: 'Payment Terms / Schedule',
     do: 'Set rate, term, first due',
-    result: 'Installments generated; collect',
+    result: 'Installments generated; then collect',
     href: '/transaction/payment-schedule',
     permission: 'paymentSchedule.view',
   },
@@ -142,6 +142,11 @@ export function LoanTutorialPage() {
         <h2 className="text-xl font-semibold text-slate-900">How to apply a loan</h2>
         <p className="mt-1 text-sm text-slate-500">
           Standard individual flow. Click any box for where to act and what happens next.
+        </p>
+        <p className="mt-2 text-sm text-slate-600">
+          Order is intentional: <strong>Disbursement</strong> is a staff Move-next stage, then{' '}
+          <strong>Approved-Final</strong> marks the loan released — cash is not treated as out until that final stage.
+          Payment terms come after.
         </p>
       </div>
 
@@ -212,8 +217,8 @@ export function LoanTutorialPage() {
             Decline
           </text>
 
-          {/* Manager → Disbursement (under Manager, no cross through Approved-Final) */}
-          <path d="M472 188 V236 H268" fill="none" stroke="#334155" strokeWidth="1.5" markerEnd="url(#tut-arrow)" />
+          {/* Manager → Disbursement stage → Approved-Final */}
+          <path d="M472 188 V220 H268 V250" fill="none" stroke="#334155" strokeWidth="1.5" markerEnd="url(#tut-arrow)" />
 
           {/* 6 → 7 → 8 */}
           <FlowBox step={STEPS[5]} x={188} y={250} w={160} active={activeId === '6'} onSelect={setActiveId} />
@@ -271,6 +276,9 @@ export function LoanTutorialPage() {
           </li>
           <li>
             Assigned users <strong>Approve / Decline</strong> gated stages (Credit Review, Manager Approval).
+          </li>
+          <li>
+            Move next through <strong>Disbursement</strong> (stage only), then <strong>Approved-Final</strong> (released).
           </li>
           <li>
             After <strong>Approved-Final</strong>, set <strong>payment terms</strong> so the schedule is generated, then
@@ -332,7 +340,15 @@ function FlowBox({
         {step.title.length > 22 ? `${step.title.slice(0, 20)}…` : step.title}
       </text>
       <text x={x + w / 2 + 8} y={y + 42} textAnchor="middle" fill="#64748b" fontSize="11">
-        {step.kind === 'approval' ? 'Approve / Decline' : step.kind === 'ready' ? 'Ready' : 'Staff'}
+        {step.id === '6'
+          ? 'Move next only'
+          : step.id === '7'
+            ? 'Released'
+            : step.kind === 'approval'
+              ? 'Approve / Decline'
+              : step.kind === 'ready'
+                ? 'Ready'
+                : 'Staff'}
       </text>
     </g>
   )
