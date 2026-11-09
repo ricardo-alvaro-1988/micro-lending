@@ -19,6 +19,7 @@ import { PaymentSchedulePage } from './pages/PaymentSchedulePage'
 import { PaymentScheduleSettingsPage } from './pages/PaymentScheduleSettingsPage'
 import { LateFeesSettingsPage } from './pages/LateFeesSettingsPage'
 import { AuditLogPage } from './pages/AuditLogPage'
+import { RecordPaymentPage } from './pages/RecordPaymentPage'
 import { RemittancesPage } from './pages/RemittancesPage'
 import { ProcessFlowsPage } from './pages/ProcessFlowsPage'
 import { ProfilePage } from './pages/ProfilePage'
@@ -111,6 +112,9 @@ export default function App() {
           </Route>
           <Route element={<RequireAuth permission="customers.view" />}>
             <Route path="/transaction/customers" element={<CustomersPage />} />
+          </Route>
+          <Route element={<RequireAuth permission="loans.manage" />}>
+            <Route path="/transaction/record-payment" element={<RecordPaymentPage />} />
           </Route>
           <Route element={<RequireAuth permission="activity.view" />}>
             <Route path="/transaction/activity" element={<ActivityPage />} />

@@ -68,6 +68,12 @@ const nav: NavItem[] = [
     icon: <IconTransaction />,
     children: [
       { label: 'Customers', to: '/transaction/customers', permission: 'customers.view', icon: <IconCustomer /> },
+      {
+        label: 'Record Payment',
+        to: '/transaction/record-payment',
+        permission: 'loans.manage',
+        icon: <IconTransaction />,
+      },
       { label: 'Activity', to: '/transaction/activity', permission: 'activity.view', icon: <IconActivity /> },
       {
         label: 'Payment Schedule',
