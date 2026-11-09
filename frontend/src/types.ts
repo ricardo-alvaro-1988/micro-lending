@@ -7,6 +7,20 @@ export type AuthUser = {
   branchId?: number | null
   branchName?: string | null
   permissions: string[]
+  firstName?: string | null
+  middleName?: string | null
+  lastName?: string | null
+  dateOfBirth?: string | null
+  mobile?: string | null
+  phone?: string | null
+  houseUnit?: string | null
+  street?: string | null
+  barangay?: string | null
+  city?: string | null
+  province?: string | null
+  zipCode?: string | null
+  addressDisplay?: string | null
+  hasProfilePicture?: boolean
 }
 
 export type FieldDuePayment = {
@@ -73,6 +87,20 @@ export type AppUser = {
   id: string
   email: string
   fullName: string
+  firstName?: string | null
+  middleName?: string | null
+  lastName?: string | null
+  dateOfBirth?: string | null
+  mobile?: string | null
+  phone?: string | null
+  houseUnit?: string | null
+  street?: string | null
+  barangay?: string | null
+  city?: string | null
+  province?: string | null
+  zipCode?: string | null
+  addressDisplay?: string | null
+  hasProfilePicture: boolean
   role: string
   branchId?: number | null
   branchName?: string | null

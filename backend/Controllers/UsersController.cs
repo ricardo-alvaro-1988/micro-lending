@@ -20,19 +20,22 @@ public class UsersController : ControllerBase
     private readonly AppDbContext _db;
     private readonly BranchScopeService _branchScope;
     private readonly AuditService _audit;
+    private readonly CustomerDocumentStorage _storage;
 
     public UsersController(
         UserManager<ApplicationUser> userManager,
         RoleManager<ApplicationRole> roleManager,
         AppDbContext db,
         BranchScopeService branchScope,
-        AuditService audit)
+        AuditService audit,
+        CustomerDocumentStorage storage)
     {
         _userManager = userManager;
         _roleManager = roleManager;
         _db = db;
         _branchScope = branchScope;
         _audit = audit;
+        _storage = storage;
     }
 
     [HttpGet]
@@ -106,11 +109,11 @@ public class UsersController : ControllerBase
         {
             UserName = request.Email.Trim(),
             Email = request.Email.Trim(),
-            FullName = request.FullName.Trim(),
             BranchId = request.BranchId,
             EmailConfirmed = true,
             LockoutEnabled = true,
         };
+        ApplyProfile(user, request);
 
         var create = await _userManager.CreateAsync(user, request.Password);
         if (!create.Succeeded)
@@ -156,7 +159,7 @@ public class UsersController : ControllerBase
                 return BadRequest(new { message = "Cannot remove the last Admin user." });
         }
 
-        user.FullName = request.FullName.Trim();
+        ApplyProfile(user, request);
         user.BranchId = request.BranchId;
         await _userManager.UpdateAsync(user);
         await _db.Entry(user).Reference(u => u.Branch).LoadAsync();
@@ -275,6 +278,76 @@ public class UsersController : ControllerBase
         return Ok(await MapAsync(user));
     }
 
+    [HttpPost("{id}/profile-picture")]
+    [Authorize(Policy = $"perm:{PermissionCodes.UsersManage}")]
+    [RequestSizeLimit(6_000_000)]
+    public async Task<ActionResult<object>> UploadProfilePicture(string id, [FromForm] IFormFile? file)
+    {
+        var scope = await _branchScope.ResolveAsync(User);
+        if (scope is null) return Unauthorized();
+
+        var user = await _userManager.Users.FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted);
+        if (user is null) return NotFound();
+        if (!BranchScopeService.CanAccessBranch(scope, user.BranchId)) return NotFound();
+        if (file is null || file.Length <= 0) return BadRequest(new { message = "Image file is required." });
+
+        try
+        {
+            if (!string.IsNullOrWhiteSpace(user.ProfilePictureStoredFileName))
+                _storage.DeleteUserFileIfExists(user.Id, user.ProfilePictureStoredFileName);
+
+            var saved = await _storage.SaveUserProfilePictureAsync(user.Id, file);
+            user.ProfilePictureStoredFileName = saved.StoredFileName;
+            user.ProfilePictureContentType = saved.ContentType;
+            await _userManager.UpdateAsync(user);
+            return Ok(new { hasProfilePicture = true });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (IOException ex)
+        {
+            return StatusCode(StatusCodes.Status500InternalServerError, new { message = $"Could not store file: {ex.Message}" });
+        }
+    }
+
+    [HttpGet("{id}/profile-picture")]
+    [Authorize(Policy = $"perm:{PermissionCodes.UsersView}")]
+    public async Task<IActionResult> GetProfilePicture(string id)
+    {
+        var scope = await _branchScope.ResolveAsync(User);
+        if (scope is null) return Unauthorized();
+
+        var user = await _userManager.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == id);
+        if (user is null) return NotFound();
+        if (!BranchScopeService.CanAccessBranch(scope, user.BranchId)) return NotFound();
+        if (string.IsNullOrWhiteSpace(user.ProfilePictureStoredFileName)) return NotFound();
+
+        var path = _storage.GetUserPhysicalPath(user.Id, user.ProfilePictureStoredFileName);
+        if (!System.IO.File.Exists(path)) return NotFound(new { message = "Profile picture missing on disk." });
+        return PhysicalFile(path, user.ProfilePictureContentType ?? "image/jpeg");
+    }
+
+    [HttpDelete("{id}/profile-picture")]
+    [Authorize(Policy = $"perm:{PermissionCodes.UsersManage}")]
+    public async Task<IActionResult> DeleteProfilePicture(string id)
+    {
+        var scope = await _branchScope.ResolveAsync(User);
+        if (scope is null) return Unauthorized();
+
+        var user = await _userManager.Users.FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted);
+        if (user is null) return NotFound();
+        if (!BranchScopeService.CanAccessBranch(scope, user.BranchId)) return NotFound();
+        if (string.IsNullOrWhiteSpace(user.ProfilePictureStoredFileName)) return NoContent();
+
+        _storage.DeleteUserFileIfExists(user.Id, user.ProfilePictureStoredFileName);
+        user.ProfilePictureStoredFileName = null;
+        user.ProfilePictureContentType = null;
+        await _userManager.UpdateAsync(user);
+        return NoContent();
+    }
+
     private async Task<string?> ValidateBranchAsync(int? branchId, int? currentBranchId = null)
     {
         if (branchId is null) return null;
@@ -284,6 +357,70 @@ public class UsersController : ControllerBase
         return null;
     }
 
+    private static void ApplyProfile(ApplicationUser user, CreateUserRequest request) =>
+        ApplyProfileFields(
+            user,
+            request.FirstName,
+            request.MiddleName,
+            request.LastName,
+            request.DateOfBirth,
+            request.Mobile,
+            request.Phone,
+            request.HouseUnit,
+            request.Street,
+            request.Barangay,
+            request.City,
+            request.Province,
+            request.ZipCode);
+
+    private static void ApplyProfile(ApplicationUser user, UpdateUserRequest request) =>
+        ApplyProfileFields(
+            user,
+            request.FirstName,
+            request.MiddleName,
+            request.LastName,
+            request.DateOfBirth,
+            request.Mobile,
+            request.Phone,
+            request.HouseUnit,
+            request.Street,
+            request.Barangay,
+            request.City,
+            request.Province,
+            request.ZipCode);
+
+    private static void ApplyProfileFields(
+        ApplicationUser user,
+        string firstName,
+        string? middleName,
+        string lastName,
+        DateTime? dateOfBirth,
+        string? mobile,
+        string? phone,
+        string? houseUnit,
+        string? street,
+        string? barangay,
+        string? city,
+        string? province,
+        string? zipCode)
+    {
+        user.FirstName = firstName.Trim();
+        user.MiddleName = string.IsNullOrWhiteSpace(middleName) ? null : middleName.Trim();
+        user.LastName = lastName.Trim();
+        user.DateOfBirth = dateOfBirth;
+        user.Mobile = string.IsNullOrWhiteSpace(mobile) ? null : mobile.Trim();
+        user.Phone = string.IsNullOrWhiteSpace(phone) ? null : phone.Trim();
+        user.HouseUnit = string.IsNullOrWhiteSpace(houseUnit) ? null : houseUnit.Trim();
+        user.Street = string.IsNullOrWhiteSpace(street) ? null : street.Trim();
+        user.Barangay = string.IsNullOrWhiteSpace(barangay) ? null : barangay.Trim();
+        user.City = string.IsNullOrWhiteSpace(city) ? null : city.Trim();
+        user.Province = string.IsNullOrWhiteSpace(province) ? null : province.Trim();
+        user.ZipCode = string.IsNullOrWhiteSpace(zipCode) ? null : zipCode.Trim();
+        user.RefreshFullName();
+        if (string.IsNullOrWhiteSpace(user.FullName))
+            user.FullName = $"{user.FirstName} {user.LastName}".Trim();
+    }
+
     private async Task<UserDto> MapAsync(ApplicationUser u)
     {
         var roles = await _userManager.GetRolesAsync(u);
@@ -291,6 +428,20 @@ public class UsersController : ControllerBase
             u.Id,
             u.Email ?? string.Empty,
             u.FullName,
+            u.FirstName,
+            u.MiddleName,
+            u.LastName,
+            u.DateOfBirth,
+            u.Mobile,
+            u.Phone,
+            u.HouseUnit,
+            u.Street,
+            u.Barangay,
+            u.City,
+            u.Province,
+            u.ZipCode,
+            u.FormatAddress(),
+            !string.IsNullOrWhiteSpace(u.ProfilePictureStoredFileName),
             roles.FirstOrDefault() ?? string.Empty,
             u.BranchId,
             u.Branch?.Name,

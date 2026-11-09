@@ -87,7 +87,21 @@ public class JwtTokenService
             isAdmin,
             user.BranchId,
             user.Branch?.Name,
-            permissions);
+            permissions,
+            user.FirstName,
+            user.MiddleName,
+            user.LastName,
+            user.DateOfBirth,
+            user.Mobile,
+            user.Phone,
+            user.HouseUnit,
+            user.Street,
+            user.Barangay,
+            user.City,
+            user.Province,
+            user.ZipCode,
+            user.FormatAddress(),
+            !string.IsNullOrWhiteSpace(user.ProfilePictureStoredFileName));
         return (new JwtSecurityTokenHandler().WriteToken(token), expires, dto);
     }
 }
@@ -100,4 +114,18 @@ public record AuthUserDto(
     bool IsAdmin,
     int? BranchId,
     string? BranchName,
-    IReadOnlyList<string> Permissions);
+    IReadOnlyList<string> Permissions,
+    string? FirstName = null,
+    string? MiddleName = null,
+    string? LastName = null,
+    DateTime? DateOfBirth = null,
+    string? Mobile = null,
+    string? Phone = null,
+    string? HouseUnit = null,
+    string? Street = null,
+    string? Barangay = null,
+    string? City = null,
+    string? Province = null,
+    string? ZipCode = null,
+    string? AddressDisplay = null,
+    bool HasProfilePicture = false);
