@@ -21,7 +21,10 @@ public class ProcessFlowsController : ControllerBase
     [Authorize(Policy = $"perm:{PermissionCodes.FlowsView}")]
     public async Task<ActionResult<IEnumerable<ProcessFlowDto>>> GetAll([FromQuery] bool activeOnly = false)
     {
-        var query = _db.ProcessFlows.Include(f => f.Stages).AsQueryable();
+        var query = _db.ProcessFlows
+            .Include(f => f.Stages).ThenInclude(s => s.ApproverRoles)
+            .Include(f => f.Stages).ThenInclude(s => s.ApproverUsers)
+            .AsQueryable();
         if (activeOnly) query = query.Where(f => f.IsActive);
 
         var flows = await query.OrderBy(f => f.Name).ToListAsync();
@@ -35,7 +38,10 @@ public class ProcessFlowsController : ControllerBase
     [Authorize(Policy = $"perm:{PermissionCodes.FlowsView}")]
     public async Task<ActionResult<ProcessFlowDto>> Get(int id)
     {
-        var flow = await _db.ProcessFlows.Include(f => f.Stages).FirstOrDefaultAsync(f => f.Id == id);
+        var flow = await _db.ProcessFlows
+            .Include(f => f.Stages).ThenInclude(s => s.ApproverRoles)
+            .Include(f => f.Stages).ThenInclude(s => s.ApproverUsers)
+            .FirstOrDefaultAsync(f => f.Id == id);
         if (flow is null) return NotFound();
         return Ok(await MapFlowAsync(flow));
     }
@@ -74,7 +80,10 @@ public class ProcessFlowsController : ControllerBase
     [Authorize(Policy = $"perm:{PermissionCodes.FlowsManage}")]
     public async Task<ActionResult<ProcessFlowDto>> ReplaceStages(int id, [FromBody] ReplaceStagesRequest request)
     {
-        var flow = await _db.ProcessFlows.Include(f => f.Stages).FirstOrDefaultAsync(f => f.Id == id);
+        var flow = await _db.ProcessFlows
+            .Include(f => f.Stages).ThenInclude(s => s.ApproverRoles)
+            .Include(f => f.Stages).ThenInclude(s => s.ApproverUsers)
+            .FirstOrDefaultAsync(f => f.Id == id);
         if (flow is null) return NotFound();
 
         if (request.Stages.Count == 0)
@@ -86,13 +95,18 @@ public class ProcessFlowsController : ControllerBase
 
         foreach (var stage in ordered.Where(s => s.RequiresApproval && !s.IsFinal))
         {
-            if (string.IsNullOrWhiteSpace(stage.ApproverRoleId) && string.IsNullOrWhiteSpace(stage.ApproverUserId))
-                return BadRequest(new { message = $"Stage '{stage.Name}' requires an approver role or user." });
+            var roleIds = ResolveRoleIds(stage);
+            var userIds = ResolveUserIds(stage);
+            if (roleIds.Count == 0 && userIds.Count == 0)
+                return BadRequest(new { message = $"Stage '{stage.Name}' requires at least one approver role or user." });
         }
+
+        var validationError = await ValidateApproversAsync(ordered);
+        if (validationError is not null)
+            return BadRequest(new { message = validationError });
 
         if (hasLoans)
         {
-            // Allow updating routes/approvers/names in place; do not add/remove stages.
             if (ordered.Count != flow.Stages.Count)
                 return BadRequest(new { message = "Cannot add/remove stages while loans use this flow. You can still edit approve/decline routing." });
 
@@ -104,9 +118,10 @@ public class ProcessFlowsController : ControllerBase
                 var isLast = i == existing.Count - 1;
                 stage.Name = isLast ? "Approved-Final" : s.Name.Trim();
                 stage.RequiresApproval = isLast ? false : s.RequiresApproval;
-                stage.ApproverRoleId = isLast || string.IsNullOrWhiteSpace(s.ApproverRoleId) ? null : s.ApproverRoleId;
-                stage.ApproverUserId = isLast || string.IsNullOrWhiteSpace(s.ApproverUserId) ? null : s.ApproverUserId;
                 stage.IsFinal = isLast;
+                stage.ApproverRoleId = null;
+                stage.ApproverUserId = null;
+                ReplaceStageApprovers(stage, isLast ? [] : ResolveRoleIds(s), isLast ? [] : ResolveUserIds(s));
             }
 
             await _db.SaveChangesAsync();
@@ -116,7 +131,6 @@ public class ProcessFlowsController : ControllerBase
             return Ok(await MapFlowAsync(flow));
         }
 
-        // Clear self-FKs before delete to avoid cycles
         foreach (var stage in flow.Stages)
         {
             stage.OnApproveStageId = null;
@@ -138,10 +152,11 @@ public class ProcessFlowsController : ControllerBase
                 Name = isLast ? "Approved-Final" : s.Name.Trim(),
                 SortOrder = i + 1,
                 RequiresApproval = isLast ? false : s.RequiresApproval,
-                ApproverRoleId = isLast || string.IsNullOrWhiteSpace(s.ApproverRoleId) ? null : s.ApproverRoleId,
-                ApproverUserId = isLast || string.IsNullOrWhiteSpace(s.ApproverUserId) ? null : s.ApproverUserId,
+                ApproverRoleId = null,
+                ApproverUserId = null,
                 IsFinal = isLast
             };
+            ReplaceStageApprovers(stage, isLast ? [] : ResolveRoleIds(s), isLast ? [] : ResolveUserIds(s));
             _db.ProcessStages.Add(stage);
             created.Add(stage);
         }
@@ -151,7 +166,10 @@ public class ProcessFlowsController : ControllerBase
         flow.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
 
-        flow = await _db.ProcessFlows.Include(f => f.Stages).FirstAsync(f => f.Id == id);
+        flow = await _db.ProcessFlows
+            .Include(f => f.Stages).ThenInclude(s => s.ApproverRoles)
+            .Include(f => f.Stages).ThenInclude(s => s.ApproverUsers)
+            .FirstAsync(f => f.Id == id);
         return Ok(await MapFlowAsync(flow));
     }
 
@@ -177,7 +195,6 @@ public class ProcessFlowsController : ControllerBase
         return NoContent();
     }
 
-    /// <summary>Every flow ends at Approved-Final (ready for payment schedule).</summary>
     private static void NormalizeFinalStage(List<UpsertStageRequest> ordered)
     {
         for (var i = 0; i < ordered.Count; i++)
@@ -189,10 +206,81 @@ public class ProcessFlowsController : ControllerBase
             ordered[i].RequiresApproval = false;
             ordered[i].ApproverRoleId = null;
             ordered[i].ApproverUserId = null;
+            ordered[i].ApproverRoleIds = [];
+            ordered[i].ApproverUserIds = [];
             ordered[i].OnApproveSortOrder = null;
             ordered[i].OnDeclineEndsLoan = true;
             ordered[i].OnDeclineSortOrder = null;
         }
+    }
+
+    private static List<string> ResolveRoleIds(UpsertStageRequest stage)
+    {
+        var ids = (stage.ApproverRoleIds ?? [])
+            .Where(id => !string.IsNullOrWhiteSpace(id))
+            .Select(id => id.Trim())
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+        if (ids.Count == 0 && !string.IsNullOrWhiteSpace(stage.ApproverRoleId))
+            ids.Add(stage.ApproverRoleId.Trim());
+        return ids;
+    }
+
+    private static List<string> ResolveUserIds(UpsertStageRequest stage)
+    {
+        var ids = (stage.ApproverUserIds ?? [])
+            .Where(id => !string.IsNullOrWhiteSpace(id))
+            .Select(id => id.Trim())
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+        if (ids.Count == 0 && !string.IsNullOrWhiteSpace(stage.ApproverUserId))
+            ids.Add(stage.ApproverUserId.Trim());
+        return ids;
+    }
+
+    private async Task<string?> ValidateApproversAsync(List<UpsertStageRequest> ordered)
+    {
+        var allRoleIds = ordered.SelectMany(ResolveRoleIds).Distinct().ToList();
+        var allUserIds = ordered.SelectMany(ResolveUserIds).Distinct().ToList();
+
+        if (allRoleIds.Count > 0)
+        {
+            var existingRoles = await _db.Roles.AsNoTracking()
+                .Where(r => allRoleIds.Contains(r.Id))
+                .Select(r => r.Id)
+                .ToListAsync();
+            var missing = allRoleIds.Except(existingRoles).ToList();
+            if (missing.Count > 0)
+                return "One or more approver roles were not found.";
+        }
+
+        if (allUserIds.Count > 0)
+        {
+            var existingUsers = await _db.Users.AsNoTracking()
+                .Where(u => allUserIds.Contains(u.Id) && !u.IsDeleted)
+                .Select(u => u.Id)
+                .ToListAsync();
+            var missing = allUserIds.Except(existingUsers).ToList();
+            if (missing.Count > 0)
+                return "One or more approver users were not found.";
+        }
+
+        return null;
+    }
+
+    private void ReplaceStageApprovers(ProcessStage stage, List<string> roleIds, List<string> userIds)
+    {
+        if (stage.ApproverRoles.Count > 0)
+            _db.ProcessStageApproverRoles.RemoveRange(stage.ApproverRoles);
+        stage.ApproverRoles.Clear();
+        foreach (var roleId in roleIds)
+            stage.ApproverRoles.Add(new ProcessStageApproverRole { RoleId = roleId });
+
+        if (stage.ApproverUsers.Count > 0)
+            _db.ProcessStageApproverUsers.RemoveRange(stage.ApproverUsers);
+        stage.ApproverUsers.Clear();
+        foreach (var userId in userIds)
+            stage.ApproverUsers.Add(new ProcessStageApproverUser { UserId = userId });
     }
 
     private static void ApplyRoutingBySortOrder(List<ProcessStage> stages, List<UpsertStageRequest> requests)
@@ -206,10 +294,10 @@ public class ProcessFlowsController : ControllerBase
             if (req.OnApproveSortOrder is int approveSort && bySort.TryGetValue(approveSort, out var approveTarget))
                 stage.OnApproveStageId = approveTarget.Id;
             else
-                stage.OnApproveStageId = null; // next by default
+                stage.OnApproveStageId = null;
 
             if (req.OnDeclineEndsLoan || req.OnDeclineSortOrder is null)
-                stage.OnDeclineStageId = null; // rejected end
+                stage.OnDeclineStageId = null;
             else if (bySort.TryGetValue(req.OnDeclineSortOrder.Value, out var declineTarget))
                 stage.OnDeclineStageId = declineTarget.Id;
             else
@@ -220,8 +308,31 @@ public class ProcessFlowsController : ControllerBase
     private async Task<ProcessFlowDto> MapFlowAsync(ProcessFlow flow)
     {
         await _db.Entry(flow).Collection(f => f.Stages).LoadAsync();
-        var roleIds = flow.Stages.Where(s => s.ApproverRoleId != null).Select(s => s.ApproverRoleId!).Distinct().ToList();
-        var userIds = flow.Stages.Where(s => s.ApproverUserId != null).Select(s => s.ApproverUserId!).Distinct().ToList();
+        foreach (var stage in flow.Stages)
+        {
+            await _db.Entry(stage).Collection(s => s.ApproverRoles).LoadAsync();
+            await _db.Entry(stage).Collection(s => s.ApproverUsers).LoadAsync();
+        }
+
+        var roleIds = flow.Stages
+            .SelectMany(s =>
+            {
+                var ids = s.ApproverRoles.Select(r => r.RoleId).ToList();
+                if (ids.Count == 0 && s.ApproverRoleId is not null) ids.Add(s.ApproverRoleId);
+                return ids;
+            })
+            .Distinct()
+            .ToList();
+        var userIds = flow.Stages
+            .SelectMany(s =>
+            {
+                var ids = s.ApproverUsers.Select(u => u.UserId).ToList();
+                if (ids.Count == 0 && s.ApproverUserId is not null) ids.Add(s.ApproverUserId);
+                return ids;
+            })
+            .Distinct()
+            .ToList();
+
         var roles = await _db.Roles.Where(r => roleIds.Contains(r.Id)).ToDictionaryAsync(r => r.Id, r => r.Name!);
         var users = await _db.Users.Where(u => userIds.Contains(u.Id)).ToDictionaryAsync(u => u.Id, u => u.FullName);
         var stageMap = flow.Stages.ToDictionary(s => s.Id);
@@ -230,15 +341,34 @@ public class ProcessFlowsController : ControllerBase
         {
             ProcessStage? approve = s.OnApproveStageId is int aid && stageMap.TryGetValue(aid, out var a) ? a : null;
             ProcessStage? decline = s.OnDeclineStageId is int did && stageMap.TryGetValue(did, out var d) ? d : null;
+
+            var stageRoleIds = s.ApproverRoles.Select(r => r.RoleId).ToList();
+            if (stageRoleIds.Count == 0 && s.ApproverRoleId is not null)
+                stageRoleIds.Add(s.ApproverRoleId);
+            var stageUserIds = s.ApproverUsers.Select(u => u.UserId).ToList();
+            if (stageUserIds.Count == 0 && s.ApproverUserId is not null)
+                stageUserIds.Add(s.ApproverUserId);
+
+            var roleDtos = stageRoleIds
+                .Where(id => roles.ContainsKey(id))
+                .Select(id => new ProcessStageApproverRoleDto(id, roles[id]))
+                .ToList();
+            var userDtos = stageUserIds
+                .Where(id => users.ContainsKey(id))
+                .Select(id => new ProcessStageApproverUserDto(id, users[id]))
+                .ToList();
+
             return new ProcessStageDto(
                 s.Id,
                 s.Name,
                 s.SortOrder,
                 s.RequiresApproval,
-                s.ApproverRoleId,
-                s.ApproverRoleId != null && roles.TryGetValue(s.ApproverRoleId, out var rn) ? rn : null,
-                s.ApproverUserId,
-                s.ApproverUserId != null && users.TryGetValue(s.ApproverUserId, out var un) ? un : null,
+                roleDtos.FirstOrDefault()?.RoleId,
+                roleDtos.FirstOrDefault()?.RoleName,
+                userDtos.FirstOrDefault()?.UserId,
+                userDtos.FirstOrDefault()?.UserName,
+                roleDtos,
+                userDtos,
                 s.IsFinal,
                 s.OnApproveStageId,
                 approve?.SortOrder,

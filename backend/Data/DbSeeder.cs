@@ -324,7 +324,10 @@ public static class DbSeeder
                 Name = "Credit Review",
                 SortOrder = 2,
                 RequiresApproval = true,
-                ApproverRoleId = adminRole.Id
+                ApproverRoles =
+                [
+                    new ProcessStageApproverRole { RoleId = adminRole.Id }
+                ]
             };
             var manager = new ProcessStage
             {
@@ -332,7 +335,14 @@ public static class DbSeeder
                 Name = "Manager Approval",
                 SortOrder = 3,
                 RequiresApproval = true,
-                ApproverUserId = admin.Id
+                ApproverRoles =
+                [
+                    new ProcessStageApproverRole { RoleId = adminRole.Id }
+                ],
+                ApproverUsers =
+                [
+                    new ProcessStageApproverUser { UserId = admin.Id }
+                ]
             };
             var disbursement = new ProcessStage { FlowId = flow.Id, Name = "Disbursement", SortOrder = 4, RequiresApproval = false };
             var approvedFinal = new ProcessStage
@@ -352,6 +362,30 @@ public static class DbSeeder
             manager.OnDeclineStageId = application.Id;
             await db.SaveChangesAsync();
         }
+
+        // Migrate legacy single ApproverRoleId / ApproverUserId into many-to-many tables.
+        var legacyStages = await db.ProcessStages
+            .Include(s => s.ApproverRoles)
+            .Include(s => s.ApproverUsers)
+            .Where(s => s.ApproverRoleId != null || s.ApproverUserId != null)
+            .ToListAsync();
+        foreach (var stage in legacyStages)
+        {
+            if (stage.ApproverRoleId is not null
+                && stage.ApproverRoles.All(r => r.RoleId != stage.ApproverRoleId))
+            {
+                stage.ApproverRoles.Add(new ProcessStageApproverRole { RoleId = stage.ApproverRoleId });
+            }
+            if (stage.ApproverUserId is not null
+                && stage.ApproverUsers.All(u => u.UserId != stage.ApproverUserId))
+            {
+                stage.ApproverUsers.Add(new ProcessStageApproverUser { UserId = stage.ApproverUserId });
+            }
+            stage.ApproverRoleId = null;
+            stage.ApproverUserId = null;
+        }
+        if (legacyStages.Count > 0)
+            await db.SaveChangesAsync();
 
         // Every flow's last stage must be Approved-Final (ready for payment schedule).
         var allFlows = await db.ProcessFlows.Include(f => f.Stages).ToListAsync();

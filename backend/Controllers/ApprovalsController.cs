@@ -102,7 +102,8 @@ public class ApprovalsController : ControllerBase
 
         var approval = await _db.LoanApprovals
             .Include(a => a.Loan).ThenInclude(l => l.Customer)
-            .Include(a => a.Stage)
+            .Include(a => a.Stage).ThenInclude(s => s.ApproverRoles)
+            .Include(a => a.Stage).ThenInclude(s => s.ApproverUsers)
             .FirstOrDefaultAsync(a => a.Id == id);
         if (approval is null) return NotFound(new { message = "Approval not found." });
         if (!BranchScopeService.CanAccessBranch(scope, approval.Loan.Customer.BranchId))
@@ -153,7 +154,8 @@ public class ApprovalsController : ControllerBase
         var query = _db.LoanApprovals
             .AsNoTracking()
             .Include(a => a.Loan).ThenInclude(l => l.Customer)
-            .Include(a => a.Stage)
+            .Include(a => a.Stage).ThenInclude(s => s.ApproverRoles)
+            .Include(a => a.Stage).ThenInclude(s => s.ApproverUsers)
             .Where(a => a.Decision == ApprovalDecision.Pending)
             .Where(a => a.Loan.Status == LoanStatus.PendingApproval)
             .Where(a => a.StageId == a.Loan.CurrentStageId);

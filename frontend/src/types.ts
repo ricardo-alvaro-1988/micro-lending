@@ -81,6 +81,16 @@ export type AppUser = {
   deletedAt?: string | null
 }
 
+export type ProcessStageApproverRole = {
+  roleId: string
+  roleName: string
+}
+
+export type ProcessStageApproverUser = {
+  userId: string
+  userName: string
+}
+
 export type ProcessStage = {
   id: number
   name: string
@@ -90,6 +100,8 @@ export type ProcessStage = {
   approverRoleName?: string | null
   approverUserId?: string | null
   approverUserName?: string | null
+  approverRoles?: ProcessStageApproverRole[]
+  approverUsers?: ProcessStageApproverUser[]
   isFinal: boolean
   onApproveStageId?: number | null
   onApproveSortOrder?: number | null
