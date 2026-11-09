@@ -78,6 +78,8 @@ public class CustomerFinanceController : ControllerBase
         var result = new List<LoanDto>(loans.Count);
         foreach (var loan in loans)
         {
+            if (loan.CurrentStage is not null)
+                await _workflow.EnsureStageApproversLoadedAsync(loan.CurrentStage);
             paidByLoan.TryGetValue(loan.Id, out var totalPaid);
             result.Add(MapLoan(loan, approverCtx, totalPaid));
         }
@@ -278,6 +280,8 @@ public class CustomerFinanceController : ControllerBase
         var mapped = new List<LoanDto>(loans.Count);
         foreach (var loan in loans)
         {
+            if (loan.CurrentStage is not null)
+                await _workflow.EnsureStageApproversLoadedAsync(loan.CurrentStage);
             paidByLoan.TryGetValue(loan.Id, out var totalPaid);
             mapped.Add(MapLoan(loan, approverCtx, totalPaid));
         }
@@ -395,6 +399,8 @@ public class CustomerFinanceController : ControllerBase
 
     private async Task<LoanDto> MapLoanAsync(Loan loan, ApplicationUser user)
     {
+        if (loan.CurrentStage is not null)
+            await _workflow.EnsureStageApproversLoadedAsync(loan.CurrentStage);
         var totalPaid = loan.Payments?.Sum(p => p.Amount) ?? 0;
         var ctx = await _workflow.GetApproverContextAsync(user);
         return MapLoan(loan, ctx, totalPaid);

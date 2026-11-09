@@ -19,10 +19,10 @@ public class ProcessStage
     public string Name { get; set; } = string.Empty;
     public int SortOrder { get; set; }
     public bool RequiresApproval { get; set; }
-    /// <summary>Any user in this role may approve.</summary>
+    /// <summary>Legacy single role (migrated into ApproverRoles).</summary>
     public string? ApproverRoleId { get; set; }
     public ApplicationRole? ApproverRole { get; set; }
-    /// <summary>Specific user who may approve.</summary>
+    /// <summary>Legacy single user (migrated into ApproverUsers).</summary>
     public string? ApproverUserId { get; set; }
     public ApplicationUser? ApproverUser { get; set; }
     public bool IsFinal { get; set; }
@@ -34,6 +34,27 @@ public class ProcessStage
     /// <summary>Stage to enter after decline. Null = mark loan Rejected (end).</summary>
     public int? OnDeclineStageId { get; set; }
     public ProcessStage? OnDeclineStage { get; set; }
+
+    public ICollection<ProcessStageApproverRole> ApproverRoles { get; set; } = new List<ProcessStageApproverRole>();
+    public ICollection<ProcessStageApproverUser> ApproverUsers { get; set; } = new List<ProcessStageApproverUser>();
+}
+
+/// <summary>Many-to-many: stage may allow any user in these roles to approve.</summary>
+public class ProcessStageApproverRole
+{
+    public int StageId { get; set; }
+    public ProcessStage Stage { get; set; } = null!;
+    public string RoleId { get; set; } = string.Empty;
+    public ApplicationRole Role { get; set; } = null!;
+}
+
+/// <summary>Many-to-many: optional explicit approvers (usually users from the selected roles).</summary>
+public class ProcessStageApproverUser
+{
+    public int StageId { get; set; }
+    public ProcessStage Stage { get; set; } = null!;
+    public string UserId { get; set; } = string.Empty;
+    public ApplicationUser User { get; set; } = null!;
 }
 
 public class CustomerGroup

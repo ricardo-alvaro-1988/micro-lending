@@ -2,6 +2,9 @@ using System.ComponentModel.DataAnnotations;
 
 namespace MicroLending.Api.Dtos;
 
+public record ProcessStageApproverRoleDto(string RoleId, string RoleName);
+public record ProcessStageApproverUserDto(string UserId, string UserName);
+
 public record ProcessStageDto(
     int Id,
     string Name,
@@ -11,6 +14,8 @@ public record ProcessStageDto(
     string? ApproverRoleName,
     string? ApproverUserId,
     string? ApproverUserName,
+    IReadOnlyList<ProcessStageApproverRoleDto> ApproverRoles,
+    IReadOnlyList<ProcessStageApproverUserDto> ApproverUsers,
     bool IsFinal,
     int? OnApproveStageId,
     int? OnApproveSortOrder,
@@ -52,8 +57,12 @@ public class UpsertStageRequest
     public string Name { get; set; } = string.Empty;
     public int SortOrder { get; set; }
     public bool RequiresApproval { get; set; }
+    /// <summary>Legacy single role — prefer ApproverRoleIds.</summary>
     public string? ApproverRoleId { get; set; }
+    /// <summary>Legacy single user — prefer ApproverUserIds.</summary>
     public string? ApproverUserId { get; set; }
+    public List<string> ApproverRoleIds { get; set; } = [];
+    public List<string> ApproverUserIds { get; set; } = [];
     public bool IsFinal { get; set; }
     /// <summary>Target stage sort order after approve. Null = next stage.</summary>
     public int? OnApproveSortOrder { get; set; }

@@ -33,17 +33,39 @@ public class LoanWorkflowService
     {
         if (!stage.RequiresApproval) return false;
 
-        if (!string.IsNullOrEmpty(stage.ApproverUserId) && stage.ApproverUserId == ctx.UserId)
-            return true;
+        var userIds = stage.ApproverUsers?.Select(x => x.UserId).Where(id => !string.IsNullOrEmpty(id)).Distinct().ToList()
+            ?? new List<string>();
+        if (userIds.Count == 0 && !string.IsNullOrEmpty(stage.ApproverUserId))
+            userIds.Add(stage.ApproverUserId);
 
-        if (!string.IsNullOrEmpty(stage.ApproverRoleId) && ctx.RoleIds.Contains(stage.ApproverRoleId))
-            return true;
+        var roleIds = stage.ApproverRoles?.Select(x => x.RoleId).Where(id => !string.IsNullOrEmpty(id)).Distinct().ToList()
+            ?? new List<string>();
+        if (roleIds.Count == 0 && !string.IsNullOrEmpty(stage.ApproverRoleId))
+            roleIds.Add(stage.ApproverRoleId);
+
+        // Explicit users win: only listed users may approve.
+        if (userIds.Count > 0)
+            return userIds.Contains(ctx.UserId);
+
+        // Otherwise any user in the selected roles may approve.
+        if (roleIds.Count > 0)
+            return roleIds.Any(r => ctx.RoleIds.Contains(r));
 
         return false;
     }
 
+    public async Task EnsureStageApproversLoadedAsync(ProcessStage stage)
+    {
+        var entry = _db.Entry(stage);
+        if (!entry.Collection(s => s.ApproverRoles).IsLoaded)
+            await entry.Collection(s => s.ApproverRoles).LoadAsync();
+        if (!entry.Collection(s => s.ApproverUsers).IsLoaded)
+            await entry.Collection(s => s.ApproverUsers).LoadAsync();
+    }
+
     public async Task<bool> CanUserApproveStageAsync(ApplicationUser user, ProcessStage stage)
     {
+        await EnsureStageApproversLoadedAsync(stage);
         var ctx = await GetApproverContextAsync(user);
         return CanUserApproveStage(stage, ctx);
     }

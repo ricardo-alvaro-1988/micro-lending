@@ -1158,6 +1158,36 @@ namespace MicroLending.Api.Migrations
                     b.ToTable("ProcessStages");
                 });
 
+            modelBuilder.Entity("MicroLending.Api.Models.ProcessStageApproverRole", b =>
+                {
+                    b.Property<int>("StageId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("RoleId")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("StageId", "RoleId");
+
+                    b.HasIndex("RoleId");
+
+                    b.ToTable("ProcessStageApproverRoles");
+                });
+
+            modelBuilder.Entity("MicroLending.Api.Models.ProcessStageApproverUser", b =>
+                {
+                    b.Property<int>("StageId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("UserId")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("StageId", "UserId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("ProcessStageApproverUsers");
+                });
+
             modelBuilder.Entity("MicroLending.Api.Models.RolePermission", b =>
                 {
                     b.Property<string>("RoleId")
@@ -1585,6 +1615,44 @@ namespace MicroLending.Api.Migrations
                     b.Navigation("OnDeclineStage");
                 });
 
+            modelBuilder.Entity("MicroLending.Api.Models.ProcessStageApproverRole", b =>
+                {
+                    b.HasOne("MicroLending.Api.Models.ApplicationRole", "Role")
+                        .WithMany()
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("MicroLending.Api.Models.ProcessStage", "Stage")
+                        .WithMany("ApproverRoles")
+                        .HasForeignKey("StageId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Role");
+
+                    b.Navigation("Stage");
+                });
+
+            modelBuilder.Entity("MicroLending.Api.Models.ProcessStageApproverUser", b =>
+                {
+                    b.HasOne("MicroLending.Api.Models.ProcessStage", "Stage")
+                        .WithMany("ApproverUsers")
+                        .HasForeignKey("StageId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("MicroLending.Api.Models.ApplicationUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Stage");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("MicroLending.Api.Models.RolePermission", b =>
                 {
                     b.HasOne("MicroLending.Api.Models.Permission", "Permission")
@@ -1712,6 +1780,13 @@ namespace MicroLending.Api.Migrations
             modelBuilder.Entity("MicroLending.Api.Models.ProcessFlow", b =>
                 {
                     b.Navigation("Stages");
+                });
+
+            modelBuilder.Entity("MicroLending.Api.Models.ProcessStage", b =>
+                {
+                    b.Navigation("ApproverRoles");
+
+                    b.Navigation("ApproverUsers");
                 });
 #pragma warning restore 612, 618
         }

@@ -13,6 +13,8 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
     public DbSet<AppPage> AppPages => Set<AppPage>();
     public DbSet<ProcessFlow> ProcessFlows => Set<ProcessFlow>();
     public DbSet<ProcessStage> ProcessStages => Set<ProcessStage>();
+    public DbSet<ProcessStageApproverRole> ProcessStageApproverRoles => Set<ProcessStageApproverRole>();
+    public DbSet<ProcessStageApproverUser> ProcessStageApproverUsers => Set<ProcessStageApproverUser>();
     public DbSet<CustomerGroup> CustomerGroups => Set<CustomerGroup>();
     public DbSet<Branch> Branches => Set<Branch>();
     public DbSet<Customer> Customers => Set<Customer>();
@@ -81,6 +83,20 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
             e.HasOne(x => x.OnApproveStage).WithMany().HasForeignKey(x => x.OnApproveStageId).OnDelete(DeleteBehavior.NoAction);
             e.HasOne(x => x.OnDeclineStage).WithMany().HasForeignKey(x => x.OnDeclineStageId).OnDelete(DeleteBehavior.NoAction);
             e.HasIndex(x => new { x.FlowId, x.SortOrder });
+        });
+
+        builder.Entity<ProcessStageApproverRole>(e =>
+        {
+            e.HasKey(x => new { x.StageId, x.RoleId });
+            e.HasOne(x => x.Stage).WithMany(s => s.ApproverRoles).HasForeignKey(x => x.StageId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.Role).WithMany().HasForeignKey(x => x.RoleId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<ProcessStageApproverUser>(e =>
+        {
+            e.HasKey(x => new { x.StageId, x.UserId });
+            e.HasOne(x => x.Stage).WithMany(s => s.ApproverUsers).HasForeignKey(x => x.StageId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
         });
 
         builder.Entity<CustomerGroup>(e =>
