@@ -55,6 +55,26 @@ type NavItem = {
 }
 
 const SIDEBAR_KEY = 'ml_sidebar_collapsed'
+const NAV_GROUPS_KEY = 'ml_nav_groups_open'
+
+const DEFAULT_OPEN_GROUPS: Record<string, boolean> = {
+  Transaction: true,
+  Lending: true,
+  Reports: true,
+  Accessibility: true,
+  Settings: true,
+}
+
+function loadOpenGroups(): Record<string, boolean> {
+  try {
+    const raw = localStorage.getItem(NAV_GROUPS_KEY)
+    if (!raw) return { ...DEFAULT_OPEN_GROUPS }
+    const parsed = JSON.parse(raw) as Record<string, boolean>
+    return { ...DEFAULT_OPEN_GROUPS, ...parsed }
+  } catch {
+    return { ...DEFAULT_OPEN_GROUPS }
+  }
+}
 
 const nav: NavItem[] = [
   {
@@ -187,12 +207,7 @@ export function AppLayout() {
   const { filterBranchId } = useBranchScope()
   const navigate = useNavigate()
   const location = useLocation()
-  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
-    Transaction: true,
-    Lending: true,
-    Accessibility: true,
-    Settings: true,
-  })
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(loadOpenGroups)
   const [loggingOut, setLoggingOut] = useState(false)
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem(SIDEBAR_KEY) === '1')
   const [approvalCount, setApprovalCount] = useState(0)
@@ -206,6 +221,10 @@ export function AppLayout() {
   useEffect(() => {
     localStorage.setItem(SIDEBAR_KEY, collapsed ? '1' : '0')
   }, [collapsed])
+
+  useEffect(() => {
+    localStorage.setItem(NAV_GROUPS_KEY, JSON.stringify(openGroups))
+  }, [openGroups])
 
   /** If a refresh is requested while one is in flight, run once more afterward. */
   const runQueued = useCallback(async (inFlight: { current: boolean }, queued: { current: boolean }, work: () => Promise<void>) => {
