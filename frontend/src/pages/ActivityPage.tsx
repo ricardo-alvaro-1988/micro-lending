@@ -34,6 +34,31 @@ function stepLabel(step: LoanActivityStep) {
   }
 }
 
+function actionLabel(type: string) {
+  switch (type) {
+    case 'ApplicationSubmitted':
+      return 'Submitted'
+    case 'ApprovalRequested':
+      return 'Awaiting'
+    case 'Approved':
+      return 'Approved'
+    case 'Declined':
+      return 'Declined'
+    case 'StageEntered':
+      return 'Entered'
+    case 'Advanced':
+      return 'Advanced'
+    case 'Closed':
+      return 'Closed'
+    case 'ApprovedFinal':
+      return 'Final'
+    case 'Rejected':
+      return 'Rejected'
+    default:
+      return type
+  }
+}
+
 function stepTone(type: string): string {
   switch (type) {
     case 'Approved':
@@ -47,9 +72,54 @@ function stepTone(type: string): string {
       return 'border-amber-200 bg-amber-50 text-amber-900'
     case 'ApplicationSubmitted':
       return 'border-sky-200 bg-sky-50 text-sky-900'
+    case 'Advanced':
+    case 'StageEntered':
+      return 'border-indigo-200 bg-indigo-50 text-indigo-900'
     default:
-      return 'border-slate-200 bg-white text-slate-800'
+      return 'border-slate-200 bg-slate-50 text-slate-800'
   }
+}
+
+function actionTone(type: string): string {
+  switch (type) {
+    case 'Approved':
+    case 'ApprovedFinal':
+    case 'Closed':
+      return 'bg-emerald-600 text-white'
+    case 'Declined':
+    case 'Rejected':
+      return 'bg-rose-600 text-white'
+    case 'ApprovalRequested':
+      return 'bg-amber-500 text-white'
+    case 'ApplicationSubmitted':
+      return 'bg-sky-600 text-white'
+    case 'Advanced':
+    case 'StageEntered':
+      return 'bg-indigo-600 text-white'
+    default:
+      return 'bg-slate-500 text-white'
+  }
+}
+
+function ActivityStepTag({ step }: { step: LoanActivityStep }) {
+  return (
+    <span
+      className={`inline-flex max-w-full flex-wrap items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs shadow-sm ${stepTone(step.type)}`}
+      title={new Date(step.occurredAt).toLocaleString()}
+    >
+      <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${actionTone(step.type)}`}>
+        {actionLabel(step.type)}
+      </span>
+      <span className="font-semibold leading-snug">{stepLabel(step)}</span>
+      {step.actorName ? (
+        <span className="rounded-full bg-white/70 px-1.5 py-0.5 text-[11px] font-medium text-slate-600">
+          {step.actorName}
+        </span>
+      ) : (
+        <span className="rounded-full bg-white/70 px-1.5 py-0.5 text-[11px] italic text-slate-500">pending</span>
+      )}
+    </span>
+  )
 }
 
 export function ActivityPage() {
@@ -136,46 +206,18 @@ export function ActivityPage() {
                 </div>
               </div>
 
-              <div className="mt-4 overflow-x-auto pb-1">
-                <ol className="flex min-w-max items-stretch gap-0">
-                  {trail.steps.map((step, index) => (
-                    <li key={`${trail.loanId}-${step.id}-${index}`} className="flex items-center">
-                      <div
-                        className={`max-w-[220px] rounded-lg border px-3 py-2 shadow-sm ${stepTone(step.type)}`}
-                      >
-                        <div className="text-xs font-semibold leading-snug">{stepLabel(step)}</div>
-                        <div className="mt-1 text-[11px] opacity-80">
-                          {step.actorName ? (
-                            <>
-                              by <span className="font-medium">{step.actorName}</span>
-                            </>
-                          ) : (
-                            <span className="italic">system / pending</span>
-                          )}
-                        </div>
-                        <div className="mt-0.5 text-[10px] opacity-70">
-                          {new Date(step.occurredAt).toLocaleString()}
-                        </div>
-                      </div>
-                      {index < trail.steps.length - 1 && (
-                        <div className="mx-2 flex items-center text-slate-300" aria-hidden>
-                          <span className="text-lg font-light">→</span>
-                        </div>
-                      )}
-                    </li>
-                  ))}
-                </ol>
+              <div className="mt-4 flex flex-wrap items-center gap-2">
+                {trail.steps.map((step, index) => (
+                  <div key={`${trail.loanId}-${step.id}-${index}`} className="flex items-center gap-2">
+                    <ActivityStepTag step={step} />
+                    {index < trail.steps.length - 1 && (
+                      <span className="text-slate-300" aria-hidden>
+                        →
+                      </span>
+                    )}
+                  </div>
+                ))}
               </div>
-
-              {/* Readable sentence trail */}
-              <p className="mt-3 text-xs leading-relaxed text-slate-500">
-                {trail.steps
-                  .map((step) => {
-                    const who = step.actorName ? ` by ${step.actorName}` : ''
-                    return `${stepLabel(step)}${who}`
-                  })
-                  .join('  →  ')}
-              </p>
             </article>
           ))}
         </div>
