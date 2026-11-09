@@ -28,6 +28,11 @@ public class CustomerDocumentStorage
         return root;
     }
 
+    private static readonly HashSet<string> ImageExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp"
+    };
+
     public void ValidateFile(IFormFile file)
     {
         if (file.Length <= 0) throw new InvalidOperationException("Empty file.");
@@ -45,6 +50,30 @@ public class CustomerDocumentStorage
             if (!AllowedExtensions.Contains(ext))
                 throw new InvalidOperationException("File content type not allowed.");
         }
+    }
+
+    public void ValidateImageFile(IFormFile file)
+    {
+        if (file.Length <= 0) throw new InvalidOperationException("Empty file.");
+        if (file.Length > 5 * 1024 * 1024) throw new InvalidOperationException("Profile picture too large (max 5 MB).");
+
+        var ext = Path.GetExtension(file.FileName);
+        if (!ImageExtensions.Contains(ext))
+            throw new InvalidOperationException("Profile picture must be an image (jpg, png, gif, webp, bmp).");
+    }
+
+    public async Task<(string StoredFileName, string ContentType, long Size)> SaveProfilePictureAsync(int customerId, IFormFile file)
+    {
+        ValidateImageFile(file);
+        var ext = Path.GetExtension(file.FileName);
+        var stored = $"profile-{Guid.NewGuid():N}{ext}";
+        var path = Path.Combine(GetCustomerFolder(customerId), stored);
+        await using var stream = File.Create(path);
+        await file.CopyToAsync(stream);
+        var contentType = string.IsNullOrWhiteSpace(file.ContentType) || !file.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase)
+            ? "image/jpeg"
+            : file.ContentType;
+        return (stored, contentType, file.Length);
     }
 
     public async Task<(string StoredFileName, string ContentType, long Size)> SaveAsync(int customerId, IFormFile file)

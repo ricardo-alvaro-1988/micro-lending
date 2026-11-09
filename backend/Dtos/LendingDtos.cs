@@ -151,6 +151,7 @@ public record CustomerListItemDto(
     string? City,
     string? ReferredBy,
     int DocumentCount,
+    bool HasProfilePicture,
     DateTime CreatedAt);
 
 public record CustomerDocumentDto(
@@ -200,6 +201,7 @@ public record CustomerDetailDto(
     decimal? Latitude,
     decimal? Longitude,
     DateTime CreatedAt,
+    bool HasProfilePicture,
     IReadOnlyList<CustomerDocumentDto> Documents);
 
 public class UpsertCustomerRequest
