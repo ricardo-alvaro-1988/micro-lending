@@ -87,10 +87,10 @@ const nav: NavItem[] = [
     label: 'Lending',
     icon: <IconLoan />,
     children: [
+      { label: 'How to Apply', to: '/lending/how-to-apply', permission: 'dashboard.view', icon: <IconGuide /> },
       { label: 'Process Flows', to: '/lending/flows', permission: 'flows.view', icon: <IconFlow /> },
       { label: 'Loan Products', to: '/lending/products', permission: 'loanProducts.view', icon: <IconLoan /> },
       { label: 'Loans', to: '/lending/loans', permission: 'loans.view', icon: <IconLoan /> },
-      { label: 'How to Apply', to: '/lending/how-to-apply', permission: 'dashboard.view', icon: <IconGuide /> },
       { label: 'Approvals', to: '/lending/approvals', permission: 'approvals.view', icon: <IconApprove /> },
     ],
   },
