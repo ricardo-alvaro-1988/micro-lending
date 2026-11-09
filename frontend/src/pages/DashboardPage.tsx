@@ -327,6 +327,11 @@ export function DashboardPage() {
             <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
               <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Quick links</div>
               <ul className="mt-3 space-y-2 text-sm">
+                <li>
+                  <Link className="text-sky-700 hover:underline" to="/lending/how-to-apply">
+                    How to apply a loan
+                  </Link>
+                </li>
                 {can('customers.view') && (
                   <li>
                     <Link className="text-sky-700 hover:underline" to="/transaction/customers">

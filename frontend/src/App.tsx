@@ -12,6 +12,7 @@ import { BranchesPage } from './pages/BranchesPage'
 import { GroupsPage } from './pages/GroupsPage'
 import { LoanProductsPage } from './pages/LoanProductsPage'
 import { LoansPage } from './pages/LoansPage'
+import { LoanTutorialPage } from './pages/LoanTutorialPage'
 import { LoginPage } from './pages/LoginPage'
 import { PageAccessibilityPage } from './pages/PageAccessibilityPage'
 import { PaymentSchedulePage } from './pages/PaymentSchedulePage'
@@ -128,6 +129,9 @@ export default function App() {
           </Route>
           <Route element={<RequireAuth permission="loans.view" />}>
             <Route path="/lending/loans" element={<LoansPage />} />
+          </Route>
+          <Route element={<RequireAuth permission="dashboard.view" />}>
+            <Route path="/lending/how-to-apply" element={<LoanTutorialPage />} />
           </Route>
           <Route element={<RequireAuth permission="approvals.view" />}>
             <Route path="/lending/approvals" element={<ApprovalsPage />} />

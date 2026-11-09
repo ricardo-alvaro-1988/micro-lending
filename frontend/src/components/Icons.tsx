@@ -205,3 +205,13 @@ export function IconNotify({ className = 'h-4 w-4' }: IconProps) {
     </svg>
   )
 }
+
+export function IconGuide({ className = 'h-4 w-4' }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+      <path d="M5 4.5h11a3 3 0 013 3V19a1.5 1.5 0 01-1.5 1.5H8A3 3 0 015 17.5v-13z" />
+      <path d="M5 4.5A3 3 0 018 1.5h9" />
+      <path d="M9 8h6M9 12h6M9 16h4" />
+    </svg>
+  )
+}
