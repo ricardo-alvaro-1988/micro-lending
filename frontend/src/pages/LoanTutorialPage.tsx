@@ -159,7 +159,7 @@ export function LoanTutorialPage() {
 
       <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <svg
-          viewBox="0 0 736 420"
+          viewBox="0 0 736 440"
           className="mx-auto h-auto w-full min-w-[640px] max-w-4xl"
           role="img"
           aria-label="Loan application process flowchart"
@@ -168,107 +168,59 @@ export function LoanTutorialPage() {
             <marker id="tut-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
               <path d="M0 0 L10 5 L0 10 z" fill="#334155" />
             </marker>
+            <marker id="tut-arrow-red" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0 0 L10 5 L0 10 z" fill="#dc2626" />
+            </marker>
           </defs>
 
-          <FlowBox
-            step={STEPS[0]}
-            x={24}
-            y={28}
-            w={148}
-            active={activeId === '1'}
-            onSelect={setActiveId}
-          />
+          {/* 1 → 2 → 3 */}
+          <FlowBox step={STEPS[0]} x={24} y={28} w={148} active={activeId === '1'} onSelect={setActiveId} />
           <line x1="172" y1="56" x2="212" y2="56" stroke="#334155" strokeWidth="1.5" markerEnd="url(#tut-arrow)" />
-          <FlowBox
-            step={STEPS[1]}
-            x={212}
-            y={28}
-            w={160}
-            active={activeId === '2'}
-            onSelect={setActiveId}
-          />
+          <FlowBox step={STEPS[1]} x={212} y={28} w={160} active={activeId === '2'} onSelect={setActiveId} />
           <line x1="372" y1="56" x2="412" y2="56" stroke="#334155" strokeWidth="1.5" markerEnd="url(#tut-arrow)" />
-          <FlowBox
-            step={STEPS[2]}
-            x={412}
-            y={28}
-            w={140}
-            active={activeId === '3'}
-            onSelect={setActiveId}
-          />
+          <FlowBox step={STEPS[2]} x={412} y={28} w={140} active={activeId === '3'} onSelect={setActiveId} />
 
-          <path d="M552 56 H580 V120 H268" fill="none" stroke="#334155" strokeWidth="1.5" markerEnd="url(#tut-arrow)" />
+          {/* Application → Credit Review */}
+          <path d="M482 84 V118 H268" fill="none" stroke="#334155" strokeWidth="1.5" markerEnd="url(#tut-arrow)" />
 
-          <FlowBox
-            step={STEPS[3]}
-            x={188}
-            y={148}
-            w={160}
-            active={activeId === '4'}
-            onSelect={setActiveId}
-          />
-          <line x1="348" y1="176" x2="388" y2="176" stroke="#334155" strokeWidth="1.5" markerEnd="url(#tut-arrow)" />
-          <FlowBox
-            step={STEPS[4]}
-            x={388}
-            y={148}
-            w={168}
-            active={activeId === '5'}
-            onSelect={setActiveId}
-          />
+          {/* 4 → 5 */}
+          <FlowBox step={STEPS[3]} x={188} y={132} w={160} active={activeId === '4'} onSelect={setActiveId} />
+          <line x1="348" y1="160" x2="388" y2="160" stroke="#334155" strokeWidth="1.5" markerEnd="url(#tut-arrow)" />
+          <FlowBox step={STEPS[4]} x={388} y={132} w={168} active={activeId === '5'} onSelect={setActiveId} />
 
+          {/* Declines → Application (not Create customer) */}
           <path
-            d="M268 204 V236 H100 V84 H98"
+            d="M220 188 V214 H140 V100 H412"
             fill="none"
             stroke="#dc2626"
             strokeWidth="1.5"
             strokeDasharray="4 3"
-            markerEnd="url(#tut-arrow)"
+            markerEnd="url(#tut-arrow-red)"
           />
-          <text x="120" y="228" fill="#dc2626" fontSize="11">
+          <text x="148" y="208" fill="#dc2626" fontSize="11">
             Decline
           </text>
           <path
-            d="M472 204 V236 H636 V84 H552"
+            d="M520 188 V214 H620 V56 H552"
             fill="none"
             stroke="#dc2626"
             strokeWidth="1.5"
             strokeDasharray="4 3"
-            markerEnd="url(#tut-arrow)"
+            markerEnd="url(#tut-arrow-red)"
           />
-          <text x="580" y="228" fill="#dc2626" fontSize="11">
+          <text x="560" y="208" fill="#dc2626" fontSize="11">
             Decline
           </text>
 
-          <path d="M556 176 H596 V268 H268" fill="none" stroke="#334155" strokeWidth="1.5" markerEnd="url(#tut-arrow)" />
+          {/* Manager → Disbursement (under Manager, no cross through Approved-Final) */}
+          <path d="M472 188 V236 H268" fill="none" stroke="#334155" strokeWidth="1.5" markerEnd="url(#tut-arrow)" />
 
-          <FlowBox
-            step={STEPS[5]}
-            x={188}
-            y={268}
-            w={160}
-            active={activeId === '6'}
-            onSelect={setActiveId}
-          />
-          <line x1="348" y1="296" x2="388" y2="296" stroke="#334155" strokeWidth="1.5" markerEnd="url(#tut-arrow)" />
-          <FlowBox
-            step={STEPS[6]}
-            x={388}
-            y={268}
-            w={168}
-            active={activeId === '7'}
-            onSelect={setActiveId}
-          />
-
-          <line x1="472" y1="324" x2="472" y2="356" stroke="#334155" strokeWidth="1.5" markerEnd="url(#tut-arrow)" />
-          <FlowBox
-            step={STEPS[7]}
-            x={360}
-            y={356}
-            w={224}
-            active={activeId === '8'}
-            onSelect={setActiveId}
-          />
+          {/* 6 → 7 → 8 */}
+          <FlowBox step={STEPS[5]} x={188} y={250} w={160} active={activeId === '6'} onSelect={setActiveId} />
+          <line x1="348" y1="278" x2="388" y2="278" stroke="#334155" strokeWidth="1.5" markerEnd="url(#tut-arrow)" />
+          <FlowBox step={STEPS[6]} x={388} y={250} w={168} active={activeId === '7'} onSelect={setActiveId} />
+          <line x1="472" y1="306" x2="472" y2="348" stroke="#334155" strokeWidth="1.5" markerEnd="url(#tut-arrow)" />
+          <FlowBox step={STEPS[7]} x={360} y={348} w={224} active={activeId === '8'} onSelect={setActiveId} />
         </svg>
       </div>
 
