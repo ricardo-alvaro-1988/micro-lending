@@ -149,6 +149,8 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
             e.Property(x => x.GuarantorIdNumber).HasMaxLength(100);
             e.Property(x => x.Latitude).HasPrecision(9, 6);
             e.Property(x => x.Longitude).HasPrecision(9, 6);
+            e.Property(x => x.ProfilePictureStoredFileName).HasMaxLength(260);
+            e.Property(x => x.ProfilePictureContentType).HasMaxLength(150);
             e.HasOne(x => x.Branch).WithMany(b => b.Customers).HasForeignKey(x => x.BranchId).OnDelete(DeleteBehavior.SetNull);
             e.HasOne(x => x.Group).WithMany(g => g.Customers).HasForeignKey(x => x.GroupId).OnDelete(DeleteBehavior.SetNull);
             e.HasOne(x => x.Agent1).WithMany().HasForeignKey(x => x.Agent1UserId).OnDelete(DeleteBehavior.Restrict);

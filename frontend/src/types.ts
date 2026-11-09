@@ -398,6 +398,7 @@ export type CustomerDetail = {
   latitude?: number | null
   longitude?: number | null
   createdAt: string
+  hasProfilePicture: boolean
   documents: CustomerDocument[]
 }
 
@@ -418,5 +419,6 @@ export type CustomerListItem = {
   city?: string | null
   referredBy?: string | null
   documentCount: number
+  hasProfilePicture: boolean
   createdAt: string
 }

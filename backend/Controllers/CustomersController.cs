@@ -63,6 +63,7 @@ public class CustomersController : ControllerBase
                 c.City,
                 c.ReferredBy,
                 c.Documents.Count,
+                c.ProfilePictureStoredFileName != null,
                 c.CreatedAt))
             .ToListAsync();
 
@@ -135,6 +136,78 @@ public class CustomersController : ControllerBase
         await _db.SaveChangesAsync();
         var updated = await LoadCustomerAsync(id);
         return Ok(MapDetail(updated!));
+    }
+
+    [HttpPost("{id:int}/profile-picture")]
+    [Authorize(Policy = $"perm:{PermissionCodes.CustomersManage}")]
+    [RequestSizeLimit(6_000_000)]
+    public async Task<ActionResult<object>> UploadProfilePicture(int id, [FromForm] IFormFile? file)
+    {
+        var scope = await _branchScope.ResolveAsync(User);
+        if (scope is null) return Unauthorized();
+
+        var customer = await _db.Customers.FirstOrDefaultAsync(c => c.Id == id);
+        if (customer is null) return NotFound();
+        if (!BranchScopeService.CanAccessCustomer(scope, customer)) return NotFound();
+        if (file is null || file.Length <= 0) return BadRequest(new { message = "Image file is required." });
+
+        try
+        {
+            if (!string.IsNullOrWhiteSpace(customer.ProfilePictureStoredFileName))
+                _storage.DeleteIfExists(id, customer.ProfilePictureStoredFileName);
+
+            var saved = await _storage.SaveProfilePictureAsync(id, file);
+            customer.ProfilePictureStoredFileName = saved.StoredFileName;
+            customer.ProfilePictureContentType = saved.ContentType;
+            customer.UpdatedAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
+            return Ok(new { hasProfilePicture = true });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (IOException ex)
+        {
+            return StatusCode(StatusCodes.Status500InternalServerError, new { message = $"Could not store file: {ex.Message}" });
+        }
+    }
+
+    [HttpGet("{id:int}/profile-picture")]
+    [Authorize(Policy = $"perm:{PermissionCodes.CustomersView}")]
+    public async Task<IActionResult> GetProfilePicture(int id)
+    {
+        var scope = await _branchScope.ResolveAsync(User);
+        if (scope is null) return Unauthorized();
+
+        var customer = await _db.Customers.AsNoTracking().FirstOrDefaultAsync(c => c.Id == id);
+        if (customer is null) return NotFound();
+        if (!BranchScopeService.CanAccessCustomer(scope, customer)) return NotFound();
+        if (string.IsNullOrWhiteSpace(customer.ProfilePictureStoredFileName)) return NotFound();
+
+        var path = _storage.GetPhysicalPath(id, customer.ProfilePictureStoredFileName);
+        if (!System.IO.File.Exists(path)) return NotFound(new { message = "Profile picture missing on disk." });
+        return PhysicalFile(path, customer.ProfilePictureContentType ?? "image/jpeg");
+    }
+
+    [HttpDelete("{id:int}/profile-picture")]
+    [Authorize(Policy = $"perm:{PermissionCodes.CustomersManage}")]
+    public async Task<IActionResult> DeleteProfilePicture(int id)
+    {
+        var scope = await _branchScope.ResolveAsync(User);
+        if (scope is null) return Unauthorized();
+
+        var customer = await _db.Customers.FirstOrDefaultAsync(c => c.Id == id);
+        if (customer is null) return NotFound();
+        if (!BranchScopeService.CanAccessCustomer(scope, customer)) return NotFound();
+        if (string.IsNullOrWhiteSpace(customer.ProfilePictureStoredFileName)) return NoContent();
+
+        _storage.DeleteIfExists(id, customer.ProfilePictureStoredFileName);
+        customer.ProfilePictureStoredFileName = null;
+        customer.ProfilePictureContentType = null;
+        customer.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+        return NoContent();
     }
 
     [HttpPost("{id:int}/documents")]
@@ -354,6 +427,7 @@ public class CustomersController : ControllerBase
             c.Latitude,
             c.Longitude,
             c.CreatedAt,
+            !string.IsNullOrWhiteSpace(c.ProfilePictureStoredFileName),
             c.Documents
                 .OrderByDescending(d => d.UploadedAt)
                 .Select(d => new CustomerDocumentDto(d.Id, d.Label, d.OriginalFileName, d.ContentType, d.SizeBytes, d.UploadedAt))

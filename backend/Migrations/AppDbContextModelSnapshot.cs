@@ -479,6 +479,14 @@ namespace MicroLending.Api.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
+                    b.Property<string>("ProfilePictureContentType")
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<string>("ProfilePictureStoredFileName")
+                        .HasMaxLength(260)
+                        .HasColumnType("nvarchar(260)");
+
                     b.Property<string>("Province")
                         .HasMaxLength(150)
                         .HasColumnType("nvarchar(150)");

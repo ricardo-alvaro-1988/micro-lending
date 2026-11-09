@@ -1,8 +1,9 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { api, apiForm } from '../api/client'
 import { useAuth } from '../auth/AuthContext'
 import { useBranchScope, withBranchQuery } from '../branch/BranchContext'
 import { ActionButton } from '../components/ActionButton'
+import { CustomerAvatar } from '../components/CustomerAvatar'
 import {
   LoanApplicationPanel,
   PaymentSummaryPanel,
@@ -66,13 +67,6 @@ type PendingDoc = { key: string; label: string; file: File | null }
 const fieldClass =
   'cust-field w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 disabled:bg-slate-50 disabled:text-slate-500'
 
-function initials(name: string) {
-  const parts = name.trim().split(/\s+/).filter(Boolean)
-  if (parts.length === 0) return '?'
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
-  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase()
-}
-
 function FieldLabel({ children }: { children: string }) {
   return <label className="mb-1.5 block text-xs font-semibold tracking-wide text-slate-500">{children}</label>
 }
@@ -123,6 +117,9 @@ export function CustomersPage() {
   const [form, setForm] = useState<CustomerForm>(emptyForm())
   const [docs, setDocs] = useState<CustomerDetail['documents']>([])
   const [pendingDocs, setPendingDocs] = useState<PendingDoc[]>([{ key: '1', label: '', file: null }])
+  const [hasProfilePicture, setHasProfilePicture] = useState(false)
+  const [pendingPhoto, setPendingPhoto] = useState<File | null>(null)
+  const [photoBusy, setPhotoBusy] = useState(false)
   const [q, setQ] = useState('')
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
@@ -130,6 +127,16 @@ export function CustomersPage() {
   const [uploading, setUploading] = useState(false)
   const [loadingList, setLoadingList] = useState(true)
   const [tab, setTab] = useState<CustomerTab>('profile')
+
+  const pendingPhotoPreview = useMemo(
+    () => (pendingPhoto ? URL.createObjectURL(pendingPhoto) : null),
+    [pendingPhoto],
+  )
+  useEffect(() => {
+    return () => {
+      if (pendingPhotoPreview) URL.revokeObjectURL(pendingPhotoPreview)
+    }
+  }, [pendingPhotoPreview])
 
   const loadList = async (term = q) => {
     setLoadingList(true)
@@ -168,6 +175,8 @@ export function CustomersPage() {
     const lockedBranch = !isAdmin ? userBranchId ?? '' : filterBranchId ?? ''
     setForm({ ...emptyForm(), branchId: lockedBranch === null || lockedBranch === undefined ? '' : lockedBranch })
     setDocs([])
+    setHasProfilePicture(false)
+    setPendingPhoto(null)
     setPendingDocs([{ key: crypto.randomUUID(), label: '', file: null }])
     setTab('profile')
     setMessage('')
@@ -215,10 +224,18 @@ export function CustomersPage() {
         longitude: detail.longitude != null ? String(detail.longitude) : '',
       })
       setDocs(detail.documents ?? [])
+      setHasProfilePicture(!!detail.hasProfilePicture)
+      setPendingPhoto(null)
       setPendingDocs([{ key: crypto.randomUUID(), label: '', file: null }])
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load customer')
     }
+  }
+
+  const uploadProfilePicture = async (customerId: number, file: File) => {
+    const fd = new FormData()
+    fd.append('file', file)
+    await apiForm(`/api/customers/${customerId}/profile-picture`, fd)
   }
 
   const uploadPending = async (customerId: number) => {
@@ -285,21 +302,23 @@ export function CustomersPage() {
       }
 
       const hadPendingUploads = pendingDocs.some((d) => d.label.trim() && d.file)
-      if (hadPendingUploads) {
+      if (hadPendingUploads || pendingPhoto) {
         setUploading(true)
         try {
-          await uploadPending(id)
+          if (pendingPhoto) await uploadProfilePicture(id, pendingPhoto)
+          if (hadPendingUploads) await uploadPending(id)
         } catch (uploadErr) {
           await loadList()
           await selectCustomer(id)
           throw new Error(
             uploadErr instanceof Error
-              ? `Customer saved, but document upload failed: ${uploadErr.message}`
-              : 'Customer saved, but document upload failed.',
+              ? `Customer saved, but upload failed: ${uploadErr.message}`
+              : 'Customer saved, but upload failed.',
           )
         }
       }
 
+      setPendingPhoto(null)
       setMessage(selectedId == null ? 'Customer created.' : 'Customer updated.')
       await loadList()
       await selectCustomer(id, { keepMessage: true })
@@ -460,13 +479,13 @@ export function CustomersPage() {
                       : 'border-transparent hover:border-slate-100 hover:bg-slate-50'
                   }`}
                 >
-                  <span
-                    className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-xs font-bold tracking-wide ${
-                      active ? 'bg-[#0f2744] text-sky-100' : 'bg-slate-100 text-slate-600'
-                    }`}
-                  >
-                    {initials(c.fullName)}
-                  </span>
+                  <CustomerAvatar
+                    customerId={c.id}
+                    hasPicture={c.hasProfilePicture}
+                    name={c.fullName}
+                    className="mt-0.5 h-10 w-10 shrink-0 rounded-xl text-xs"
+                    textClassName={active ? 'bg-[#0f2744] text-sky-100' : 'bg-slate-100 text-slate-600'}
+                  />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate font-semibold text-slate-900">{c.fullName}</span>
                     <span className="mt-1 flex flex-wrap gap-1.5 text-[11px] text-slate-500">
@@ -502,9 +521,13 @@ export function CustomersPage() {
         >
           <div className="border-b border-slate-100 bg-gradient-to-r from-slate-50 via-white to-teal-50/40 px-5 py-4 sm:px-6">
             <div className="flex flex-wrap items-center gap-3">
-              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#0f2744] text-sm font-bold text-sky-100">
-                {initials(displayName)}
-              </span>
+              <CustomerAvatar
+                customerId={selectedId}
+                hasPicture={hasProfilePicture}
+                name={displayName}
+                className="h-12 w-12 rounded-2xl text-sm"
+                textClassName="bg-[#0f2744] text-sky-100"
+              />
               <div className="min-w-0">
                 <h3 className="cust-display truncate text-2xl font-semibold text-slate-900">{displayName}</h3>
                 <p className="text-sm text-slate-500">
@@ -563,6 +586,97 @@ export function CustomersPage() {
                   <div className="flex items-center gap-2">
                     <span className="h-4 w-1 rounded-full bg-teal-500" />
                     <h4 className="text-sm font-semibold text-slate-800">Personal</h4>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-4 rounded-xl border border-slate-200 bg-slate-50/70 p-4">
+                    <CustomerAvatar
+                      customerId={selectedId}
+                      hasPicture={hasProfilePicture && !pendingPhoto}
+                      name={displayName}
+                      className="h-20 w-20 rounded-2xl text-lg"
+                      textClassName="bg-[#0f2744] text-sky-100"
+                    />
+                    {pendingPhotoPreview && (
+                      <img
+                        src={pendingPhotoPreview}
+                        alt="Selected profile"
+                        className="h-20 w-20 rounded-2xl object-cover"
+                      />
+                    )}
+                    <div className="min-w-0 flex-1 space-y-2">
+                      <FieldLabel>Profile picture (optional)</FieldLabel>
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/gif,image/webp,image/bmp"
+                        className="block w-full text-sm text-slate-600 file:mr-3 file:rounded-md file:border-0 file:bg-sky-600 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-white hover:file:bg-sky-700"
+                        disabled={!canManage || photoBusy}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0] ?? null
+                          setPendingPhoto(file)
+                          e.target.value = ''
+                        }}
+                      />
+                      <p className="text-xs text-slate-500">JPG, PNG, GIF, or WebP up to 5 MB. Not required.</p>
+                      <div className="flex flex-wrap gap-2">
+                        {selectedId != null && canManage && pendingPhoto && (
+                          <ActionButton
+                            type="button"
+                            loading={photoBusy}
+                            loadingText="Uploading…"
+                            onClick={async () => {
+                              setPhotoBusy(true)
+                              setError('')
+                              try {
+                                await uploadProfilePicture(selectedId, pendingPhoto)
+                                setPendingPhoto(null)
+                                setHasProfilePicture(true)
+                                setMessage('Profile picture updated.')
+                                await loadList()
+                              } catch (err) {
+                                setError(err instanceof Error ? err.message : 'Photo upload failed')
+                              } finally {
+                                setPhotoBusy(false)
+                              }
+                            }}
+                          >
+                            Upload now
+                          </ActionButton>
+                        )}
+                        {selectedId != null && canManage && hasProfilePicture && (
+                          <button
+                            type="button"
+                            className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-600 hover:bg-white disabled:opacity-50"
+                            disabled={photoBusy}
+                            onClick={async () => {
+                              if (!confirm('Remove profile picture?')) return
+                              setPhotoBusy(true)
+                              setError('')
+                              try {
+                                await api(`/api/customers/${selectedId}/profile-picture`, { method: 'DELETE' })
+                                setHasProfilePicture(false)
+                                setPendingPhoto(null)
+                                setMessage('Profile picture removed.')
+                                await loadList()
+                              } catch (err) {
+                                setError(err instanceof Error ? err.message : 'Could not remove photo')
+                              } finally {
+                                setPhotoBusy(false)
+                              }
+                            }}
+                          >
+                            Remove photo
+                          </button>
+                        )}
+                        {pendingPhoto && (
+                          <button
+                            type="button"
+                            className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-600 hover:bg-white"
+                            onClick={() => setPendingPhoto(null)}
+                          >
+                            Clear selection
+                          </button>
+                        )}
+                      </div>
+                    </div>
                   </div>
                   <div className="grid gap-3 md:grid-cols-3">
                     <div>
