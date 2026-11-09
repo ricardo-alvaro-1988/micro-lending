@@ -119,4 +119,34 @@ public class CustomerDocumentStorage
 
     public string GetLoanFieldNotePhysicalPath(int loanId, int noteId, string storedFileName) =>
         Path.Combine(GetLoanFieldNoteFolder(loanId, noteId), storedFileName);
+
+    public string GetUserFolder(string userId)
+    {
+        var root = Path.Combine(_env.ContentRootPath, "Uploads", "users", userId);
+        Directory.CreateDirectory(root);
+        return root;
+    }
+
+    public async Task<(string StoredFileName, string ContentType, long Size)> SaveUserProfilePictureAsync(string userId, IFormFile file)
+    {
+        ValidateImageFile(file);
+        var ext = Path.GetExtension(file.FileName);
+        var stored = $"profile-{Guid.NewGuid():N}{ext}";
+        var path = Path.Combine(GetUserFolder(userId), stored);
+        await using var stream = File.Create(path);
+        await file.CopyToAsync(stream);
+        var contentType = string.IsNullOrWhiteSpace(file.ContentType) || !file.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase)
+            ? "image/jpeg"
+            : file.ContentType;
+        return (stored, contentType, file.Length);
+    }
+
+    public string GetUserPhysicalPath(string userId, string storedFileName) =>
+        Path.Combine(GetUserFolder(userId), storedFileName);
+
+    public void DeleteUserFileIfExists(string userId, string storedFileName)
+    {
+        var path = GetUserPhysicalPath(userId, storedFileName);
+        if (File.Exists(path)) File.Delete(path);
+    }
 }

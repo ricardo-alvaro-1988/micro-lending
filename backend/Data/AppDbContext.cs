@@ -63,7 +63,20 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
 
         builder.Entity<ApplicationUser>(e =>
         {
-            e.Property(x => x.FullName).HasMaxLength(200);
+            e.Property(x => x.FullName).HasMaxLength(300);
+            e.Property(x => x.FirstName).HasMaxLength(100);
+            e.Property(x => x.MiddleName).HasMaxLength(100);
+            e.Property(x => x.LastName).HasMaxLength(100);
+            e.Property(x => x.Mobile).HasMaxLength(50);
+            e.Property(x => x.Phone).HasMaxLength(50);
+            e.Property(x => x.HouseUnit).HasMaxLength(100);
+            e.Property(x => x.Street).HasMaxLength(200);
+            e.Property(x => x.Barangay).HasMaxLength(150);
+            e.Property(x => x.City).HasMaxLength(150);
+            e.Property(x => x.Province).HasMaxLength(150);
+            e.Property(x => x.ZipCode).HasMaxLength(20);
+            e.Property(x => x.ProfilePictureStoredFileName).HasMaxLength(260);
+            e.Property(x => x.ProfilePictureContentType).HasMaxLength(150);
             e.HasIndex(x => x.IsDeleted);
             e.HasOne(x => x.Branch).WithMany(b => b.Users).HasForeignKey(x => x.BranchId).OnDelete(DeleteBehavior.SetNull);
         });

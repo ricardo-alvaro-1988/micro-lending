@@ -175,6 +175,8 @@ public static class DbSeeder
             {
                 UserName = adminEmail,
                 Email = adminEmail,
+                FirstName = "System",
+                LastName = "Admin",
                 FullName = "System Admin",
                 EmailConfirmed = true
             };
@@ -250,10 +252,13 @@ public static class DbSeeder
             var agent = await userManager.FindByEmailAsync(email);
             if (agent is null)
             {
+                var nameParts = fullName.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
                 agent = new ApplicationUser
                 {
                     UserName = email,
                     Email = email,
+                    FirstName = nameParts.ElementAtOrDefault(0) ?? fullName,
+                    LastName = nameParts.ElementAtOrDefault(1) ?? "Agent",
                     FullName = fullName,
                     EmailConfirmed = true
                 };
@@ -491,5 +496,24 @@ public static class DbSeeder
             });
             await db.SaveChangesAsync();
         }
+
+        // Backfill name parts for existing users created before profile fields existed.
+        var usersNeedingNames = await db.Users
+            .Where(u => (u.FirstName == null || u.FirstName == "") && u.FullName != "")
+            .ToListAsync();
+        foreach (var u in usersNeedingNames)
+        {
+            var parts = u.FullName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length == 0) continue;
+            u.FirstName = parts[0];
+            u.LastName = parts.Length > 1 ? string.Join(' ', parts.Skip(1)) : parts[0];
+            if (parts.Length > 2)
+            {
+                u.MiddleName = string.Join(' ', parts.Skip(1).Take(parts.Length - 2));
+                u.LastName = parts[^1];
+            }
+        }
+        if (usersNeedingNames.Count > 0)
+            await db.SaveChangesAsync();
     }
 }

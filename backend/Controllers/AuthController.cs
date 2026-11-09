@@ -71,5 +71,19 @@ public class AuthController : ControllerBase
             authUser.IsAdmin,
             authUser.BranchId,
             authUser.BranchName,
-            authUser.Permissions);
+            authUser.Permissions,
+            authUser.FirstName,
+            authUser.MiddleName,
+            authUser.LastName,
+            authUser.DateOfBirth,
+            authUser.Mobile,
+            authUser.Phone,
+            authUser.HouseUnit,
+            authUser.Street,
+            authUser.Barangay,
+            authUser.City,
+            authUser.Province,
+            authUser.ZipCode,
+            authUser.AddressDisplay,
+            authUser.HasProfilePicture);
 }
