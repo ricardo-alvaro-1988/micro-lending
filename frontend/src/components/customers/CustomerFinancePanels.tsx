@@ -854,13 +854,35 @@ export function PaymentSummaryPanel({ customerId, onError }: SharedProps) {
   )
 }
 
-export function RecordPaymentPanel({ customerId, onError, onMessage }: SharedProps) {
+function defaultPayAmount(schedule: LoanScheduleItem[], installmentAmount?: number) {
+  const open = schedule.find((s) => s.balance > 0)
+  if (open) return open.amountDue.toFixed(2)
+  if (installmentAmount != null && installmentAmount > 0) return installmentAmount.toFixed(2)
+  return ''
+}
+
+function pickCollectableLoan(list: Loan[], preferredId?: number | null) {
+  if (preferredId != null && list.some((l) => l.id === preferredId)) return preferredId
+  const withBalance = list.filter((l) => l.remainingBalance > 0 && l.hasTerms)
+  const active =
+    withBalance.find((l) => /active|approved|disbursed|released/i.test(l.status)) ?? withBalance[0]
+  return active?.id ?? withBalance[0]?.id ?? list.find((l) => l.remainingBalance > 0)?.id ?? list[0]?.id ?? ''
+}
+
+export function RecordPaymentPanel({
+  customerId,
+  onError,
+  onMessage,
+  preferredLoanId,
+  compact,
+}: SharedProps & { preferredLoanId?: number | null; compact?: boolean }) {
   const { can } = useAuth()
   const canManage = can('loans.manage')
   const [loans, setLoans] = useState<Loan[]>([])
   const [loading, setLoading] = useState(true)
   const [loanId, setLoanId] = useState<number | ''>('')
   const [payments, setPayments] = useState<LoanPayment[]>([])
+  const [schedule, setSchedule] = useState<LoanScheduleItem[]>([])
   const [busy, setBusy] = useState(false)
   const [payForm, setPayForm] = useState({
     amount: '',
@@ -875,20 +897,30 @@ export function RecordPaymentPanel({ customerId, onError, onMessage }: SharedPro
     try {
       const list = await api<Loan[]>(`/api/customers/${customerId}/loans`)
       setLoans(list)
-      if (loanId !== '' && !list.some((l) => l.id === loanId)) setLoanId('')
+      setLoanId((current) => {
+        if (current !== '' && list.some((l) => l.id === current)) return current
+        return pickCollectableLoan(list, preferredLoanId)
+      })
     } finally {
       setLoading(false)
     }
   }
 
-  const loadPayments = async (id: number) => {
+  const loadLoanDetail = async (id: number) => {
     const detail = await api<LoanDetailBundle>(`/api/customers/${customerId}/loans/${id}`)
     setPayments(detail.payments)
+    setSchedule(detail.schedule)
+    setPayForm((prev) => ({
+      ...prev,
+      amount: prev.amount || defaultPayAmount(detail.schedule, detail.loan.installmentAmount),
+    }))
   }
 
   useEffect(() => {
     setLoanId('')
     setPayments([])
+    setSchedule([])
+    setPayForm((prev) => ({ ...prev, amount: '', reference: '', notes: '' }))
     load().catch((err) => onError(err instanceof Error ? err.message : 'Failed to load loans'))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [customerId])
@@ -896,9 +928,11 @@ export function RecordPaymentPanel({ customerId, onError, onMessage }: SharedPro
   useEffect(() => {
     if (loanId === '') {
       setPayments([])
+      setSchedule([])
       return
     }
-    loadPayments(loanId).catch((err) => onError(err instanceof Error ? err.message : 'Failed to load payments'))
+    setPayForm((prev) => ({ ...prev, amount: '' }))
+    loadLoanDetail(loanId).catch((err) => onError(err instanceof Error ? err.message : 'Failed to load payments'))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loanId])
 
@@ -921,7 +955,7 @@ export function RecordPaymentPanel({ customerId, onError, onMessage }: SharedPro
       setPayForm((prev) => ({ ...prev, amount: '', reference: '', notes: '' }))
       onMessage('Payment recorded.')
       await load()
-      await loadPayments(loanId)
+      await loadLoanDetail(loanId)
     } catch (err) {
       onError(err instanceof Error ? err.message : 'Payment failed')
     } finally {
@@ -932,15 +966,19 @@ export function RecordPaymentPanel({ customerId, onError, onMessage }: SharedPro
   if (loading && loans.length === 0) return <PageLoading label="Loading payments..." compact />
 
   const selected = loans.find((l) => l.id === loanId)
+  const nextDue = schedule.find((s) => s.balance > 0)
+  const collectable = loans.filter((l) => l.remainingBalance > 0)
 
   return (
     <div className="space-y-5">
-      <div>
-        <h4 className="text-sm font-semibold text-slate-800">Record payment</h4>
-        <p className="mt-1 text-sm text-slate-500">
-          Post office or field collections against a loan, then review recent payment history.
-        </p>
-      </div>
+      {!compact && (
+        <div>
+          <h4 className="text-sm font-semibold text-slate-800">Record payment</h4>
+          <p className="mt-1 text-sm text-slate-500">
+            Post office or field collections against a loan, then review recent payment history.
+          </p>
+        </div>
+      )}
 
       <div>
         <label className="mb-1 block text-sm font-medium text-slate-600">Loan</label>
@@ -950,12 +988,15 @@ export function RecordPaymentPanel({ customerId, onError, onMessage }: SharedPro
           onChange={(e) => setLoanId(e.target.value ? Number(e.target.value) : '')}
         >
           <option value="">Select loan</option>
-          {loans.map((l) => (
+          {(collectable.length > 0 ? collectable : loans).map((l) => (
             <option key={l.id} value={l.id}>
-              {l.loanNumber} — remaining {money(l.remainingBalance)}
+              {l.loanNumber} — {l.status} — remaining {money(l.remainingBalance)}
             </option>
           ))}
         </select>
+        {collectable.length > 0 && collectable.length < loans.length && (
+          <p className="mt-1 text-xs text-slate-500">Showing loans with remaining balance first.</p>
+        )}
       </div>
 
       {selected && (
@@ -964,6 +1005,14 @@ export function RecordPaymentPanel({ customerId, onError, onMessage }: SharedPro
           <SummaryCard label="Paid" value={money(selected.totalPaid)} />
           <SummaryCard label="Remaining" value={money(selected.remainingBalance)} />
         </div>
+      )}
+
+      {nextDue && (
+        <p className="text-sm text-slate-600">
+          Next installment #{nextDue.installmentNumber} due {dateOnly(nextDue.dueDate)}:{' '}
+          <strong>{money(nextDue.amountDue)}</strong>
+          {nextDue.balance !== nextDue.amountDue ? ` · open balance ${money(nextDue.balance)}` : ''}
+        </p>
       )}
 
       {loanId === '' ? (
@@ -981,6 +1030,7 @@ export function RecordPaymentPanel({ customerId, onError, onMessage }: SharedPro
             value={payForm.amount}
             onChange={(e) => setPayForm({ ...payForm, amount: e.target.value })}
             required
+            autoFocus={compact}
           />
           <input
             className="rounded-md border border-slate-300 px-3 py-2 text-sm"
