@@ -449,17 +449,18 @@ export function CustomersPage() {
               <LoadingBlock label="Loading customers..." compact />
             ) : (
               <>
-            {list.map((c) => {
+            {list.map((c, index) => {
               const active = selectedId === c.id
+              const zebra = index % 2 === 0 ? 'bg-white' : 'bg-slate-50/90'
               return (
                 <button
                   key={c.id}
                   type="button"
                   onClick={() => void selectCustomer(c.id)}
-                  className={`cust-list-item flex w-full items-start gap-3 rounded-xl border px-3 py-3 text-left ${
+                  className={`cust-list-item flex w-full items-start gap-3 rounded-xl border px-3 py-3 text-left transition-colors ${
                     active
-                      ? 'border-sky-200 bg-sky-50/90'
-                      : 'border-transparent hover:border-slate-100 hover:bg-slate-50'
+                      ? 'border-sky-400 bg-sky-100 shadow-[inset_3px_0_0_0_#0284c7] ring-2 ring-sky-300/70'
+                      : `${zebra} border-transparent hover:border-slate-200 hover:bg-teal-50/70`
                   }`}
                 >
                   <CustomerAvatar
@@ -470,19 +471,35 @@ export function CustomersPage() {
                     textClassName={active ? 'bg-[#0f2744] text-sky-100' : 'bg-slate-100 text-slate-600'}
                   />
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate font-semibold text-slate-900">{c.fullName}</span>
+                    <span
+                      className={`block truncate font-semibold ${active ? 'text-sky-950' : 'text-slate-900'}`}
+                    >
+                      {c.fullName}
+                    </span>
                     <span className="mt-1 flex flex-wrap gap-1.5 text-[11px] text-slate-500">
-                      <span className="rounded border border-slate-200 bg-white px-1.5 py-0.5">
+                      <span
+                        className={`rounded border px-1.5 py-0.5 ${
+                          active ? 'border-sky-200 bg-white/90 text-sky-900' : 'border-slate-200 bg-white'
+                        }`}
+                      >
                         {c.branchName || 'No branch'}
                       </span>
-                      <span className="rounded border border-slate-200 bg-white px-1.5 py-0.5">
+                      <span
+                        className={`rounded border px-1.5 py-0.5 ${
+                          active ? 'border-sky-200 bg-white/90 text-sky-900' : 'border-slate-200 bg-white'
+                        }`}
+                      >
                         {c.groupName || 'No group'}
                       </span>
-                      <span className="rounded border border-slate-200 bg-white px-1.5 py-0.5">
+                      <span
+                        className={`rounded border px-1.5 py-0.5 ${
+                          active ? 'border-sky-200 bg-white/90 text-sky-900' : 'border-slate-200 bg-white'
+                        }`}
+                      >
                         {c.documentCount} doc{c.documentCount === 1 ? '' : 's'}
                       </span>
                     </span>
-                    <span className="mt-1 block truncate text-xs text-slate-400">
+                    <span className={`mt-1 block truncate text-xs ${active ? 'text-sky-800/80' : 'text-slate-400'}`}>
                       {c.mobile || 'No mobile'}
                       {c.agent1Name ? ` · ${c.agent1Name}` : ''}
                     </span>
