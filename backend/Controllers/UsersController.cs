@@ -59,16 +59,18 @@ public class UsersController : ControllerBase
         return Ok(result);
     }
 
+    private bool CanAccessUserOptions() =>
+        User.HasClaim("permission", PermissionCodes.UsersView)
+        || User.HasClaim("permission", PermissionCodes.CustomersView)
+        || User.HasClaim("permission", PermissionCodes.PaymentScheduleSettings)
+        || User.HasClaim("permission", PermissionCodes.RemittanceView)
+        || User.HasClaim("permission", PermissionCodes.RemittanceManage);
+
     /// <summary>Active, non-deleted users for customer field-agent dropdowns.</summary>
     [HttpGet("options")]
     public async Task<ActionResult<IEnumerable<AgentOptionDto>>> Options([FromQuery] int? branchId = null)
     {
-        var canUsers = User.HasClaim("permission", PermissionCodes.UsersView);
-        var canCustomers = User.HasClaim("permission", PermissionCodes.CustomersView);
-        var canPaymentSettings = User.HasClaim("permission", PermissionCodes.PaymentScheduleSettings);
-        var canRemittance = User.HasClaim("permission", PermissionCodes.RemittanceView)
-            || User.HasClaim("permission", PermissionCodes.RemittanceManage);
-        if (!canUsers && !canCustomers && !canPaymentSettings && !canRemittance) return Forbid();
+        if (!CanAccessUserOptions()) return Forbid();
 
         var scope = await _branchScope.ResolveAsync(User, branchId);
         if (scope is null) return Unauthorized();
@@ -82,7 +84,11 @@ public class UsersController : ControllerBase
 
         var list = await query
             .OrderBy(u => u.FullName)
-            .Select(u => new AgentOptionDto(u.Id, u.FullName, u.Email ?? string.Empty))
+            .Select(u => new AgentOptionDto(
+                u.Id,
+                u.FullName,
+                u.Email ?? string.Empty,
+                u.ProfilePictureStoredFileName != null))
             .ToListAsync();
         return Ok(list);
     }
@@ -313,9 +319,11 @@ public class UsersController : ControllerBase
     }
 
     [HttpGet("{id}/profile-picture")]
-    [Authorize(Policy = $"perm:{PermissionCodes.UsersView}")]
     public async Task<IActionResult> GetProfilePicture(string id)
     {
+        // Same audience as /api/users/options (remittance / customers pickers need avatars).
+        if (!CanAccessUserOptions()) return Forbid();
+
         var scope = await _branchScope.ResolveAsync(User);
         if (scope is null) return Unauthorized();
 

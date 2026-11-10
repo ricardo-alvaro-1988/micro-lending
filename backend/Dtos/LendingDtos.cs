@@ -266,7 +266,7 @@ public class UpsertCustomerRequest
     public decimal? Longitude { get; set; }
 }
 
-public record AgentOptionDto(string Id, string FullName, string Email);
+public record AgentOptionDto(string Id, string FullName, string Email, bool HasProfilePicture);
 
 public record LoanDto(
     int Id,

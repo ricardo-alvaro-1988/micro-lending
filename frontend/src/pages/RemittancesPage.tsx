@@ -3,6 +3,7 @@ import { api } from '../api/client'
 import { useAuth } from '../auth/AuthContext'
 import { useBranchScope, withBranchQuery } from '../branch/BranchContext'
 import { ActionButton } from '../components/ActionButton'
+import { AgentAutocomplete } from '../components/AgentAutocomplete'
 import { LoadingTableRow } from '../components/ListLoading'
 import { StatusTag } from '../components/StatusTag'
 import type { AgentOption, CashRemittance } from '../types'
@@ -243,20 +244,18 @@ export function RemittancesPage() {
             <option value="Discrepancy">Discrepancy</option>
           </select>
         </label>
-        <label className="text-sm text-slate-600">
+        <label className="min-w-[16rem] flex-1 text-sm text-slate-600 sm:max-w-xs">
           Agent
-          <select
-            className={`${fieldClass} mt-1 min-w-[12rem]`}
-            value={agentFilter}
-            onChange={(e) => setAgentFilter(e.target.value)}
-          >
-            <option value="">All agents</option>
-            {agents.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.fullName}
-              </option>
-            ))}
-          </select>
+          <div className="mt-1">
+            <AgentAutocomplete
+              agents={agents}
+              value={agentFilter}
+              onChange={setAgentFilter}
+              allowEmpty
+              emptyLabel="All agents"
+              placeholder="Search agent…"
+            />
+          </div>
         </label>
         <label className="text-sm text-slate-600">
           From
@@ -328,20 +327,16 @@ export function RemittancesPage() {
 
               <label className="block text-sm text-slate-600">
                 Agent
-                <select
-                  className={`${fieldClass} mt-1`}
-                  required
-                  disabled={selectedId != null || !canManage}
-                  value={form.agentUserId}
-                  onChange={(e) => setForm({ ...form, agentUserId: e.target.value })}
-                >
-                  <option value="">Select agent…</option>
-                  {agents.map((a) => (
-                    <option key={a.id} value={a.id}>
-                      {a.fullName}
-                    </option>
-                  ))}
-                </select>
+                <div className="mt-1">
+                  <AgentAutocomplete
+                    agents={agents}
+                    value={form.agentUserId}
+                    onChange={(agentUserId) => setForm({ ...form, agentUserId })}
+                    required
+                    disabled={selectedId != null || !canManage}
+                    placeholder="Search agent name or email…"
+                  />
+                </div>
               </label>
 
               <label className="block text-sm text-slate-600">
