@@ -4,26 +4,26 @@ import { homePathFor } from '../auth/homePath'
 import { useAuth } from '../auth/AuthContext'
 import { ActionButton } from '../components/ActionButton'
 import { PasswordInput } from '../components/PasswordInput'
+import { useToast } from '../toast/ToastContext'
 
 export function LoginPage() {
   const { login, user, loading } = useAuth()
   const navigate = useNavigate()
   const [email, setEmail] = useState('admin@micro.local')
   const [password, setPassword] = useState('Admin123!')
-  const [error, setError] = useState('')
+  const toast = useToast()
   const [submitting, setSubmitting] = useState(false)
 
   if (!loading && user) return <Navigate to={homePathFor(user)} replace />
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault()
-    setError('')
     setSubmitting(true)
     try {
       const loggedIn = await login(email, password)
       navigate(homePathFor(loggedIn))
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed')
+      toast.error(err instanceof Error ? err.message : 'Login failed')
     } finally {
       setSubmitting(false)
     }
@@ -40,12 +40,6 @@ export function LoginPage() {
           <h1 className="mt-2 text-2xl font-semibold text-slate-900">Sign in</h1>
           <p className="mt-1 text-sm text-slate-500">Office console — works on your local network.</p>
         </div>
-
-        {error && (
-          <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-            {error}
-          </div>
-        )}
 
         <label className="mb-4 block text-sm">
           <span className="mb-1 block text-slate-600">Email</span>

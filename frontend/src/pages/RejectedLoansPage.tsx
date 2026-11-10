@@ -5,6 +5,7 @@ import { ActionButton } from '../components/ActionButton'
 import { LoadingTableRow } from '../components/ListLoading'
 import { LoanApplicationReviewDialog } from '../components/LoanApplicationReviewDialog'
 import { StatusTag } from '../components/StatusTag'
+import { useToast } from '../toast/ToastContext'
 
 type RejectedLoan = {
   id: number
@@ -42,7 +43,7 @@ export function RejectedLoansPage() {
   const [page, setPage] = useState(1)
   const [totalCount, setTotalCount] = useState(0)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+  const toast = useToast()
   const [reviewLoanId, setReviewLoanId] = useState<number | null>(null)
 
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE))
@@ -51,7 +52,6 @@ export function RejectedLoansPage() {
 
   const load = async (pageNum = page, term = q, fromDate = from, toDate = to) => {
     setLoading(true)
-    setError('')
     try {
       const params = new URLSearchParams()
       params.set('page', String(pageNum))
@@ -66,7 +66,7 @@ export function RejectedLoansPage() {
       setTotalCount(data.totalCount)
       setPage(data.page)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load rejected applications')
+      toast.error(err instanceof Error ? err.message : 'Failed to load rejected applications')
       setRows([])
     } finally {
       setLoading(false)
@@ -96,10 +96,6 @@ export function RejectedLoansPage() {
           the full package.
         </p>
       </div>
-
-      {error && (
-        <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
-      )}
 
       <div className="flex flex-wrap items-end gap-2">
         <label className="min-w-[14rem] flex-1 text-sm text-slate-600 sm:max-w-sm">

@@ -5,6 +5,7 @@ import { ActionButton } from '../components/ActionButton'
 import { PasswordInput } from '../components/PasswordInput'
 import { UserAvatar } from '../components/UserAvatar'
 import type { AuthUser } from '../types'
+import { useToast } from '../toast/ToastContext'
 
 const fieldClass = 'w-full rounded-md border border-slate-300 px-3 py-2 text-sm'
 
@@ -51,8 +52,7 @@ export function ProfilePage() {
   const [hasPicture, setHasPicture] = useState(!!user?.hasProfilePicture)
   const [pendingPhoto, setPendingPhoto] = useState<File | null>(null)
   const [newPassword, setNewPassword] = useState('')
-  const [message, setMessage] = useState('')
-  const [error, setError] = useState('')
+  const toast = useToast()
   const [savingProfile, setSavingProfile] = useState(false)
   const [savingPassword, setSavingPassword] = useState(false)
   const [photoBusy, setPhotoBusy] = useState(false)
@@ -80,8 +80,6 @@ export function ProfilePage() {
 
   const saveProfile = async (e: FormEvent) => {
     e.preventDefault()
-    setError('')
-    setMessage('')
     setSavingProfile(true)
     try {
       const updated = await api<AuthUser>('/api/profile', {
@@ -111,9 +109,9 @@ export function ProfilePage() {
       }
       setUser(updated)
       setForm(fromUser(updated))
-      setMessage('Profile updated.')
+      toast.success('Profile updated.')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Update failed')
+      toast.error(err instanceof Error ? err.message : 'Update failed')
     } finally {
       setSavingProfile(false)
     }
@@ -121,8 +119,6 @@ export function ProfilePage() {
 
   const changePassword = async (e: FormEvent) => {
     e.preventDefault()
-    setError('')
-    setMessage('')
     setSavingPassword(true)
     try {
       await api('/api/profile/change-password', {
@@ -130,9 +126,9 @@ export function ProfilePage() {
         body: JSON.stringify({ newPassword }),
       })
       setNewPassword('')
-      setMessage('Password changed.')
+      toast.success('Password changed.')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Password change failed')
+      toast.error(err instanceof Error ? err.message : 'Password change failed')
     } finally {
       setSavingPassword(false)
     }
@@ -144,9 +140,6 @@ export function ProfilePage() {
         <h2 className="text-xl font-semibold">Profile</h2>
         <p className="text-sm text-slate-500">Complete your personal details, contact, address, and photo.</p>
       </div>
-
-      {message && <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{message}</div>}
-      {error && <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
 
       <form onSubmit={saveProfile} className="space-y-6 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
         <div className="flex flex-wrap items-center gap-4 rounded-xl border border-slate-200 bg-slate-50/70 p-4">
@@ -184,9 +177,9 @@ export function ProfilePage() {
                       setHasPicture(false)
                       setPendingPhoto(null)
                       if (user) setUser({ ...user, hasProfilePicture: false })
-                      setMessage('Profile picture removed.')
+                      toast.success('Profile picture removed.')
                     } catch (err) {
-                      setError(err instanceof Error ? err.message : 'Could not remove photo')
+                      toast.error(err instanceof Error ? err.message : 'Could not remove photo')
                     } finally {
                       setPhotoBusy(false)
                     }

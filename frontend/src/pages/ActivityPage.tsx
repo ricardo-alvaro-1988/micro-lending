@@ -6,6 +6,7 @@ import { CustomerAvatar } from '../components/CustomerAvatar'
 import { LoadingBlock } from '../components/ListLoading'
 import { StatusTag } from '../components/StatusTag'
 import type { LoanActivityStep, LoanActivityTrail, PagedLoanActivityTrails } from '../types'
+import { useToast } from '../toast/ToastContext'
 
 const PAGE_SIZE = 20
 
@@ -131,7 +132,7 @@ export function ActivityPage() {
   const [q, setQ] = useState('')
   const [page, setPage] = useState(1)
   const [totalCount, setTotalCount] = useState(0)
-  const [error, setError] = useState('')
+  const toast = useToast()
   const [loading, setLoading] = useState(true)
 
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE))
@@ -151,9 +152,8 @@ export function ActivityPage() {
       setTrails(data.items)
       setTotalCount(data.totalCount)
       setPage(data.page)
-      setError('')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load activity')
+      toast.error(err instanceof Error ? err.message : 'Failed to load activity')
     } finally {
       setLoading(false)
     }
@@ -197,8 +197,6 @@ export function ActivityPage() {
           </ActionButton>
         </div>
       </div>
-
-      {error && <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
 
       {loading ? (
         <div className="rounded-xl border border-slate-200 bg-white shadow-sm">

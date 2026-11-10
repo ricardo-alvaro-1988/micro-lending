@@ -3,6 +3,7 @@ import { api } from '../api/client'
 import { useBranchScope, withBranchQuery } from '../branch/BranchContext'
 import { CustomerAvatar } from '../components/CustomerAvatar'
 import { RecordPaymentPanel } from '../components/customers/CustomerFinancePanels'
+import { useToast } from '../toast/ToastContext'
 import type { CustomerListItem } from '../types'
 
 export function RecordPaymentPage() {
@@ -12,8 +13,7 @@ export function RecordPaymentPage() {
   const [searching, setSearching] = useState(false)
   const [open, setOpen] = useState(false)
   const [selected, setSelected] = useState<CustomerListItem | null>(null)
-  const [error, setError] = useState('')
-  const [message, setMessage] = useState('')
+  const toast = useToast()
   const wrapRef = useRef<HTMLDivElement>(null)
   const requestId = useRef(0)
 
@@ -50,7 +50,7 @@ export function RecordPaymentPage() {
         setOpen(true)
       } catch (err) {
         if (id !== requestId.current) return
-        setError(err instanceof Error ? err.message : 'Customer search failed')
+        toast.error(err instanceof Error ? err.message : 'Customer search failed')
         setResults([])
       } finally {
         if (id === requestId.current) setSearching(false)
@@ -65,16 +65,12 @@ export function RecordPaymentPage() {
     setQuery(customer.fullName)
     setResults([])
     setOpen(false)
-    setError('')
-    setMessage('')
   }
 
   const clearCustomer = () => {
     setSelected(null)
     setQuery('')
     setResults([])
-    setMessage('')
-    setError('')
   }
 
   return (
@@ -85,16 +81,6 @@ export function RecordPaymentPage() {
           Find the customer, confirm the active loan, then post the payment.
         </p>
       </div>
-
-      {(error || message) && (
-        <div
-          className={`rounded-lg px-4 py-3 text-sm ${
-            error ? 'border border-rose-200 bg-rose-50 text-rose-800' : 'border border-emerald-200 bg-emerald-50 text-emerald-800'
-          }`}
-        >
-          {error || message}
-        </div>
-      )}
 
       <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
         <label className="mb-1.5 block text-sm font-medium text-slate-700">Customer</label>
@@ -179,11 +165,8 @@ export function RecordPaymentPage() {
           <RecordPaymentPanel
             customerId={selected.id}
             compact
-            onError={setError}
-            onMessage={(msg) => {
-              setMessage(msg)
-              setError('')
-            }}
+            onError={toast.error}
+            onMessage={toast.success}
           />
         </div>
       ) : (

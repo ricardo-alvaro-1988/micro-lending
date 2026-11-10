@@ -4,6 +4,7 @@ import { useAuth } from '../auth/AuthContext'
 import { ActionButton } from '../components/ActionButton'
 import { LoadingBlock } from '../components/ListLoading'
 import type { LateFeeSettings } from '../types'
+import { useToast } from '../toast/ToastContext'
 
 const fieldClass = 'rounded-lg border border-slate-300 px-3 py-2 text-sm w-full'
 
@@ -20,12 +21,10 @@ export function LateFeesSettingsPage() {
   })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [error, setError] = useState('')
-  const [message, setMessage] = useState('')
+  const toast = useToast()
 
   const load = async () => {
     setLoading(true)
-    setError('')
     try {
       const s = await api<LateFeeSettings>('/api/late-fees/settings')
       setForm({
@@ -37,7 +36,7 @@ export function LateFeesSettingsPage() {
         maxPerInstallment: s.maxPerInstallment != null ? String(s.maxPerInstallment) : '',
       })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load late fee settings')
+      toast.error(err instanceof Error ? err.message : 'Failed to load late fee settings')
     } finally {
       setLoading(false)
     }
@@ -51,8 +50,6 @@ export function LateFeesSettingsPage() {
     e.preventDefault()
     if (!canManage) return
     setSaving(true)
-    setError('')
-    setMessage('')
     try {
       const saved = await api<LateFeeSettings>('/api/late-fees/settings', {
         method: 'PUT',
@@ -73,9 +70,9 @@ export function LateFeesSettingsPage() {
         graceDays: String(saved.graceDays),
         maxPerInstallment: saved.maxPerInstallment != null ? String(saved.maxPerInstallment) : '',
       })
-      setMessage(saved.isEnabled ? 'Late fees enabled and saved.' : 'Late fees disabled and saved.')
+      toast.success(saved.isEnabled ? 'Late fees enabled and saved.' : 'Late fees disabled and saved.')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Save failed')
+      toast.error(err instanceof Error ? err.message : 'Save failed')
     } finally {
       setSaving(false)
     }
@@ -98,15 +95,6 @@ export function LateFeesSettingsPage() {
           amount collectors must recover.
         </p>
       </div>
-
-      {error && (
-        <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
-      )}
-      {message && (
-        <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-          {message}
-        </div>
-      )}
 
       <form onSubmit={onSave} className="max-w-xl space-y-4 rounded-xl border border-slate-200 bg-white p-5">
         <label className="flex items-center gap-2 text-sm font-medium text-slate-800">

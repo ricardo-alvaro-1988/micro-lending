@@ -13,6 +13,7 @@ import {
   notifyPaymentSchedulesChanged,
 } from '../notify'
 import type { ApprovalItem } from '../types'
+import { useToast } from '../toast/ToastContext'
 
 /** @deprecated Prefer importing from `../notify`. */
 export { notifyApprovalsChanged }
@@ -33,7 +34,7 @@ export function ApprovalsPage() {
   const { filterBranchId } = useBranchScope()
   const canAct = can('approvals.manage')
   const [items, setItems] = useState<ApprovalItem[]>([])
-  const [error, setError] = useState('')
+  const toast = useToast()
   const [loading, setLoading] = useState(true)
   const [actingId, setActingId] = useState<number | null>(null)
   const [mineOnly, setMineOnly] = useState(true)
@@ -42,14 +43,13 @@ export function ApprovalsPage() {
 
   const load = useCallback(async () => {
     setLoading(true)
-    setError('')
     try {
       const path = mineOnly ? '/api/approvals?mineOnly=true' : '/api/approvals'
       const list = await api<ApprovalItem[]>(withBranchQuery(path, filterBranchId))
       setItems(list)
       setReviewItem((prev) => (prev && list.some((x) => x.id === prev.id) ? prev : null))
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load approvals')
+      toast.error(err instanceof Error ? err.message : 'Failed to load approvals')
     } finally {
       setLoading(false)
     }
@@ -73,7 +73,6 @@ export function ApprovalsPage() {
     if (!pending) return
     const { id, action } = pending
     setActingId(id)
-    setError('')
     try {
       await api(`/api/approvals/${id}/${action}`, {
         method: 'POST',
@@ -90,7 +89,7 @@ export function ApprovalsPage() {
       notifyLoansChanged()
       notifyPaymentSchedulesChanged()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Action failed')
+      toast.error(err instanceof Error ? err.message : 'Action failed')
       await load()
     } finally {
       setActingId(null)
@@ -120,8 +119,6 @@ export function ApprovalsPage() {
           </ActionButton>
         </div>
       </div>
-
-      {error && <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
 
       <div className="overflow-auto rounded-xl border border-slate-200 bg-white shadow-sm">
         <table className="min-w-full text-left text-sm">

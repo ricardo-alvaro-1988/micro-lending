@@ -17,6 +17,7 @@ import { useAuth } from '../auth/AuthContext'
 import { useBranchScope, withBranchQuery } from '../branch/BranchContext'
 import { LoadingBlock } from '../components/ListLoading'
 import { money } from '../reports/csv'
+import { useToast } from '../toast/ToastContext'
 
 type DashboardKpi = {
   asOf: string
@@ -117,18 +118,17 @@ export function DashboardPage() {
   const [trendLoading, setTrendLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [lastRefreshAt, setLastRefreshAt] = useState(() => Date.now())
-  const [error, setError] = useState('')
+  const toast = useToast()
   const [hiddenSeries, setHiddenSeries] = useState<Record<string, boolean>>({})
 
   const loadKpi = useCallback(async (silent = false) => {
     if (!silent) setLoading(true)
     else setRefreshing(true)
-    setError('')
     try {
       setKpi(await api<DashboardKpi>(withBranchQuery('/api/dashboard/summary', filterBranchId)))
       setLastRefreshAt(Date.now())
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load dashboard')
+      toast.error(err instanceof Error ? err.message : 'Failed to load dashboard')
       if (!silent) setKpi(null)
     } finally {
       setLoading(false)
@@ -244,10 +244,6 @@ export function DashboardPage() {
         </div>
         <div className="dash-shimmer-line relative z-10 mt-5 h-px w-full opacity-40" />
       </section>
-
-      {error && (
-        <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
-      )}
 
       {loading && !kpi ? (
         <div className="rounded-xl border border-slate-200 bg-white">

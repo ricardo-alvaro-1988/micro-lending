@@ -5,6 +5,7 @@ import { ActionButton } from '../components/ActionButton'
 import { LoadingTableRow } from '../components/ListLoading'
 import { ActiveTag } from '../components/StatusTag'
 import type { CustomerGroup } from '../types'
+import { useToast } from '../toast/ToastContext'
 
 const emptyForm = () => ({
   name: '',
@@ -18,8 +19,7 @@ export function GroupsPage() {
   const [groups, setGroups] = useState<CustomerGroup[]>([])
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [form, setForm] = useState(emptyForm())
-  const [error, setError] = useState('')
-  const [message, setMessage] = useState('')
+  const toast = useToast()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [deletingId, setDeletingId] = useState<number | null>(null)
@@ -29,7 +29,7 @@ export function GroupsPage() {
     try {
       setGroups(await api<CustomerGroup[]>('/api/groups'))
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load groups')
+      toast.error(err instanceof Error ? err.message : 'Failed to load groups')
     } finally {
       setLoading(false)
     }
@@ -42,8 +42,6 @@ export function GroupsPage() {
   const resetNew = () => {
     setSelectedId(null)
     setForm(emptyForm())
-    setMessage('')
-    setError('')
   }
 
   const selectGroup = (group: CustomerGroup) => {
@@ -53,15 +51,11 @@ export function GroupsPage() {
       description: group.description ?? '',
       isActive: group.isActive,
     })
-    setMessage('')
-    setError('')
   }
 
   const onSave = async (e: FormEvent) => {
     e.preventDefault()
     setSaving(true)
-    setError('')
-    setMessage('')
     try {
       const payload = {
         name: form.name.trim(),
@@ -73,7 +67,7 @@ export function GroupsPage() {
           method: 'POST',
           body: JSON.stringify(payload),
         })
-        setMessage('Group created.')
+        toast.success('Group created.')
         await load()
         selectGroup(created)
       } else {
@@ -81,12 +75,12 @@ export function GroupsPage() {
           method: 'PUT',
           body: JSON.stringify(payload),
         })
-        setMessage('Group updated.')
+        toast.success('Group updated.')
         await load()
         selectGroup(updated)
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Save failed')
+      toast.error(err instanceof Error ? err.message : 'Save failed')
     } finally {
       setSaving(false)
     }
@@ -95,14 +89,13 @@ export function GroupsPage() {
   const onDelete = async (id: number) => {
     if (!confirm('Delete this group?')) return
     setDeletingId(id)
-    setError('')
     try {
       await api(`/api/groups/${id}`, { method: 'DELETE' })
       if (selectedId === id) resetNew()
-      setMessage('Group deleted.')
+      toast.success('Group deleted.')
       await load()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Delete failed')
+      toast.error(err instanceof Error ? err.message : 'Delete failed')
     } finally {
       setDeletingId(null)
     }
@@ -121,9 +114,6 @@ export function GroupsPage() {
           </ActionButton>
         )}
       </div>
-
-      {error && <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
-      {message && <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{message}</div>}
 
       <div className="grid gap-6 xl:grid-cols-[320px_1fr]">
         <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">

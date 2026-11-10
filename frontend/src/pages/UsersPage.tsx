@@ -8,6 +8,7 @@ import { PasswordInput } from '../components/PasswordInput'
 import { StatusTag } from '../components/StatusTag'
 import { UserAvatar } from '../components/UserAvatar'
 import type { AppUser, Branch, Role } from '../types'
+import { useToast } from '../toast/ToastContext'
 
 const fieldClass = 'w-full rounded-md border border-slate-300 px-3 py-2 text-sm'
 
@@ -81,8 +82,7 @@ export function UsersPage() {
   const [roles, setRoles] = useState<Role[]>([])
   const [branches, setBranches] = useState<Branch[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-  const [message, setMessage] = useState('')
+  const toast = useToast()
   const [creating, setCreating] = useState(false)
   const [busyId, setBusyId] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -125,14 +125,12 @@ export function UsersPage() {
   }
 
   useEffect(() => {
-    load().catch((err) => setError(err instanceof Error ? err.message : 'Failed to load'))
+    load().catch((err) => toast.error(err instanceof Error ? err.message : 'Failed to load'))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterBranchId])
 
   const onCreate = async (e: FormEvent) => {
     e.preventDefault()
-    setError('')
-    setMessage('')
     setCreating(true)
     try {
       const created = await api<AppUser>('/api/users', {
@@ -150,10 +148,10 @@ export function UsersPage() {
       }
       setForm(emptyForm(roles[0]?.name ?? 'Admin'))
       setPendingPhoto(null)
-      setMessage('User created.')
+      toast.success('User created.')
       await load()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Create failed')
+      toast.error(err instanceof Error ? err.message : 'Create failed')
     } finally {
       setCreating(false)
     }
@@ -181,14 +179,10 @@ export function UsersPage() {
       roleName: u.role,
       branchId: u.branchId ?? '',
     })
-    setError('')
-    setMessage('')
   }
 
   const onSaveEdit = async (id: string) => {
     setBusyId(id)
-    setError('')
-    setMessage('')
     try {
       await api(`/api/users/${id}`, {
         method: 'PUT',
@@ -201,10 +195,10 @@ export function UsersPage() {
       }
       setEditingId(null)
       setEditPhoto(null)
-      setMessage('User updated.')
+      toast.success('User updated.')
       await load()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Update failed')
+      toast.error(err instanceof Error ? err.message : 'Update failed')
     } finally {
       setBusyId(null)
     }
@@ -212,12 +206,10 @@ export function UsersPage() {
 
   const onResetPassword = async (id: string) => {
     if (!resetPassword.trim()) {
-      setError('Enter a new password.')
+      toast.error('Enter a new password.')
       return
     }
     setBusyId(id)
-    setError('')
-    setMessage('')
     try {
       await api(`/api/users/${id}/reset-password`, {
         method: 'POST',
@@ -225,9 +217,9 @@ export function UsersPage() {
       })
       setResetId(null)
       setResetPassword('')
-      setMessage('Password reset.')
+      toast.success('Password reset.')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Reset failed')
+      toast.error(err instanceof Error ? err.message : 'Reset failed')
     } finally {
       setBusyId(null)
     }
@@ -237,17 +229,15 @@ export function UsersPage() {
     const action = isActive ? 'activate' : 'deactivate'
     if (!confirm(`${action[0].toUpperCase()}${action.slice(1)} ${u.fullName}?`)) return
     setBusyId(u.id)
-    setError('')
-    setMessage('')
     try {
       await api(`/api/users/${u.id}/set-active`, {
         method: 'POST',
         body: JSON.stringify({ isActive }),
       })
-      setMessage(`User ${action}d.`)
+      toast.success(`User ${action}d.`)
       await load()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Status update failed')
+      toast.error(err instanceof Error ? err.message : 'Status update failed')
     } finally {
       setBusyId(null)
     }
@@ -256,14 +246,12 @@ export function UsersPage() {
   const onSoftDelete = async (u: AppUser) => {
     if (!confirm(`Soft-delete ${u.fullName}? They will no longer be able to sign in.`)) return
     setBusyId(u.id)
-    setError('')
-    setMessage('')
     try {
       await api(`/api/users/${u.id}`, { method: 'DELETE' })
-      setMessage('User soft-deleted.')
+      toast.success('User soft-deleted.')
       await load()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Delete failed')
+      toast.error(err instanceof Error ? err.message : 'Delete failed')
     } finally {
       setBusyId(null)
     }
@@ -272,14 +260,12 @@ export function UsersPage() {
   const onRestore = async (u: AppUser) => {
     if (!confirm(`Restore ${u.fullName}?`)) return
     setBusyId(u.id)
-    setError('')
-    setMessage('')
     try {
       await api(`/api/users/${u.id}/restore`, { method: 'POST' })
-      setMessage('User restored.')
+      toast.success('User restored.')
       await load()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Restore failed')
+      toast.error(err instanceof Error ? err.message : 'Restore failed')
     } finally {
       setBusyId(null)
     }
@@ -363,11 +349,6 @@ export function UsersPage() {
           Complete user profiles: name, birthday, contact, address, and optional photo.
         </p>
       </div>
-
-      {error && <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
-      {message && (
-        <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{message}</div>
-      )}
 
       {canManage && (
         <form onSubmit={onCreate} className="space-y-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -528,7 +509,6 @@ export function UsersPage() {
                                     setResetId(u.id)
                                     setEditingId(null)
                                     setResetPassword('')
-                                    setError('')
                                   }}
                                 >
                                   Reset password

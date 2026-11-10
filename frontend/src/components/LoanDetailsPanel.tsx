@@ -4,6 +4,7 @@ import { ApprovalCommentViewer } from './ApprovalCommentViewer'
 import { LoadingBlock } from './ListLoading'
 import { StatusTag } from './StatusTag'
 import type { LoanDetailBundle } from '../types'
+import { useToast } from '../toast/ToastContext'
 
 const money = (n: number) =>
   n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -20,14 +21,13 @@ type Props = {
 
 export function LoanDetailsPanel({ loanId, onClose, className = '', headerActions }: Props) {
   const [detail, setDetail] = useState<LoanDetailBundle | null>(null)
-  const [error, setError] = useState('')
+  const toast = useToast()
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<Tab>('overview')
 
   useEffect(() => {
     let cancelled = false
     setLoading(true)
-    setError('')
     setDetail(null)
     setTab('overview')
     api<LoanDetailBundle>(`/api/loans/${loanId}/details`)
@@ -35,7 +35,7 @@ export function LoanDetailsPanel({ loanId, onClose, className = '', headerAction
         if (!cancelled) setDetail(data)
       })
       .catch((err) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load details')
+        if (!cancelled) toast.error(err instanceof Error ? err.message : 'Failed to load details')
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -82,12 +82,6 @@ export function LoanDetailsPanel({ loanId, onClose, className = '', headerAction
           )}
         </div>
       </div>
-
-      {error && (
-        <div className="mx-5 mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-          {error}
-        </div>
-      )}
 
       {loading || !loan || !detail ? (
         <LoadingBlock label="Loading loan details…" />

@@ -4,6 +4,7 @@ import { useAuth } from '../auth/AuthContext'
 import { ActionButton } from '../components/ActionButton'
 import { LoadingTableRow } from '../components/ListLoading'
 import type { Role } from '../types'
+import { useToast } from '../toast/ToastContext'
 
 export function RolesPage() {
   const { can } = useAuth()
@@ -11,7 +12,7 @@ export function RolesPage() {
   const [roles, setRoles] = useState<Role[]>([])
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
-  const [error, setError] = useState('')
+  const toast = useToast()
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -21,7 +22,7 @@ export function RolesPage() {
     try {
       setRoles(await api<Role[]>('/api/roles'))
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load roles')
+      toast.error(err instanceof Error ? err.message : 'Failed to load roles')
     } finally {
       setLoading(false)
     }
@@ -33,7 +34,6 @@ export function RolesPage() {
 
   const onCreate = async (e: FormEvent) => {
     e.preventDefault()
-    setError('')
     setCreating(true)
     try {
       await api('/api/roles', {
@@ -44,7 +44,7 @@ export function RolesPage() {
       setDescription('')
       await load()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Create failed')
+      toast.error(err instanceof Error ? err.message : 'Create failed')
     } finally {
       setCreating(false)
     }
@@ -52,13 +52,12 @@ export function RolesPage() {
 
   const onDelete = async (id: string) => {
     if (!confirm('Delete this role?')) return
-    setError('')
     setDeletingId(id)
     try {
       await api(`/api/roles/${id}`, { method: 'DELETE' })
       await load()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Delete failed')
+      toast.error(err instanceof Error ? err.message : 'Delete failed')
     } finally {
       setDeletingId(null)
     }
@@ -70,8 +69,6 @@ export function RolesPage() {
         <h2 className="text-xl font-semibold">Roles</h2>
         <p className="text-sm text-slate-500">Create roles, then set page access under Page Accessibility.</p>
       </div>
-
-      {error && <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
 
       {canManage && (
         <form onSubmit={onCreate} className="grid gap-3 rounded-xl border border-slate-200 bg-white p-5 shadow-sm md:grid-cols-3">
