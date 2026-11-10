@@ -125,6 +125,144 @@ body {
     linear-gradient(180deg, #f0fdfa 0%, #f8fafc 42%, #eef2f7 100%);
 }
 
+/* Dashboard vitality */
+@keyframes dash-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes dash-pulse-dot {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.35);
+    opacity: 0.55;
+  }
+}
+
+@keyframes dash-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@keyframes dash-orbit {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes dash-bar-grow {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.dash-page {
+  animation: cust-fade-in 0.4s ease-out;
+}
+
+.dash-hero {
+  position: relative;
+  overflow: hidden;
+  border-radius: 1.25rem;
+  background:
+    radial-gradient(900px 260px at 8% -30%, rgba(56, 189, 248, 0.32), transparent 55%),
+    radial-gradient(700px 220px at 92% 10%, rgba(45, 212, 191, 0.22), transparent 50%),
+    linear-gradient(135deg, #0f2744 0%, #16355c 50%, #1a4a6e 100%);
+  color: #f8fafc;
+  animation: dash-fade-up 0.45s ease-out;
+}
+
+.dash-hero::before {
+  content: "";
+  position: absolute;
+  width: 220px;
+  height: 220px;
+  right: -40px;
+  top: -60px;
+  border-radius: 999px;
+  border: 1px solid rgba(125, 211, 252, 0.2);
+  animation: dash-orbit 28s linear infinite;
+  pointer-events: none;
+}
+
+.dash-hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-size: 28px 28px;
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.5), transparent 88%);
+  pointer-events: none;
+}
+
+.dash-live-dot {
+  animation: dash-pulse-dot 1.6s ease-in-out infinite;
+}
+
+.dash-stagger > * {
+  animation: dash-fade-up 0.5s ease-out both;
+}
+
+.dash-stagger > *:nth-child(1) {
+  animation-delay: 0.04s;
+}
+.dash-stagger > *:nth-child(2) {
+  animation-delay: 0.1s;
+}
+.dash-stagger > *:nth-child(3) {
+  animation-delay: 0.16s;
+}
+.dash-stagger > *:nth-child(4) {
+  animation-delay: 0.22s;
+}
+.dash-stagger > *:nth-child(5) {
+  animation-delay: 0.28s;
+}
+.dash-stagger > *:nth-child(6) {
+  animation-delay: 0.34s;
+}
+
+.dash-kpi {
+  transition: transform 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease;
+}
+
+.dash-kpi:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 28px -16px rgba(15, 39, 68, 0.35);
+}
+
+.dash-rate-fill {
+  transform-origin: left center;
+  animation: dash-bar-grow 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.dash-shimmer-line {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.35), transparent);
+  background-size: 200% 100%;
+  animation: dash-shimmer 2.4s ease-in-out infinite;
+}
+
 /* Statement of Account: print only the statement document */
 @media print {
   @page {
