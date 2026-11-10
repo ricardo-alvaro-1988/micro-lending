@@ -323,14 +323,32 @@ public class CustomerFinanceController : ControllerBase
     {
         if (await EnsureCustomerAccessAsync(customerId) is { } denied) return denied;
 
+        // Only booked liabilities: Approved-Final / Closed. Applications still in process or rejected
+        // must not appear as charges on the statement of account.
         var loanRows = await _db.Loans.AsNoTracking()
             .Where(l => l.CustomerId == customerId && (loanId == null || l.Id == loanId))
+            .Where(l => l.Status == LoanStatus.ApprovedFinal || l.Status == LoanStatus.Closed)
+            .Where(l => l.TotalPayable > 0)
             .OrderBy(l => l.CreatedAt)
-            .Select(l => new { l.Id, l.LoanNumber, l.TotalPayable, l.CreatedAt })
+            .Select(l => new { l.Id, l.LoanNumber, l.TotalPayable, l.CreatedAt, l.UpdatedAt })
             .ToListAsync();
-        if (loanId is not null && loanRows.Count == 0) return NotFound();
+        if (loanId is not null && loanRows.Count == 0)
+        {
+            // Loan exists but is not yet a booked receivable (or wrong customer).
+            var exists = await _db.Loans.AsNoTracking()
+                .AnyAsync(l => l.Id == loanId && l.CustomerId == customerId);
+            if (!exists) return NotFound();
+        }
 
         var loanIds = loanRows.Select(l => l.Id).ToList();
+        var chargeDates = loanIds.Count == 0
+            ? new Dictionary<int, DateTime>()
+            : await _db.LoanActivities.AsNoTracking()
+                .Where(a => loanIds.Contains(a.LoanId) && a.Type == LoanActivityType.ApprovedFinal)
+                .GroupBy(a => a.LoanId)
+                .Select(g => new { LoanId = g.Key, At = g.Min(x => x.OccurredAt) })
+                .ToDictionaryAsync(x => x.LoanId, x => x.At);
+
         var payments = loanIds.Count == 0
             ? new List<(int LoanId, DateTime PaidAt, decimal Amount, string? Reference, int Id)>()
             : (await _db.LoanPayments.AsNoTracking()
@@ -349,16 +367,17 @@ public class CustomerFinanceController : ControllerBase
         var lines = new List<StatementLineDto>();
         foreach (var loan in loanRows)
         {
-            if (loan.TotalPayable > 0)
-            {
-                lines.Add(new StatementLineDto(
-                    loan.CreatedAt,
-                    "Charge",
-                    $"Loan {loan.LoanNumber} principal + interest",
-                    loan.TotalPayable,
-                    0,
-                    0));
-            }
+            var chargeAt = chargeDates.TryGetValue(loan.Id, out var approvedAt)
+                ? approvedAt
+                : loan.UpdatedAt;
+
+            lines.Add(new StatementLineDto(
+                chargeAt,
+                "Charge",
+                $"Loan {loan.LoanNumber} principal + interest",
+                loan.TotalPayable,
+                0,
+                0));
 
             if (!paymentsByLoan.TryGetValue(loan.Id, out var loanPayments)) continue;
             foreach (var payment in loanPayments)
