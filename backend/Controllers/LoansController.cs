@@ -37,14 +37,21 @@ public class LoansController : ControllerBase
 
     [HttpGet]
     [Authorize(Policy = $"perm:{PermissionCodes.LoansView}")]
-    public async Task<ActionResult<IEnumerable<LoanDto>>> GetAll(
+    public async Task<ActionResult<PagedLoansDto>> GetAll(
+        [FromQuery] string? q = null,
+        [FromQuery] string? status = null,
         [FromQuery] int? customerId = null,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
         [FromQuery] int? branchId = null)
     {
         var user = await _userManager.GetUserAsync(User);
         if (user is null) return Unauthorized();
         var scope = await _branchScope.ResolveAsync(User, branchId);
         if (scope is null) return Unauthorized();
+
+        page = Math.Max(1, page);
+        pageSize = Math.Clamp(pageSize, 5, 100);
 
         // List view: avoid ScheduleItems × Payments Include (cartesian explosion / hang).
         var query = BranchScopeService.Loans(
@@ -61,7 +68,31 @@ public class LoansController : ControllerBase
         if (customerId is not null)
             query = query.Where(l => l.CustomerId == customerId);
 
-        var loans = await query.OrderByDescending(l => l.CreatedAt).ToListAsync();
+        if (!string.IsNullOrWhiteSpace(status) && Enum.TryParse<LoanStatus>(status.Trim(), true, out var statusFilter))
+            query = query.Where(l => l.Status == statusFilter);
+
+        if (!string.IsNullOrWhiteSpace(q))
+        {
+            var term = q.Trim();
+            var amountMatch = decimal.TryParse(term, out var amountTerm);
+            query = query.Where(l =>
+                l.LoanNumber.Contains(term) ||
+                l.Customer.FullName.Contains(term) ||
+                l.Flow.Name.Contains(term) ||
+                l.CurrentStage.Name.Contains(term) ||
+                l.CreatedByUser.FullName.Contains(term) ||
+                (l.Notes != null && l.Notes.Contains(term)) ||
+                (l.LoanProduct != null && l.LoanProduct.Name.Contains(term)) ||
+                (amountMatch && l.Amount == amountTerm));
+        }
+
+        var totalCount = await query.CountAsync();
+        var loans = await query
+            .OrderByDescending(l => l.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
         var loanIds = loans.Select(l => l.Id).ToList();
         var paidByLoan = loanIds.Count == 0
             ? new Dictionary<int, decimal>()
@@ -80,7 +111,31 @@ public class LoansController : ControllerBase
             paidByLoan.TryGetValue(loan.Id, out var totalPaid);
             result.Add(MapLoan(loan, approverCtx, totalPaid));
         }
-        return Ok(result);
+
+        return Ok(new PagedLoansDto(result, page, pageSize, totalCount));
+    }
+
+    [HttpGet("{id:int}/details")]
+    [Authorize(Policy = $"perm:{PermissionCodes.LoansView}")]
+    public async Task<ActionResult<LoanDetailBundleDto>> GetDetails(int id)
+    {
+        var user = await _userManager.GetUserAsync(User);
+        if (user is null) return Unauthorized();
+        var scope = await _branchScope.ResolveAsync(User);
+        if (scope is null) return Unauthorized();
+
+        var loan = await _finance.LoadLoanFinanceAsync(id);
+        if (loan is null) return NotFound();
+        if (!BranchScopeService.CanAccessCustomer(scope, loan.Customer)) return NotFound();
+
+        await _finance.AccruePenaltiesAsync(loan);
+        await _db.SaveChangesAsync();
+
+        return Ok(new LoanDetailBundleDto(
+            await MapLoanAsync(loan, user),
+            MapSchedule(loan),
+            MapPayments(loan),
+            MapApprovals(loan)));
     }
 
     /// <summary>Active loans (In Progress + Pending Approval) — for Loans menu badge / notifications.</summary>
@@ -299,6 +354,50 @@ public class LoansController : ControllerBase
             loan.LoanProduct?.Name,
             loan.InterestMethod.ToString());
     }
+
+    private static IReadOnlyList<LoanScheduleItemDto> MapSchedule(Loan loan) =>
+        loan.ScheduleItems
+            .OrderBy(s => s.InstallmentNumber)
+            .Select(s => new LoanScheduleItemDto(
+                s.Id,
+                s.InstallmentNumber,
+                s.DueDate,
+                s.AmountDue,
+                s.PrincipalPortion,
+                s.InterestPortion,
+                s.PenaltyAmount,
+                s.PaidAmount,
+                LoanFinanceService.ItemBalance(s),
+                s.Status.ToString()))
+            .ToList();
+
+    private static IReadOnlyList<LoanPaymentDto> MapPayments(Loan loan) =>
+        loan.Payments
+            .OrderByDescending(p => p.PaidAt)
+            .ThenByDescending(p => p.Id)
+            .Select(p => new LoanPaymentDto(
+                p.Id,
+                p.Amount,
+                p.PaidAt,
+                p.Method,
+                p.Reference,
+                p.Notes,
+                p.RecordedByUser?.FullName ?? "",
+                p.CreatedAt))
+            .ToList();
+
+    private static IReadOnlyList<LoanApprovalHistoryDto> MapApprovals(Loan loan) =>
+        loan.Approvals
+            .OrderByDescending(a => a.RequestedAt)
+            .Select(a => new LoanApprovalHistoryDto(
+                a.Id,
+                a.Stage?.Name ?? "",
+                a.Decision.ToString(),
+                a.DecidedByUser?.FullName,
+                a.Comments,
+                a.RequestedAt,
+                a.DecidedAt))
+            .ToList();
 
     private static bool TryParseFrequency(string? value, out PaymentFrequency frequency)
     {

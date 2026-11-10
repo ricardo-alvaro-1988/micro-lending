@@ -298,6 +298,18 @@ public record LoanDto(
     string? LoanProductName,
     string InterestMethod);
 
+public record PagedLoansDto(
+    IReadOnlyList<LoanDto> Items,
+    int Page,
+    int PageSize,
+    int TotalCount);
+
+public record LoanDetailBundleDto(
+    LoanDto Loan,
+    IReadOnlyList<LoanScheduleItemDto> Schedule,
+    IReadOnlyList<LoanPaymentDto> Payments,
+    IReadOnlyList<LoanApprovalHistoryDto> Approvals);
+
 public class CreateLoanRequest
 {
     [Required]

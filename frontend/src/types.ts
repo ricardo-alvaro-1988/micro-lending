@@ -244,6 +244,13 @@ export type LoanDetailBundle = {
   approvals: LoanApprovalHistory[]
 }
 
+export type PagedLoans = {
+  items: Loan[]
+  page: number
+  pageSize: number
+  totalCount: number
+}
+
 export type CustomerPaymentSummary = {
   customerId: number
   customerName: string
