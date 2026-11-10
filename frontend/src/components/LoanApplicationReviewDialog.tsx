@@ -10,6 +10,7 @@ import type {
   LoanPayment,
   LoanScheduleItem,
 } from '../types'
+import { ApprovalCommentViewer } from './ApprovalCommentViewer'
 import { CustomerAvatar } from './CustomerAvatar'
 import { LoadingBlock } from './ListLoading'
 import { StatusTag } from './StatusTag'
@@ -529,8 +530,8 @@ function ApprovalsTab({ rows }: { rows: LoanApprovalHistory[] }) {
               <td className="px-3 py-2 whitespace-nowrap">
                 {a.decidedAt ? new Date(a.decidedAt).toLocaleString() : '—'}
               </td>
-              <td className="max-w-xs truncate px-3 py-2" title={a.comments || undefined}>
-                {a.comments || '—'}
+              <td className="px-3 py-2">
+                <ApprovalCommentViewer entry={a} />
               </td>
             </tr>
           ))}

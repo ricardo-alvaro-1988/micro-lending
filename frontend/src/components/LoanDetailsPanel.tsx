@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { api } from '../api/client'
+import { ApprovalCommentViewer } from './ApprovalCommentViewer'
 import { LoadingBlock } from './ListLoading'
 import { StatusTag } from './StatusTag'
 import type { LoanDetailBundle } from '../types'
@@ -248,8 +249,8 @@ export function LoanDetailsPanel({ loanId, onClose, className = '', headerAction
                           <td className="px-3 py-2 whitespace-nowrap">
                             {a.decidedAt ? new Date(a.decidedAt).toLocaleString() : '—'}
                           </td>
-                          <td className="max-w-xs truncate px-3 py-2" title={a.comments || undefined}>
-                            {a.comments || '—'}
+                          <td className="px-3 py-2">
+                            <ApprovalCommentViewer entry={a} />
                           </td>
                         </tr>
                       ))}
