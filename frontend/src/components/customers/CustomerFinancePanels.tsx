@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { api } from '../../api/client'
 import { useAuth } from '../../auth/AuthContext'
 import { ActionButton } from '../ActionButton'
+import { ApprovalCommentViewer } from '../ApprovalCommentViewer'
 import { ApprovalNotesDialog } from '../ApprovalNotesDialog'
 import { LoadingTableRow, PageLoading } from '../ListLoading'
 import { StatusTag } from '../StatusTag'
@@ -435,7 +436,9 @@ export function LoanApplicationPanel({ customerId, onError, onMessage }: SharedP
                       <StatusTag status={a.decision} />
                     </td>
                     <td className="px-3 py-2">{a.decidedBy || '—'}</td>
-                    <td className="px-3 py-2 text-slate-600">{a.comments || '—'}</td>
+                    <td className="px-3 py-2">
+                      <ApprovalCommentViewer entry={a} />
+                    </td>
                     <td className="px-3 py-2">{dateOnly(a.requestedAt)}</td>
                   </tr>
                 ))}
