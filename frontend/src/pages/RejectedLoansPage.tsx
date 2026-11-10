@@ -4,7 +4,7 @@ import { useBranchScope, withBranchQuery } from '../branch/BranchContext'
 import { ActionButton } from '../components/ActionButton'
 import { LoadingTableRow } from '../components/ListLoading'
 import { LoanApplicationReviewDialog } from '../components/LoanApplicationReviewDialog'
-import { StatusTag } from '../components/StatusTag'
+import { StageTag, StatusTag } from '../components/StatusTag'
 import { useToast } from '../toast/ToastContext'
 
 type RejectedLoan = {
@@ -207,7 +207,9 @@ export function RejectedLoansPage() {
                       </button>
                     </td>
                     <td className="px-4 py-3">{row.customerName}</td>
-                    <td className="px-4 py-3">{row.currentStageName}</td>
+                    <td className="px-4 py-3">
+                      <StageTag stage={row.currentStageName} />
+                    </td>
                     <td className="px-4 py-3 tabular-nums">{money(row.amount)}</td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       <div>{new Date(row.rejectedAt).toLocaleString()}</div>

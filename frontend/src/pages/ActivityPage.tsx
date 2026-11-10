@@ -4,7 +4,7 @@ import { useBranchScope, withBranchQuery } from '../branch/BranchContext'
 import { ActionButton } from '../components/ActionButton'
 import { CustomerAvatar } from '../components/CustomerAvatar'
 import { LoadingBlock } from '../components/ListLoading'
-import { StatusTag } from '../components/StatusTag'
+import { StageTag, StatusTag } from '../components/StatusTag'
 import type { LoanActivityStep, LoanActivityTrail, PagedLoanActivityTrails } from '../types'
 import { useToast } from '../toast/ToastContext'
 
@@ -250,6 +250,7 @@ export function ActivityPage() {
                     <div className="flex flex-wrap items-center gap-2">
                       <h3 className="font-semibold text-slate-900">{trail.loanNumber}</h3>
                       <StatusTag status={trail.status} />
+                      <StageTag stage={trail.currentStageName} />
                     </div>
                     <p className="mt-1 text-sm text-slate-600">
                       <span className="font-medium text-slate-800">{trail.customerName}</span>
@@ -259,8 +260,7 @@ export function ActivityPage() {
                       {money(trail.amount)}
                     </p>
                     <p className="text-xs text-slate-500">
-                      Created by {trail.createdBy} · {new Date(trail.createdAt).toLocaleString()} · Now at{' '}
-                      {trail.currentStageName}
+                      Created by {trail.createdBy} · {new Date(trail.createdAt).toLocaleString()}
                     </p>
                   </div>
                 </div>

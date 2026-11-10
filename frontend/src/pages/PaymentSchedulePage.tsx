@@ -4,7 +4,7 @@ import { useAuth } from '../auth/AuthContext'
 import { useBranchScope, withBranchQuery } from '../branch/BranchContext'
 import { ActionButton } from '../components/ActionButton'
 import { LoadingTableRow } from '../components/ListLoading'
-import { StatusTag } from '../components/StatusTag'
+import { StageTag, StatusTag } from '../components/StatusTag'
 import { notifyPaymentSchedulesChanged } from '../notify'
 import type { LoanProduct } from '../types'
 import { useToast } from '../toast/ToastContext'
@@ -217,9 +217,10 @@ export function PaymentSchedulePage() {
                 <div className="flex flex-wrap items-center gap-2">
                   <h3 className="text-lg font-semibold text-slate-900">{selected.loanNumber}</h3>
                   <StatusTag status={selected.status} />
+                  <StageTag stage={selected.currentStageName} />
                 </div>
                 <p className="mt-1 text-sm text-slate-500">
-                  {selected.customerName} · {selected.flowName} · {selected.currentStageName}
+                  {selected.customerName} · {selected.flowName}
                 </p>
                 <p className="mt-2 text-xs font-medium text-rose-700">
                   Waiting {selected.waitingHours < 1 ? 'under an hour' : `${selected.waitingHours} hour(s)`} — create

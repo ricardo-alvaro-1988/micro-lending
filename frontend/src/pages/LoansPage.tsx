@@ -5,7 +5,7 @@ import { useBranchScope, withBranchQuery } from '../branch/BranchContext'
 import { ActionButton } from '../components/ActionButton'
 import { LoadingTableRow } from '../components/ListLoading'
 import { LoanDetailsPanel } from '../components/LoanDetailsPanel'
-import { StatusTag } from '../components/StatusTag'
+import { StageTag, StatusTag } from '../components/StatusTag'
 import {
   notifyApprovalsChanged,
   notifyLoansChanged,
@@ -262,7 +262,9 @@ export function LoansPage() {
                     </td>
                     <td className="px-4 py-3">{loan.customerName}</td>
                     <td className="px-4 py-3">{loan.flowName}</td>
-                    <td className="px-4 py-3">{loan.currentStageName}</td>
+                    <td className="px-4 py-3">
+                      <StageTag stage={loan.currentStageName} />
+                    </td>
                     <td className="px-4 py-3 tabular-nums">{money(loan.amount)}</td>
                     <td className="px-4 py-3">
                       <StatusTag status={loan.status} />

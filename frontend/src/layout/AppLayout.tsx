@@ -30,6 +30,7 @@ import {
   IconTransaction,
   IconUsers,
 } from '../components/Icons'
+import { StageTag } from '../components/StatusTag'
 import type { ApprovalItem } from '../types'
 
 type PendingScheduleItem = {
@@ -711,10 +712,10 @@ export function AppLayout() {
                                   </div>
                                 </div>
                                 <div className="text-xs text-slate-500">{item.customerName}</div>
-                                <div className="mt-1 text-xs text-indigo-700">
-                                  {formatActivityType(item.type)}
-                                  {item.stageName ? ` · ${item.stageName}` : ''}
-                                  {item.actorName ? ` · ${item.actorName}` : ''}
+                                <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs text-indigo-700">
+                                  <span>{formatActivityType(item.type)}</span>
+                                  <StageTag stage={item.stageName} />
+                                  {item.actorName ? <span>· {item.actorName}</span> : null}
                                 </div>
                               </button>
                             ))
@@ -802,8 +803,9 @@ export function AppLayout() {
                                 }}
                               >
                                 <div className="text-sm font-medium text-slate-800">{item.loanNumber}</div>
-                                <div className="text-xs text-slate-500">
-                                  {item.customerName} · {item.stageName}
+                                <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-slate-500">
+                                  <span>{item.customerName}</span>
+                                  <StageTag stage={item.stageName} />
                                 </div>
                                 <div className="mt-1 text-xs text-amber-700">Needs your approve / decline</div>
                               </button>

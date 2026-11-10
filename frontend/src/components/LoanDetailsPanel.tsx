@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { api } from '../api/client'
 import { ApprovalCommentViewer } from './ApprovalCommentViewer'
 import { LoadingBlock } from './ListLoading'
-import { StatusTag } from './StatusTag'
+import { StageTag, StatusTag } from './StatusTag'
 import type { LoanDetailBundle } from '../types'
 import { useToast } from '../toast/ToastContext'
 
@@ -117,7 +117,9 @@ export function LoanDetailsPanel({ loanId, onClose, className = '', headerAction
                 <DetailField label="Status">
                   <StatusTag status={loan.status} />
                 </DetailField>
-                <DetailField label="Current stage" value={loan.currentStageName} />
+                <DetailField label="Current stage">
+                  <StageTag stage={loan.currentStageName} />
+                </DetailField>
                 <DetailField label="Customer" value={loan.customerName} />
                 <DetailField label="Created by" value={loan.createdBy} />
                 <DetailField label="Principal" value={money(loan.amount)} />
