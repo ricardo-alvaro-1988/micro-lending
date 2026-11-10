@@ -249,8 +249,13 @@ export function LoansPage() {
               <LoadingTableRow colSpan={7} label="Loading loans..." />
             ) : (
               <>
-                {loans.map((loan) => (
-                  <tr key={loan.id} className="border-t border-slate-100 hover:bg-slate-50/70">
+                {loans.map((loan, index) => (
+                  <tr
+                    key={loan.id}
+                    className={`border-t border-slate-100 hover:bg-teal-50/60 ${
+                      index % 2 === 0 ? 'bg-white' : 'bg-slate-50/80'
+                    }`}
+                  >
                     <td className="px-4 py-3 font-medium">
                       <button
                         type="button"
