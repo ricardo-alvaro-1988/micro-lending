@@ -37,6 +37,8 @@ export function LoansPage() {
   const [loans, setLoans] = useState<Loan[]>([])
   const [q, setQ] = useState('')
   const [status, setStatus] = useState('')
+  const [fromDate, setFromDate] = useState('')
+  const [toDate, setToDate] = useState('')
   const [page, setPage] = useState(1)
   const [totalCount, setTotalCount] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -45,10 +47,16 @@ export function LoansPage() {
   const [detailLoanId, setDetailLoanId] = useState<number | null>(null)
 
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE))
-  const from = totalCount === 0 ? 0 : (page - 1) * PAGE_SIZE + 1
-  const to = Math.min(page * PAGE_SIZE, totalCount)
+  const rangeFrom = totalCount === 0 ? 0 : (page - 1) * PAGE_SIZE + 1
+  const rangeTo = Math.min(page * PAGE_SIZE, totalCount)
 
-  const load = async (pageNum = page, term = q, statusFilter = status) => {
+  const load = async (
+    pageNum = page,
+    term = q,
+    statusFilter = status,
+    from = fromDate,
+    to = toDate,
+  ) => {
     setLoading(true)
     try {
       const params = new URLSearchParams()
@@ -56,6 +64,8 @@ export function LoansPage() {
       params.set('pageSize', String(PAGE_SIZE))
       if (term.trim()) params.set('q', term.trim())
       if (statusFilter) params.set('status', statusFilter)
+      if (from) params.set('from', from)
+      if (to) params.set('to', to)
       const data = await api<PagedLoans>(
         withBranchQuery(`/api/loans?${params.toString()}`, filterBranchId),
       )
@@ -84,7 +94,7 @@ export function LoansPage() {
       window.removeEventListener('ml:approvals-changed', onChanged)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filterBranchId, page, q, status])
+  }, [filterBranchId, page, q, status, fromDate, toDate])
 
   const search = () => {
     void load(1)
@@ -121,7 +131,8 @@ export function LoansPage() {
         <div>
           <h2 className="text-xl font-semibold">Loans</h2>
           <p className="text-sm text-slate-500">
-            Search and page through loans. Open full details for terms, schedule, payments, and approvals.
+            Search by text, status, and created date range. Open full details for terms, schedule, payments, and
+            approvals.
           </p>
         </div>
       </div>
@@ -156,16 +167,49 @@ export function LoansPage() {
             ))}
           </select>
         </label>
+        <label className="text-sm text-slate-600">
+          From
+          <input
+            type="date"
+            className="mt-1 block rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            value={fromDate}
+            onChange={(e) => setFromDate(e.target.value)}
+          />
+        </label>
+        <label className="text-sm text-slate-600">
+          To
+          <input
+            type="date"
+            className="mt-1 block rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            value={toDate}
+            onChange={(e) => setToDate(e.target.value)}
+          />
+        </label>
         <ActionButton type="button" onClick={search}>
           Search
         </ActionButton>
+        {(q || status || fromDate || toDate) && (
+          <button
+            type="button"
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50"
+            onClick={() => {
+              setQ('')
+              setStatus('')
+              setFromDate('')
+              setToDate('')
+              void load(1, '', '', '', '')
+            }}
+          >
+            Clear
+          </button>
+        )}
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-slate-600">
         <span>
           {loading && loans.length === 0
             ? 'Loading…'
-            : `Showing ${from}–${to} of ${totalCount.toLocaleString()}`}
+            : `Showing ${rangeFrom}–${rangeTo} of ${totalCount.toLocaleString()}`}
         </span>
         <div className="flex items-center gap-2">
           <button
@@ -269,7 +313,7 @@ export function LoansPage() {
       {totalCount > 0 && (
         <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-slate-600">
           <span>
-            Showing {from}–{to} of {totalCount.toLocaleString()}
+            Showing {rangeFrom}–{rangeTo} of {totalCount.toLocaleString()}
           </span>
           <div className="flex items-center gap-2">
             <button

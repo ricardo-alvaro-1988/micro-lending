@@ -40,6 +40,8 @@ public class LoansController : ControllerBase
     public async Task<ActionResult<PagedLoansDto>> GetAll(
         [FromQuery] string? q = null,
         [FromQuery] string? status = null,
+        [FromQuery] DateTime? from = null,
+        [FromQuery] DateTime? to = null,
         [FromQuery] int? customerId = null,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
@@ -70,6 +72,18 @@ public class LoansController : ControllerBase
 
         if (!string.IsNullOrWhiteSpace(status) && Enum.TryParse<LoanStatus>(status.Trim(), true, out var statusFilter))
             query = query.Where(l => l.Status == statusFilter);
+
+        if (from is not null)
+        {
+            var start = from.Value.Date;
+            query = query.Where(l => l.CreatedAt >= start);
+        }
+
+        if (to is not null)
+        {
+            var endExclusive = to.Value.Date.AddDays(1);
+            query = query.Where(l => l.CreatedAt < endExclusive);
+        }
 
         if (!string.IsNullOrWhiteSpace(q))
         {
