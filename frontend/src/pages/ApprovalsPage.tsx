@@ -6,7 +6,7 @@ import { ActionButton } from '../components/ActionButton'
 import { ApprovalNotesDialog } from '../components/ApprovalNotesDialog'
 import { LoadingTableRow } from '../components/ListLoading'
 import { LoanApplicationReviewDialog } from '../components/LoanApplicationReviewDialog'
-import { StatusTag } from '../components/StatusTag'
+import { StageTag, StatusTag } from '../components/StatusTag'
 import {
   notifyApprovalsChanged,
   notifyLoansChanged,
@@ -149,7 +149,9 @@ export function ApprovalsPage() {
                   </button>
                 </td>
                 <td className="px-4 py-3">{item.customerName}</td>
-                <td className="px-4 py-3">{item.stageName}</td>
+                <td className="px-4 py-3">
+                  <StageTag stage={item.stageName} />
+                </td>
                 <td className="px-4 py-3 tabular-nums">{money(item.amount)}</td>
                 <td className="px-4 py-3">
                   <StatusTag status={item.decision || 'Pending'} />

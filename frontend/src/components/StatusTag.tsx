@@ -58,3 +58,14 @@ export function StatusTag({ status, label, className = '' }: Props) {
 export function ActiveTag({ active }: { active: boolean }) {
   return <StatusTag status={active ? 'Active' : 'Inactive'} />
 }
+
+export function StageTag({ stage, className = '' }: { stage?: string | null; className?: string }) {
+  if (!stage) return null
+  return (
+    <span
+      className={`inline-flex items-center rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-0.5 text-xs font-medium tracking-wide text-indigo-800 ${className}`}
+    >
+      {stage}
+    </span>
+  )
+}

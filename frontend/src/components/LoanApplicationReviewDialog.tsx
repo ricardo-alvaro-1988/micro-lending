@@ -13,7 +13,7 @@ import type {
 import { ApprovalCommentViewer } from './ApprovalCommentViewer'
 import { CustomerAvatar } from './CustomerAvatar'
 import { LoadingBlock } from './ListLoading'
-import { StatusTag } from './StatusTag'
+import { StageTag, StatusTag } from './StatusTag'
 import { useToast } from '../toast/ToastContext'
 
 export type LoanApplicationReview = {
@@ -155,7 +155,7 @@ export function LoanApplicationReviewDialog({ loanId, onClose, headerActions }: 
               {loan && (
                 <div className="mt-1.5 flex flex-wrap items-center gap-2">
                   <StatusTag status={loan.status} />
-                  <span className="text-xs text-slate-500">{loan.currentStageName}</span>
+                  <StageTag stage={loan.currentStageName} />
                   <span className="text-xs tabular-nums text-slate-500">{money(loan.amount)}</span>
                 </div>
               )}
@@ -230,11 +230,21 @@ export function LoanApplicationReviewDialog({ loanId, onClose, headerActions }: 
   )
 }
 
-function Field({ label, value }: { label: string; value?: string | null }) {
+function Field({
+  label,
+  value,
+  children,
+}: {
+  label: string
+  value?: string | null
+  children?: ReactNode
+}) {
   return (
     <div className="rounded-lg border border-slate-100 bg-slate-50/70 px-3 py-2">
       <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{label}</div>
-      <div className="mt-1 text-sm text-slate-900">{value?.trim() ? value : '—'}</div>
+      <div className="mt-1 text-sm text-slate-900">
+        {children ?? (value?.trim() ? value : '—')}
+      </div>
     </div>
   )
 }
@@ -400,8 +410,12 @@ function NotesTab({
 function LoanTab({ loan }: { loan: Loan }) {
   return (
     <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-      <Field label="Status" value={loan.status} />
-      <Field label="Current stage" value={loan.currentStageName} />
+      <Field label="Status">
+        <StatusTag status={loan.status} />
+      </Field>
+      <Field label="Current stage">
+        <StageTag stage={loan.currentStageName} />
+      </Field>
       <Field label="Flow" value={loan.flowName} />
       <Field label="Customer" value={loan.customerName} />
       <Field label="Created by" value={loan.createdBy} />

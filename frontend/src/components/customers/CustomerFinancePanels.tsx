@@ -5,7 +5,7 @@ import { ActionButton } from '../ActionButton'
 import { ApprovalCommentViewer } from '../ApprovalCommentViewer'
 import { ApprovalNotesDialog } from '../ApprovalNotesDialog'
 import { LoadingTableRow, PageLoading } from '../ListLoading'
-import { StatusTag } from '../StatusTag'
+import { StageTag, StatusTag } from '../StatusTag'
 import {
   notifyApprovalsChanged,
   notifyLoansChanged,
@@ -328,7 +328,9 @@ export function LoanApplicationPanel({ customerId, onError, onMessage }: SharedP
               >
                 <td className="px-3 py-2 font-medium">{loan.loanNumber}</td>
                 <td className="px-3 py-2">{money(loan.amount)}</td>
-                <td className="px-3 py-2">{loan.currentStageName}</td>
+                <td className="px-3 py-2">
+                  <StageTag stage={loan.currentStageName} />
+                </td>
                 <td className="px-3 py-2">
                   <StatusTag status={loan.status} />
                 </td>
