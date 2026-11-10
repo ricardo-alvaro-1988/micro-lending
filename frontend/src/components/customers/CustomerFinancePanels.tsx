@@ -5,9 +5,11 @@ import { ActionButton } from '../ActionButton'
 import { ApprovalNotesDialog } from '../ApprovalNotesDialog'
 import { LoadingTableRow, PageLoading } from '../ListLoading'
 import { StatusTag } from '../StatusTag'
-import { notifyApprovalsChanged } from '../../pages/ApprovalsPage'
-import { notifyLoansChanged } from '../../pages/LoansPage'
-import { notifyPaymentSchedulesChanged } from '../../pages/PaymentSchedulePage'
+import {
+  notifyApprovalsChanged,
+  notifyLoansChanged,
+  notifyPaymentSchedulesChanged,
+} from '../../notify'
 import type {
   CustomerPaymentSummary,
   Loan,

@@ -5,6 +5,11 @@ import { useBranchScope, withBranchQuery } from '../branch/BranchContext'
 import { ActionButton } from '../components/ActionButton'
 import { LoadingBlock, LoadingTableRow } from '../components/ListLoading'
 import { StatusTag } from '../components/StatusTag'
+import {
+  notifyApprovalsChanged,
+  notifyLoansChanged,
+  notifyPaymentSchedulesChanged,
+} from '../notify'
 import type { Loan, LoanDetailBundle, PagedLoans } from '../types'
 
 const PAGE_SIZE = 20
@@ -21,9 +26,8 @@ const STATUS_OPTIONS = [
 const money = (n: number) =>
   n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
-export function notifyLoansChanged() {
-  window.dispatchEvent(new Event('ml:loans-changed'))
-}
+/** @deprecated Prefer importing from `../notify`. */
+export { notifyLoansChanged }
 
 export function LoansPage() {
   const { can } = useAuth()
@@ -95,8 +99,14 @@ export function LoansPage() {
     setError('')
     try {
       await api(`/api/loans/${id}/advance`, { method: 'POST' })
+      // Advance can create/clear approvals and reach Approved-Final (schedule queue).
       notifyLoansChanged()
+      notifyApprovalsChanged()
+      notifyPaymentSchedulesChanged()
       await load()
+      notifyLoansChanged()
+      notifyApprovalsChanged()
+      notifyPaymentSchedulesChanged()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Advance failed')
     } finally {

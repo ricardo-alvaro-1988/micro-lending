@@ -5,11 +5,11 @@ import { useBranchScope, withBranchQuery } from '../branch/BranchContext'
 import { ActionButton } from '../components/ActionButton'
 import { LoadingTableRow } from '../components/ListLoading'
 import { StatusTag } from '../components/StatusTag'
+import { notifyPaymentSchedulesChanged } from '../notify'
 import type { LoanProduct } from '../types'
 
-export function notifyPaymentSchedulesChanged() {
-  window.dispatchEvent(new Event('ml:payment-schedules-changed'))
-}
+/** @deprecated Prefer importing from `../notify`. */
+export { notifyPaymentSchedulesChanged }
 
 type PendingItem = {
   loanId: number
