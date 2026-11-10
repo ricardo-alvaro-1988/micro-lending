@@ -115,6 +115,102 @@ public class LoansController : ControllerBase
         return Ok(new PagedLoansDto(result, page, pageSize, totalCount));
     }
 
+    /// <summary>Rejected loan applications with search (date range, loan #, customer name) and paging.</summary>
+    [HttpGet("rejected")]
+    [Authorize(Policy = $"perm:{PermissionCodes.LoansView}")]
+    public async Task<ActionResult<PagedRejectedLoansDto>> GetRejected(
+        [FromQuery] string? q = null,
+        [FromQuery] DateTime? from = null,
+        [FromQuery] DateTime? to = null,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        [FromQuery] int? branchId = null)
+    {
+        var scope = await _branchScope.ResolveAsync(User, branchId);
+        if (scope is null) return Unauthorized();
+
+        page = Math.Max(1, page);
+        pageSize = Math.Clamp(pageSize, 5, 100);
+
+        var query = BranchScopeService.Loans(
+            _db.Loans
+                .AsNoTracking()
+                .Include(l => l.Customer)
+                .Include(l => l.Flow)
+                .Include(l => l.CurrentStage)
+                .Where(l => l.Status == LoanStatus.Rejected),
+            scope);
+
+        if (!string.IsNullOrWhiteSpace(q))
+        {
+            var term = q.Trim();
+            query = query.Where(l =>
+                l.LoanNumber.Contains(term) ||
+                l.Customer.FullName.Contains(term));
+        }
+
+        // Prefer rejection activity timestamp when filtering by date.
+        DateTime? start = from?.Date;
+        DateTime? endExclusive = to?.Date.AddDays(1);
+        if (start is not null || endExclusive is not null)
+        {
+            var rejectedLoanIds = _db.LoanActivities.AsNoTracking()
+                .Where(a => a.Type == LoanActivityType.Rejected || a.Type == LoanActivityType.Declined)
+                .Where(a => start == null || a.OccurredAt >= start)
+                .Where(a => endExclusive == null || a.OccurredAt < endExclusive)
+                .Select(a => a.LoanId);
+
+            query = query.Where(l =>
+                rejectedLoanIds.Contains(l.Id)
+                || ((start == null || l.UpdatedAt >= start)
+                    && (endExclusive == null || l.UpdatedAt < endExclusive)
+                    && !_db.LoanActivities.Any(a =>
+                        a.LoanId == l.Id
+                        && (a.Type == LoanActivityType.Rejected || a.Type == LoanActivityType.Declined))));
+        }
+
+        var totalCount = await query.CountAsync();
+        var loans = await query
+            .OrderByDescending(l => l.UpdatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        var loanIds = loans.Select(l => l.Id).ToList();
+        var rejectionActs = loanIds.Count == 0
+            ? new List<LoanActivity>()
+            : await _db.LoanActivities.AsNoTracking()
+                .Where(a => loanIds.Contains(a.LoanId)
+                    && (a.Type == LoanActivityType.Rejected || a.Type == LoanActivityType.Declined))
+                .OrderByDescending(a => a.OccurredAt)
+                .ThenByDescending(a => a.Id)
+                .ToListAsync();
+
+        var latestByLoan = rejectionActs
+            .GroupBy(a => a.LoanId)
+            .ToDictionary(g => g.Key, g => g.First());
+
+        var items = loans.Select(l =>
+        {
+            latestByLoan.TryGetValue(l.Id, out var act);
+            return new RejectedLoanListItemDto(
+                l.Id,
+                l.LoanNumber,
+                l.CustomerId,
+                l.Customer.FullName,
+                l.Flow.Name,
+                act?.StageName ?? l.CurrentStage.Name,
+                l.Amount,
+                l.Status.ToString(),
+                act?.OccurredAt ?? l.UpdatedAt,
+                act?.ActorName,
+                act?.Notes,
+                l.CreatedAt);
+        }).ToList();
+
+        return Ok(new PagedRejectedLoansDto(items, page, pageSize, totalCount));
+    }
+
     [HttpGet("{id:int}/details")]
     public async Task<ActionResult<LoanDetailBundleDto>> GetDetails(int id)
     {

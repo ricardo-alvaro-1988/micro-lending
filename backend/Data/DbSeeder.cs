@@ -86,6 +86,7 @@ public static class DbSeeder
             ("loan-products", "Loan Products", "/lending/products", "Lending", 11, "loanProducts.view"),
             ("loans", "Loans", "/lending/loans", "Lending", 12, "loans.view"),
             ("approvals", "Approvals", "/lending/approvals", "Lending", 13, "approvals.view"),
+            ("rejected-loans", "Rejected", "/lending/rejected", "Lending", 14, "loans.view"),
             ("groups", "Groups", "/settings/groups", "Settings", 11, "groups.view"),
             ("branches", "Branches", "/settings/branches", "Settings", 12, "branches.view"),
             ("payment-schedule-settings", "Payment Schedule Notify", "/settings/payment-schedule", "Settings", 13, "paymentSchedule.settings"),

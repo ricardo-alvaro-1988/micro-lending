@@ -304,6 +304,26 @@ public record PagedLoansDto(
     int PageSize,
     int TotalCount);
 
+public record RejectedLoanListItemDto(
+    int Id,
+    string LoanNumber,
+    int CustomerId,
+    string CustomerName,
+    string FlowName,
+    string CurrentStageName,
+    decimal Amount,
+    string Status,
+    DateTime RejectedAt,
+    string? RejectedBy,
+    string? Comments,
+    DateTime CreatedAt);
+
+public record PagedRejectedLoansDto(
+    IReadOnlyList<RejectedLoanListItemDto> Items,
+    int Page,
+    int PageSize,
+    int TotalCount);
+
 public record LoanDetailBundleDto(
     LoanDto Loan,
     IReadOnlyList<LoanScheduleItemDto> Schedule,

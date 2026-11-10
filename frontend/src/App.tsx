@@ -6,6 +6,7 @@ import { AppLayout } from './layout/AppLayout'
 import { FieldAgentLayout } from './layout/FieldAgentLayout'
 import { ActivityPage } from './pages/ActivityPage'
 import { ApprovalsPage } from './pages/ApprovalsPage'
+import { RejectedLoansPage } from './pages/RejectedLoansPage'
 import { CustomersPage } from './pages/CustomersPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { BranchesPage } from './pages/BranchesPage'
@@ -139,6 +140,9 @@ export default function App() {
           </Route>
           <Route element={<RequireAuth permission="approvals.view" />}>
             <Route path="/lending/approvals" element={<ApprovalsPage />} />
+          </Route>
+          <Route element={<RequireAuth permission="loans.view" />}>
+            <Route path="/lending/rejected" element={<RejectedLoansPage />} />
           </Route>
           <Route element={<RequireAuth permission="reports.view" />}>
             <Route path="/reports" element={<ReportsHomePage />} />
