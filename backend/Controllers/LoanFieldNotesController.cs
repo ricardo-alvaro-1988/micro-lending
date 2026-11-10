@@ -66,9 +66,10 @@ public class LoanFieldNotesController : ControllerBase
                 .ToList());
 
     [HttpGet]
-    [Authorize(Policy = $"perm:{PermissionCodes.CustomersView}")]
     public async Task<ActionResult<IEnumerable<LoanFieldNoteDto>>> List(int customerId, int loanId)
     {
+        if (!PermissionChecks.CanReviewLoanApplication(User)) return Forbid();
+
         var (error, _, _) = await LoadAccessAsync(customerId, loanId);
         if (error is not null) return error;
 
@@ -165,9 +166,10 @@ public class LoanFieldNotesController : ControllerBase
     }
 
     [HttpGet("{noteId:int}/attachments/{attachmentId:int}/file")]
-    [Authorize(Policy = $"perm:{PermissionCodes.CustomersView}")]
     public async Task<IActionResult> DownloadAttachment(int customerId, int loanId, int noteId, int attachmentId)
     {
+        if (!PermissionChecks.CanReviewLoanApplication(User)) return Forbid();
+
         var (error, _, _) = await LoadAccessAsync(customerId, loanId);
         if (error is not null) return error;
 

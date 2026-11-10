@@ -5,7 +5,7 @@ import { useBranchScope, withBranchQuery } from '../branch/BranchContext'
 import { ActionButton } from '../components/ActionButton'
 import { ApprovalNotesDialog } from '../components/ApprovalNotesDialog'
 import { LoadingTableRow } from '../components/ListLoading'
-import { LoanDetailsPanel } from '../components/LoanDetailsPanel'
+import { LoanApplicationReviewDialog } from '../components/LoanApplicationReviewDialog'
 import { StatusTag } from '../components/StatusTag'
 import {
   notifyApprovalsChanged,
@@ -38,9 +38,7 @@ export function ApprovalsPage() {
   const [actingId, setActingId] = useState<number | null>(null)
   const [mineOnly, setMineOnly] = useState(true)
   const [pending, setPending] = useState<PendingDecision | null>(null)
-  const [selectedId, setSelectedId] = useState<number | null>(null)
-
-  const selected = items.find((x) => x.id === selectedId) ?? null
+  const [reviewItem, setReviewItem] = useState<ApprovalItem | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -49,7 +47,7 @@ export function ApprovalsPage() {
       const path = mineOnly ? '/api/approvals?mineOnly=true' : '/api/approvals'
       const list = await api<ApprovalItem[]>(withBranchQuery(path, filterBranchId))
       setItems(list)
-      setSelectedId((prev) => (prev != null && list.some((x) => x.id === prev) ? prev : list[0]?.id ?? null))
+      setReviewItem((prev) => (prev && list.some((x) => x.id === prev.id) ? prev : null))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load approvals')
     } finally {
@@ -82,6 +80,7 @@ export function ApprovalsPage() {
         body: JSON.stringify({ comments: notes }),
       })
       setPending(null)
+      setReviewItem((prev) => (prev?.id === id ? null : prev))
       setItems((prev) => prev.filter((x) => x.id !== id))
       notifyApprovalsChanged()
       notifyLoansChanged()
@@ -104,7 +103,7 @@ export function ApprovalsPage() {
         <div>
           <h2 className="text-xl font-semibold">Approvals</h2>
           <p className="text-sm text-slate-500">
-            Review the full loan application on this page, then approve or reject.
+            Open Review for the full application — personal details, documents, agent notes, and loan package.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
@@ -124,43 +123,52 @@ export function ApprovalsPage() {
 
       {error && <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(24rem,28rem)]">
-        <div className="overflow-auto rounded-xl border border-slate-200 bg-white shadow-sm">
-          <table className="min-w-full text-left text-sm">
-            <thead className="bg-slate-50 text-slate-600">
-              <tr>
-                <th className="px-4 py-3 font-medium">Loan #</th>
-                <th className="px-4 py-3 font-medium">Customer</th>
-                <th className="px-4 py-3 font-medium">Stage</th>
-                <th className="px-4 py-3 font-medium">Amount</th>
-                <th className="px-4 py-3 font-medium">Status</th>
-                <th className="px-4 py-3 font-medium">Requested</th>
-                <th className="px-4 py-3 font-medium">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading && items.length === 0 && (
-                <LoadingTableRow colSpan={7} label="Loading approvals..." />
-              )}
-              {items.map((item) => (
-                <tr
-                  key={item.id}
-                  className={`cursor-pointer border-t border-slate-100 hover:bg-slate-50 ${
-                    selectedId === item.id ? 'bg-sky-50' : ''
-                  }`}
-                  onClick={() => setSelectedId(item.id)}
-                >
-                  <td className="px-4 py-3 font-medium text-sky-800">{item.loanNumber}</td>
-                  <td className="px-4 py-3">{item.customerName}</td>
-                  <td className="px-4 py-3">{item.stageName}</td>
-                  <td className="px-4 py-3 tabular-nums">{money(item.amount)}</td>
-                  <td className="px-4 py-3">
-                    <StatusTag status={item.decision || 'Pending'} />
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap">{new Date(item.requestedAt).toLocaleString()}</td>
-                  <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+      <div className="overflow-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+        <table className="min-w-full text-left text-sm">
+          <thead className="bg-slate-50 text-slate-600">
+            <tr>
+              <th className="px-4 py-3 font-medium">Loan #</th>
+              <th className="px-4 py-3 font-medium">Customer</th>
+              <th className="px-4 py-3 font-medium">Stage</th>
+              <th className="px-4 py-3 font-medium">Amount</th>
+              <th className="px-4 py-3 font-medium">Status</th>
+              <th className="px-4 py-3 font-medium">Requested</th>
+              <th className="px-4 py-3 font-medium">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading && items.length === 0 && (
+              <LoadingTableRow colSpan={7} label="Loading approvals..." />
+            )}
+            {items.map((item) => (
+              <tr key={item.id} className="border-t border-slate-100 hover:bg-slate-50/70">
+                <td className="px-4 py-3 font-medium">
+                  <button
+                    type="button"
+                    className="text-sky-700 hover:underline"
+                    onClick={() => setReviewItem(item)}
+                  >
+                    {item.loanNumber}
+                  </button>
+                </td>
+                <td className="px-4 py-3">{item.customerName}</td>
+                <td className="px-4 py-3">{item.stageName}</td>
+                <td className="px-4 py-3 tabular-nums">{money(item.amount)}</td>
+                <td className="px-4 py-3">
+                  <StatusTag status={item.decision || 'Pending'} />
+                </td>
+                <td className="px-4 py-3 whitespace-nowrap">{new Date(item.requestedAt).toLocaleString()}</td>
+                <td className="px-4 py-3">
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      className="rounded-md border border-slate-300 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                      onClick={() => setReviewItem(item)}
+                    >
+                      Review
+                    </button>
                     {canAct && item.canAct ? (
-                      <div className="flex flex-wrap gap-2">
+                      <>
                         <ActionButton
                           type="button"
                           loading={actingId === item.id}
@@ -179,63 +187,58 @@ export function ApprovalsPage() {
                         >
                           Reject
                         </ActionButton>
-                      </div>
+                      </>
                     ) : (
-                      <span className="text-xs text-slate-500">
+                      <span className="self-center text-xs text-slate-500">
                         {!canAct ? 'No permission' : 'Not assigned to you'}
                       </span>
                     )}
-                  </td>
-                </tr>
-              ))}
-              {!loading && items.length === 0 && (
-                <tr>
-                  <td className="px-4 py-6 text-slate-500" colSpan={7}>
-                    {mineOnly ? 'No approvals waiting for you.' : 'No pending approvals.'}
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="min-w-0">
-          {selected ? (
-            <LoanDetailsPanel
-              loanId={selected.loanId}
-              headerActions={
-                canAct && selected.canAct ? (
-                  <>
-                    <ActionButton
-                      type="button"
-                      loading={actingId === selected.id}
-                      loadingText="Working…"
-                      onClick={() => openDecision(selected, 'approve')}
-                      className="px-3 py-1.5 text-xs"
-                    >
-                      Approve
-                    </ActionButton>
-                    <ActionButton
-                      type="button"
-                      variant="danger"
-                      loading={actingId === selected.id}
-                      loadingText="Working…"
-                      onClick={() => openDecision(selected, 'reject')}
-                      className="px-3 py-1.5 text-xs"
-                    >
-                      Reject
-                    </ActionButton>
-                  </>
-                ) : undefined
-              }
-            />
-          ) : (
-            <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-5 py-16 text-center text-sm text-slate-500 shadow-sm">
-              Select an approval to review the full loan application here.
-            </div>
-          )}
-        </div>
+                  </div>
+                </td>
+              </tr>
+            ))}
+            {!loading && items.length === 0 && (
+              <tr>
+                <td className="px-4 py-6 text-slate-500" colSpan={7}>
+                  {mineOnly ? 'No approvals waiting for you.' : 'No pending approvals.'}
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
       </div>
+
+      {reviewItem && (
+        <LoanApplicationReviewDialog
+          loanId={reviewItem.loanId}
+          onClose={() => setReviewItem(null)}
+          headerActions={
+            canAct && reviewItem.canAct ? (
+              <>
+                <ActionButton
+                  type="button"
+                  loading={actingId === reviewItem.id}
+                  loadingText="Working…"
+                  onClick={() => openDecision(reviewItem, 'approve')}
+                  className="px-3 py-1.5 text-xs"
+                >
+                  Approve
+                </ActionButton>
+                <ActionButton
+                  type="button"
+                  variant="danger"
+                  loading={actingId === reviewItem.id}
+                  loadingText="Working…"
+                  onClick={() => openDecision(reviewItem, 'reject')}
+                  className="px-3 py-1.5 text-xs"
+                >
+                  Reject
+                </ActionButton>
+              </>
+            ) : undefined
+          }
+        />
+      )}
 
       <ApprovalNotesDialog
         open={pending != null}

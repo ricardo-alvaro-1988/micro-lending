@@ -71,9 +71,10 @@ public class CustomersController : ControllerBase
     }
 
     [HttpGet("{id:int}")]
-    [Authorize(Policy = $"perm:{PermissionCodes.CustomersView}")]
     public async Task<ActionResult<CustomerDetailDto>> Get(int id)
     {
+        if (!PermissionChecks.CanReviewLoanApplication(User)) return Forbid();
+
         var scope = await _branchScope.ResolveAsync(User);
         if (scope is null) return Unauthorized();
 
@@ -174,9 +175,10 @@ public class CustomersController : ControllerBase
     }
 
     [HttpGet("{id:int}/profile-picture")]
-    [Authorize(Policy = $"perm:{PermissionCodes.CustomersView}")]
     public async Task<IActionResult> GetProfilePicture(int id)
     {
+        if (!PermissionChecks.CanReviewLoanApplication(User)) return Forbid();
+
         var scope = await _branchScope.ResolveAsync(User);
         if (scope is null) return Unauthorized();
 
@@ -255,9 +257,10 @@ public class CustomersController : ControllerBase
     }
 
     [HttpGet("{id:int}/documents/{docId:int}/file")]
-    [Authorize(Policy = $"perm:{PermissionCodes.CustomersView}")]
     public async Task<IActionResult> Download(int id, int docId)
     {
+        if (!PermissionChecks.CanReviewLoanApplication(User)) return Forbid();
+
         var scope = await _branchScope.ResolveAsync(User);
         if (scope is null) return Unauthorized();
 

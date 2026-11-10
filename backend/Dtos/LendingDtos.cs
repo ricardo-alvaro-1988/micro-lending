@@ -310,6 +310,15 @@ public record LoanDetailBundleDto(
     IReadOnlyList<LoanPaymentDto> Payments,
     IReadOnlyList<LoanApprovalHistoryDto> Approvals);
 
+/// <summary>Full application package for approval / loan review.</summary>
+public record LoanApplicationReviewDto(
+    LoanDto Loan,
+    CustomerDetailDto Customer,
+    IReadOnlyList<LoanScheduleItemDto> Schedule,
+    IReadOnlyList<LoanPaymentDto> Payments,
+    IReadOnlyList<LoanApprovalHistoryDto> Approvals,
+    IReadOnlyList<LoanFieldNoteDto> FieldNotes);
+
 public class CreateLoanRequest
 {
     [Required]
