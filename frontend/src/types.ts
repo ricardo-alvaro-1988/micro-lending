@@ -353,6 +353,7 @@ export type AgentOption = {
   id: string
   fullName: string
   email: string
+  hasProfilePicture: boolean
 }
 
 export type AuditLogEntry = {
