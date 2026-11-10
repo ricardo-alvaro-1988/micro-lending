@@ -39,6 +39,28 @@ type PendingScheduleItem = {
   waitingHours: number
 }
 
+type TodayActivityItem = {
+  id: number
+  loanId: number
+  loanNumber: string
+  customerName: string
+  type: string
+  stageName: string
+  actorName?: string | null
+  notes?: string | null
+  occurredAt: string
+}
+
+function formatActivityType(type: string) {
+  return type.replace(/([a-z])([A-Z])/g, '$1 $2')
+}
+
+function formatActivityTime(iso: string) {
+  const at = new Date(iso)
+  if (Number.isNaN(at.getTime())) return ''
+  return at.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+}
+
 type NavChild = {
   label: string
   to: string
@@ -217,6 +239,8 @@ export function AppLayout() {
   const [scheduleCount, setScheduleCount] = useState(0)
   const [latestSchedules, setLatestSchedules] = useState<PendingScheduleItem[]>([])
   const [pendingLoanCount, setPendingLoanCount] = useState(0)
+  const [todayActivityCount, setTodayActivityCount] = useState(0)
+  const [latestTodayActivity, setLatestTodayActivity] = useState<TodayActivityItem[]>([])
   const [bellOpen, setBellOpen] = useState(false)
   const bellRef = useRef<HTMLDivElement>(null)
 
@@ -305,6 +329,27 @@ export function AppLayout() {
     })
   }, [can, filterBranchId, runQueued])
 
+  const activityRefreshInFlight = useRef(false)
+  const activityRefreshQueued = useRef(false)
+  const refreshTodayActivity = useCallback(async () => {
+    if (!can('activity.view')) {
+      setTodayActivityCount(0)
+      setLatestTodayActivity([])
+      return
+    }
+    await runQueued(activityRefreshInFlight, activityRefreshQueued, async () => {
+      try {
+        const summary = await api<{ count: number; latest: TodayActivityItem[] }>(
+          withBranchQuery('/api/activity/today/summary', filterBranchId),
+        )
+        setTodayActivityCount(summary.count)
+        setLatestTodayActivity(summary.latest ?? [])
+      } catch {
+        // ignore transient errors while polling
+      }
+    })
+  }, [can, filterBranchId, runQueued])
+
   useEffect(() => {
     void refreshApprovals()
     const id = window.setInterval(() => void refreshApprovals(), 15000)
@@ -355,12 +400,33 @@ export function AppLayout() {
     }
   }, [refreshPendingLoans])
 
+  useEffect(() => {
+    void refreshTodayActivity()
+    const id = window.setInterval(() => void refreshTodayActivity(), 15000)
+    const onChanged = () => void refreshTodayActivity()
+    const onFocus = () => void refreshTodayActivity()
+    window.addEventListener('ml:activity-changed', onChanged)
+    window.addEventListener('ml:loans-changed', onChanged)
+    window.addEventListener('ml:approvals-changed', onChanged)
+    window.addEventListener('focus', onFocus)
+    document.addEventListener('visibilitychange', onFocus)
+    return () => {
+      window.clearInterval(id)
+      window.removeEventListener('ml:activity-changed', onChanged)
+      window.removeEventListener('ml:loans-changed', onChanged)
+      window.removeEventListener('ml:approvals-changed', onChanged)
+      window.removeEventListener('focus', onFocus)
+      document.removeEventListener('visibilitychange', onFocus)
+    }
+  }, [refreshTodayActivity])
+
   // Refresh badges whenever the user navigates (covers create/advance without a full reload).
   useEffect(() => {
     void refreshApprovals()
     void refreshSchedules()
     void refreshPendingLoans()
-  }, [location.pathname, refreshApprovals, refreshSchedules, refreshPendingLoans])
+    void refreshTodayActivity()
+  }, [location.pathname, refreshApprovals, refreshSchedules, refreshPendingLoans, refreshTodayActivity])
 
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
@@ -388,6 +454,7 @@ export function AppLayout() {
           <span className="flex-1">{child.label}</span>
           {child.to === '/lending/loans' && <Badge count={pendingLoanCount} />}
           {child.to === '/lending/approvals' && <Badge count={approvalCount} />}
+          {child.to === '/transaction/activity' && <Badge count={todayActivityCount} />}
           {child.to === '/transaction/payment-schedule' && <Badge count={scheduleCount} />}
         </>
       )}
@@ -395,6 +462,9 @@ export function AppLayout() {
         <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-rose-500" />
       )}
       {collapsed && child.to === '/lending/approvals' && approvalCount > 0 && (
+        <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-rose-500" />
+      )}
+      {collapsed && child.to === '/transaction/activity' && todayActivityCount > 0 && (
         <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-rose-500" />
       )}
       {collapsed && child.to === '/transaction/payment-schedule' && scheduleCount > 0 && (
@@ -584,7 +654,7 @@ export function AppLayout() {
 
           <div className="flex items-center gap-3">
             <BranchFilter className="sm:hidden" />
-            {(can('approvals.view') || can('paymentSchedule.view')) && (
+            {(can('approvals.view') || can('paymentSchedule.view') || can('activity.view')) && (
               <div className="relative" ref={bellRef}>
                 <button
                   type="button"
@@ -592,21 +662,77 @@ export function AppLayout() {
                     setBellOpen((v) => !v)
                     void refreshApprovals()
                     void refreshSchedules()
+                    void refreshTodayActivity()
                   }}
                   className="relative rounded-md border border-slate-200 p-2 text-slate-600 hover:bg-slate-50"
                   title="Notifications"
                   aria-label="Notifications"
                 >
                   <IconBell className="h-4 w-4" />
-                  {approvalCount + scheduleCount > 0 && (
+                  {approvalCount + scheduleCount + todayActivityCount > 0 && (
                     <span className="absolute -right-1 -top-1 inline-flex min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-semibold text-white">
-                      {approvalCount + scheduleCount}
+                      {approvalCount + scheduleCount + todayActivityCount > 99
+                        ? '99+'
+                        : approvalCount + scheduleCount + todayActivityCount}
                     </span>
                   )}
                 </button>
 
                 {bellOpen && (
                   <div className="absolute right-0 z-20 mt-2 w-80 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
+                    {can('activity.view') && (
+                      <>
+                        <div className="border-b border-slate-100 px-4 py-3">
+                          <div className="text-sm font-semibold text-slate-800">Today&apos;s activity</div>
+                          <div className="text-xs text-slate-500">
+                            {todayActivityCount === 0
+                              ? 'No loan activity yet today'
+                              : `${todayActivityCount} event${todayActivityCount === 1 ? '' : 's'} so far today`}
+                          </div>
+                        </div>
+                        <div className="max-h-48 overflow-auto">
+                          {latestTodayActivity.length === 0 ? (
+                            <div className="px-4 py-4 text-sm text-slate-500">Quiet day so far.</div>
+                          ) : (
+                            latestTodayActivity.map((item) => (
+                              <button
+                                key={item.id}
+                                type="button"
+                                className="block w-full border-b border-slate-50 px-4 py-3 text-left hover:bg-slate-50"
+                                onClick={() => {
+                                  setBellOpen(false)
+                                  navigate('/transaction/activity')
+                                }}
+                              >
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="text-sm font-medium text-slate-800">{item.loanNumber}</div>
+                                  <div className="shrink-0 text-[11px] text-slate-400">
+                                    {formatActivityTime(item.occurredAt)}
+                                  </div>
+                                </div>
+                                <div className="text-xs text-slate-500">{item.customerName}</div>
+                                <div className="mt-1 text-xs text-indigo-700">
+                                  {formatActivityType(item.type)}
+                                  {item.stageName ? ` · ${item.stageName}` : ''}
+                                  {item.actorName ? ` · ${item.actorName}` : ''}
+                                </div>
+                              </button>
+                            ))
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          className="w-full border-b border-slate-100 px-4 py-2.5 text-sm font-medium text-indigo-700 hover:bg-indigo-50"
+                          onClick={() => {
+                            setBellOpen(false)
+                            navigate('/transaction/activity')
+                          }}
+                        >
+                          Open Activity
+                        </button>
+                      </>
+                    )}
+
                     {can('paymentSchedule.view') && (
                       <>
                         <div className="border-b border-slate-100 px-4 py-3">
@@ -744,6 +870,20 @@ export function AppLayout() {
               onClick={() => navigate('/lending/approvals')}
             >
               Review now
+            </button>
+          </div>
+        )}
+
+        {todayActivityCount > 0 && location.pathname !== '/transaction/activity' && (
+          <div className="border-b border-indigo-200 bg-indigo-50 px-6 py-2 text-sm text-indigo-900">
+            <strong>{todayActivityCount}</strong> loan activity event
+            {todayActivityCount === 1 ? '' : 's'} recorded today.{' '}
+            <button
+              type="button"
+              className="font-semibold underline"
+              onClick={() => navigate('/transaction/activity')}
+            >
+              View activity
             </button>
           </div>
         )}

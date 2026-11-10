@@ -555,6 +555,22 @@ public record PagedLoanActivityTrailsDto(
     int PageSize,
     int TotalCount);
 
+public record TodayActivityItemDto(
+    int Id,
+    int LoanId,
+    string LoanNumber,
+    string CustomerName,
+    string Type,
+    string StageName,
+    string? ActorName,
+    string? Notes,
+    DateTime OccurredAt);
+
+public record TodayActivitySummaryDto(
+    int Count,
+    DateTime Day,
+    IReadOnlyList<TodayActivityItemDto> Latest);
+
 public record PaymentScheduleAssigneeDto(
     string UserId,
     string FullName,
