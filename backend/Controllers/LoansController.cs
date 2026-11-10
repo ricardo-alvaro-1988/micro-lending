@@ -118,11 +118,7 @@ public class LoansController : ControllerBase
     [HttpGet("{id:int}/details")]
     public async Task<ActionResult<LoanDetailBundleDto>> GetDetails(int id)
     {
-        // Approvers need full application details without requiring loans.view.
-        var canLoans = User.HasClaim("permission", PermissionCodes.LoansView);
-        var canApprovals = User.HasClaim("permission", PermissionCodes.ApprovalsView)
-            || User.HasClaim("permission", PermissionCodes.ApprovalsManage);
-        if (!canLoans && !canApprovals) return Forbid();
+        if (!PermissionChecks.CanReviewLoanApplication(User)) return Forbid();
 
         var user = await _userManager.GetUserAsync(User);
         if (user is null) return Unauthorized();
@@ -141,6 +137,51 @@ public class LoansController : ControllerBase
             MapSchedule(loan),
             MapPayments(loan),
             MapApprovals(loan)));
+    }
+
+    /// <summary>Full application review: customer personal data, documents, agent notes, loan package.</summary>
+    [HttpGet("{id:int}/review")]
+    public async Task<ActionResult<LoanApplicationReviewDto>> GetReview(int id)
+    {
+        if (!PermissionChecks.CanReviewLoanApplication(User)) return Forbid();
+
+        var user = await _userManager.GetUserAsync(User);
+        if (user is null) return Unauthorized();
+        var scope = await _branchScope.ResolveAsync(User);
+        if (scope is null) return Unauthorized();
+
+        var loan = await _finance.LoadLoanFinanceAsync(id);
+        if (loan is null) return NotFound();
+        if (!BranchScopeService.CanAccessCustomer(scope, loan.Customer)) return NotFound();
+
+        await _finance.AccruePenaltiesAsync(loan);
+        await _db.SaveChangesAsync();
+
+        var customer = await _db.Customers
+            .AsNoTracking()
+            .Include(c => c.Documents)
+            .Include(c => c.Branch)
+            .Include(c => c.Group)
+            .Include(c => c.Agent1)
+            .Include(c => c.Agent2)
+            .Include(c => c.Agent3)
+            .FirstOrDefaultAsync(c => c.Id == loan.CustomerId);
+        if (customer is null) return NotFound();
+
+        var notes = await _db.LoanFieldNotes.AsNoTracking()
+            .Include(n => n.CreatedByUser)
+            .Include(n => n.Attachments)
+            .Where(n => n.LoanId == loan.Id)
+            .OrderByDescending(n => n.CreatedAt)
+            .ToListAsync();
+
+        return Ok(new LoanApplicationReviewDto(
+            await MapLoanAsync(loan, user),
+            MapCustomerDetail(customer),
+            MapSchedule(loan),
+            MapPayments(loan),
+            MapApprovals(loan),
+            notes.Select(n => MapFieldNote(n, customer.Id)).ToList()));
     }
 
     /// <summary>Active loans (In Progress + Pending Approval) — for Loans menu badge / notifications.</summary>
@@ -359,6 +400,75 @@ public class LoansController : ControllerBase
             loan.LoanProduct?.Name,
             loan.InterestMethod.ToString());
     }
+
+    private static CustomerDetailDto MapCustomerDetail(Customer c) =>
+        new(
+            c.Id,
+            c.FirstName,
+            c.MiddleName,
+            c.LastName,
+            c.FullName,
+            c.BranchId,
+            c.Branch?.Name,
+            c.GroupId,
+            c.Group?.Name,
+            c.Agent1UserId,
+            c.Agent1?.FullName,
+            c.Agent2UserId,
+            c.Agent2?.FullName,
+            c.Agent3UserId,
+            c.Agent3?.FullName,
+            c.HouseUnit,
+            c.Street,
+            c.Barangay,
+            c.City,
+            c.Province,
+            c.ZipCode,
+            FormatAddress(c.HouseUnit, c.Street, c.Barangay, c.City, c.Province, c.ZipCode),
+            c.Mobile,
+            c.Phone,
+            c.Email,
+            c.ReferredBy,
+            c.DateOfBirth,
+            c.IdType,
+            c.IdNumber,
+            c.CoMakerName,
+            c.CoMakerMobile,
+            c.CoMakerIdNumber,
+            c.GuarantorName,
+            c.GuarantorMobile,
+            c.GuarantorIdNumber,
+            c.Latitude,
+            c.Longitude,
+            c.CreatedAt,
+            !string.IsNullOrWhiteSpace(c.ProfilePictureStoredFileName),
+            c.Documents
+                .OrderByDescending(d => d.UploadedAt)
+                .Select(d => new CustomerDocumentDto(
+                    d.Id, d.Label, d.OriginalFileName, d.ContentType, d.SizeBytes, d.UploadedAt))
+                .ToList());
+
+    private static string FormatAddress(params string?[] parts) =>
+        string.Join(", ", parts.Where(x => !string.IsNullOrWhiteSpace(x)).Select(x => x!.Trim()));
+
+    private static LoanFieldNoteDto MapFieldNote(LoanFieldNote note, int customerId) =>
+        new(
+            note.Id,
+            note.LoanId,
+            note.Body,
+            note.CreatedByUser?.FullName ?? "—",
+            note.CreatedByUserId,
+            note.CreatedAt,
+            note.Attachments
+                .OrderBy(a => a.UploadedAt)
+                .Select(a => new LoanFieldNoteAttachmentDto(
+                    a.Id,
+                    a.OriginalFileName,
+                    a.ContentType,
+                    a.SizeBytes,
+                    a.UploadedAt,
+                    $"/api/customers/{customerId}/loans/{note.LoanId}/field-notes/{note.Id}/attachments/{a.Id}/file"))
+                .ToList());
 
     private static IReadOnlyList<LoanScheduleItemDto> MapSchedule(Loan loan) =>
         loan.ScheduleItems
