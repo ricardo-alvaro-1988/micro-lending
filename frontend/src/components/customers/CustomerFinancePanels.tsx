@@ -1141,7 +1141,7 @@ export function StatementOfAccountPanel({ customerId, onError }: SharedProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-end gap-3">
+      <div className="flex flex-wrap items-end gap-3 print:hidden">
         <div>
           <label className="mb-1 block text-sm font-medium text-slate-600">Loan filter</label>
           <select
@@ -1184,7 +1184,7 @@ export function StatementOfAccountPanel({ customerId, onError }: SharedProps) {
       </div>
 
       {statement && (
-        <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-5 print:border-0 print:p-0">
+        <div className="statement-print-root space-y-3 rounded-xl border border-slate-200 bg-white p-5 print:border-0 print:p-0 print:shadow-none">
           <div>
             <h3 className="text-lg font-semibold">Statement of Account</h3>
             <p className="text-sm text-slate-500">
@@ -1197,7 +1197,7 @@ export function StatementOfAccountPanel({ customerId, onError }: SharedProps) {
           {(from || to) && (
             <div className="text-sm text-slate-600">Opening balance: {money(statement.openingBalance)}</div>
           )}
-          <div className="overflow-hidden rounded-lg border border-slate-200">
+          <div className="overflow-hidden rounded-lg border border-slate-200 print:overflow-visible print:rounded-none">
             <table className="w-full text-left text-sm">
               <thead className="bg-slate-50 text-slate-600">
                 <tr>
