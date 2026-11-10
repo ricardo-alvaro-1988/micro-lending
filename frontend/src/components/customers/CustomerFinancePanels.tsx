@@ -1099,8 +1099,10 @@ export function RecordPaymentPanel({
   )
 }
 
+type LoanOption = { id: number; loanNumber: string; status: string }
+
 export function StatementOfAccountPanel({ customerId, onError }: SharedProps) {
-  const [loans, setLoans] = useState<Loan[]>([])
+  const [loans, setLoans] = useState<LoanOption[]>([])
   const [loanId, setLoanId] = useState<number | ''>('')
   const [from, setFrom] = useState('')
   const [to, setTo] = useState('')
@@ -1111,7 +1113,8 @@ export function StatementOfAccountPanel({ customerId, onError }: SharedProps) {
     setLoanId('')
     setFrom('')
     setTo('')
-    api<Loan[]>(`/api/customers/${customerId}/loans`)
+    setStatement(null)
+    api<LoanOption[]>(`/api/customers/${customerId}/loan-options`)
       .then(setLoans)
       .catch((err) => onError(err instanceof Error ? err.message : 'Failed to load loans'))
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1137,7 +1140,7 @@ export function StatementOfAccountPanel({ customerId, onError }: SharedProps) {
   useEffect(() => {
     void loadStatement()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [customerId, loanId, from, to])
+  }, [customerId])
 
   return (
     <div className="space-y-4">
@@ -1176,9 +1179,9 @@ export function StatementOfAccountPanel({ customerId, onError }: SharedProps) {
           />
         </div>
         <ActionButton type="button" loading={loading} loadingText="Loading…" onClick={() => void loadStatement()}>
-          Refresh
+          Apply / Refresh
         </ActionButton>
-        <ActionButton type="button" onClick={() => window.print()}>
+        <ActionButton type="button" onClick={() => window.print()} disabled={!statement}>
           Print
         </ActionButton>
       </div>

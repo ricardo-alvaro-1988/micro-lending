@@ -54,11 +54,13 @@ public class CustomerFinanceController : ControllerBase
         if (await EnsureCustomerAccessAsync(customerId) is { } denied) return denied;
 
         // List view: skip ScheduleItems × Payments Include to avoid cartesian hang.
+        // Eager-load stage approvers (avoid N+1 LoadAsync on AsNoTracking stages).
         var loans = await _db.Loans
             .AsNoTracking()
             .Include(l => l.Customer)
             .Include(l => l.Flow)
-            .Include(l => l.CurrentStage)
+            .Include(l => l.CurrentStage)!.ThenInclude(s => s!.ApproverRoles)
+            .Include(l => l.CurrentStage)!.ThenInclude(s => s!.ApproverUsers)
             .Include(l => l.CreatedByUser)
             .Include(l => l.LoanProduct)
             .Where(l => l.CustomerId == customerId)
@@ -78,12 +80,25 @@ public class CustomerFinanceController : ControllerBase
         var result = new List<LoanDto>(loans.Count);
         foreach (var loan in loans)
         {
-            if (loan.CurrentStage is not null)
-                await _workflow.EnsureStageApproversLoadedAsync(loan.CurrentStage);
             paidByLoan.TryGetValue(loan.Id, out var totalPaid);
             result.Add(MapLoan(loan, approverCtx, totalPaid));
         }
         return Ok(result);
+    }
+
+    /// <summary>Lightweight loan picker (id + number) for statement/filters — no approver graph.</summary>
+    [HttpGet("loan-options")]
+    [Authorize(Policy = $"perm:{PermissionCodes.CustomersView}")]
+    public async Task<ActionResult<IEnumerable<object>>> LoanOptions(int customerId)
+    {
+        if (await EnsureCustomerAccessAsync(customerId) is { } denied) return denied;
+
+        var list = await _db.Loans.AsNoTracking()
+            .Where(l => l.CustomerId == customerId)
+            .OrderByDescending(l => l.CreatedAt)
+            .Select(l => new { l.Id, l.LoanNumber, Status = l.Status.ToString() })
+            .ToListAsync();
+        return Ok(list);
     }
 
     [HttpGet("loans/{loanId:int}")]
@@ -241,7 +256,8 @@ public class CustomerFinanceController : ControllerBase
             .AsNoTracking()
             .Include(l => l.Customer)
             .Include(l => l.Flow)
-            .Include(l => l.CurrentStage)
+            .Include(l => l.CurrentStage)!.ThenInclude(s => s!.ApproverRoles)
+            .Include(l => l.CurrentStage)!.ThenInclude(s => s!.ApproverUsers)
             .Include(l => l.CreatedByUser)
             .Include(l => l.LoanProduct)
             .Where(l => l.CustomerId == customerId)
@@ -280,8 +296,6 @@ public class CustomerFinanceController : ControllerBase
         var mapped = new List<LoanDto>(loans.Count);
         foreach (var loan in loans)
         {
-            if (loan.CurrentStage is not null)
-                await _workflow.EnsureStageApproversLoadedAsync(loan.CurrentStage);
             paidByLoan.TryGetValue(loan.Id, out var totalPaid);
             mapped.Add(MapLoan(loan, approverCtx, totalPaid));
         }
@@ -309,30 +323,31 @@ public class CustomerFinanceController : ControllerBase
     {
         if (await EnsureCustomerAccessAsync(customerId) is { } denied) return denied;
 
-        var loanQuery = _db.Loans
-            .AsNoTracking()
-            .Include(l => l.Customer)
-            .Where(l => l.CustomerId == customerId);
-        if (loanId is not null) loanQuery = loanQuery.Where(l => l.Id == loanId);
+        var loanRows = await _db.Loans.AsNoTracking()
+            .Where(l => l.CustomerId == customerId && (loanId == null || l.Id == loanId))
+            .OrderBy(l => l.CreatedAt)
+            .Select(l => new { l.Id, l.LoanNumber, l.TotalPayable, l.CreatedAt })
+            .ToListAsync();
+        if (loanId is not null && loanRows.Count == 0) return NotFound();
 
-        var loans = await loanQuery.OrderBy(l => l.CreatedAt).ToListAsync();
-        if (loanId is not null && loans.Count == 0) return NotFound();
-
-        var loanIds = loans.Select(l => l.Id).ToList();
+        var loanIds = loanRows.Select(l => l.Id).ToList();
         var payments = loanIds.Count == 0
-            ? new List<LoanPayment>()
-            : await _db.LoanPayments.AsNoTracking()
+            ? new List<(int LoanId, DateTime PaidAt, decimal Amount, string? Reference, int Id)>()
+            : (await _db.LoanPayments.AsNoTracking()
                 .Where(p => loanIds.Contains(p.LoanId))
                 .OrderBy(p => p.PaidAt)
                 .ThenBy(p => p.Id)
-                .ToListAsync();
+                .Select(p => new { p.LoanId, p.PaidAt, p.Amount, p.Reference, p.Id })
+                .ToListAsync())
+              .Select(p => (p.LoanId, p.PaidAt, p.Amount, p.Reference, p.Id))
+              .ToList();
         var paymentsByLoan = payments.GroupBy(p => p.LoanId).ToDictionary(g => g.Key, g => g.ToList());
 
         DateTime? rangeStart = from?.Date;
         DateTime? rangeEndExclusive = to?.Date.AddDays(1);
 
         var lines = new List<StatementLineDto>();
-        foreach (var loan in loans)
+        foreach (var loan in loanRows)
         {
             if (loan.TotalPayable > 0)
             {
@@ -383,14 +398,16 @@ public class CustomerFinanceController : ControllerBase
         if (ordered.Count == 0 && rangeStart.HasValue)
             balance = opening;
 
-        var customerName = loans.FirstOrDefault()?.Customer.FullName
-            ?? (await _db.Customers.AsNoTracking().FirstAsync(c => c.Id == customerId)).FullName;
+        var customerName = await _db.Customers.AsNoTracking()
+            .Where(c => c.Id == customerId)
+            .Select(c => c.FullName)
+            .FirstAsync();
 
         return Ok(new StatementOfAccountDto(
             customerId,
             customerName,
             loanId,
-            loanId is null ? null : loans.FirstOrDefault()?.LoanNumber,
+            loanId is null ? null : loanRows.FirstOrDefault()?.LoanNumber,
             DateTime.UtcNow,
             opening,
             balance,
