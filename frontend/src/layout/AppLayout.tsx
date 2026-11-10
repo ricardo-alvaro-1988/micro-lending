@@ -22,6 +22,7 @@ import {
   IconPages,
   IconPanelLeft,
   IconProfile,
+  IconReject,
   IconRoles,
   IconSchedule,
   IconSettings,
@@ -118,6 +119,7 @@ const nav: NavItem[] = [
       { label: 'Loan Products', to: '/lending/products', permission: 'loanProducts.view', icon: <IconLoan /> },
       { label: 'Loans', to: '/lending/loans', permission: 'loans.view', icon: <IconLoan /> },
       { label: 'Approvals', to: '/lending/approvals', permission: 'approvals.view', icon: <IconApprove /> },
+      { label: 'Rejected', to: '/lending/rejected', permission: 'loans.view', icon: <IconReject /> },
     ],
   },
   {
