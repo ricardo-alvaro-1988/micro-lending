@@ -7,6 +7,7 @@ import { AgentAutocomplete } from '../components/AgentAutocomplete'
 import { LoadingTableRow } from '../components/ListLoading'
 import { StatusTag } from '../components/StatusTag'
 import type { AgentOption, CashRemittance } from '../types'
+import { useToast } from '../toast/ToastContext'
 
 const fieldClass = 'rounded-lg border border-slate-300 px-3 py-2 text-sm w-full'
 
@@ -37,15 +38,13 @@ export function RemittancesPage() {
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [receiveAmount, setReceiveAmount] = useState('')
   const [receiveNotes, setReceiveNotes] = useState('')
-  const [error, setError] = useState('')
-  const [message, setMessage] = useState('')
+  const toast = useToast()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [actingId, setActingId] = useState<number | null>(null)
 
   const load = async () => {
     setLoading(true)
-    setError('')
     try {
       const params = new URLSearchParams()
       if (statusFilter) params.set('status', statusFilter)
@@ -56,7 +55,7 @@ export function RemittancesPage() {
       const path = `/api/remittances${qs ? `?${qs}` : ''}`
       setRows(await api<CashRemittance[]>(withBranchQuery(path, filterBranchId)))
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load remittances')
+      toast.error(err instanceof Error ? err.message : 'Failed to load remittances')
     } finally {
       setLoading(false)
     }
@@ -106,8 +105,6 @@ export function RemittancesPage() {
     })
     setReceiveAmount(String(row.remittedAmount))
     setReceiveNotes(row.notes ?? '')
-    setMessage('')
-    setError('')
   }
 
   const resetNew = () => {
@@ -116,16 +113,12 @@ export function RemittancesPage() {
     setExpectedCollected(null)
     setReceiveAmount('')
     setReceiveNotes('')
-    setMessage('')
-    setError('')
   }
 
   const onSave = async (e: FormEvent) => {
     e.preventDefault()
     if (!canManage) return
     setSaving(true)
-    setError('')
-    setMessage('')
     try {
       const payload = {
         agentUserId: form.agentUserId,
@@ -138,7 +131,7 @@ export function RemittancesPage() {
           method: 'POST',
           body: JSON.stringify(payload),
         })
-        setMessage('Remittance draft created.')
+        toast.success('Remittance draft created.')
         await load()
         selectRow(created)
       } else {
@@ -149,12 +142,12 @@ export function RemittancesPage() {
             notes: payload.notes,
           }),
         })
-        setMessage('Draft updated.')
+        toast.success('Draft updated.')
         await load()
         selectRow(updated)
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Save failed')
+      toast.error(err instanceof Error ? err.message : 'Save failed')
     } finally {
       setSaving(false)
     }
@@ -162,14 +155,13 @@ export function RemittancesPage() {
 
   const onSubmit = async (id: number) => {
     setActingId(id)
-    setError('')
     try {
       const updated = await api<CashRemittance>(`/api/remittances/${id}/submit`, { method: 'POST' })
-      setMessage('Remittance submitted to office.')
+      toast.success('Remittance submitted to office.')
       await load()
       selectRow(updated)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Submit failed')
+      toast.error(err instanceof Error ? err.message : 'Submit failed')
     } finally {
       setActingId(null)
     }
@@ -177,7 +169,6 @@ export function RemittancesPage() {
 
   const onReceive = async (id: number) => {
     setActingId(id)
-    setError('')
     try {
       const updated = await api<CashRemittance>(`/api/remittances/${id}/receive`, {
         method: 'POST',
@@ -186,7 +177,7 @@ export function RemittancesPage() {
           notes: receiveNotes.trim() || null,
         }),
       })
-      setMessage(
+      toast.success(
         updated.status === 'Discrepancy'
           ? `Received with discrepancy (variance ${money(updated.variance)}).`
           : 'Remittance received — float balanced.',
@@ -194,7 +185,7 @@ export function RemittancesPage() {
       await load()
       selectRow(updated)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Receive failed')
+      toast.error(err instanceof Error ? err.message : 'Receive failed')
     } finally {
       setActingId(null)
     }
@@ -219,15 +210,6 @@ export function RemittancesPage() {
           </ActionButton>
         )}
       </div>
-
-      {error && (
-        <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
-      )}
-      {message && (
-        <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-          {message}
-        </div>
-      )}
 
       <div className="flex flex-wrap items-end gap-2">
         <label className="text-sm text-slate-600">

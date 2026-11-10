@@ -13,6 +13,7 @@ import {
 } from '../components/customers/CustomerFinancePanels'
 import { LoadingBlock } from '../components/ListLoading'
 import type { AgentOption, Branch, CustomerDetail, CustomerGroup, CustomerListItem } from '../types'
+import { useToast } from '../toast/ToastContext'
 
 type CustomerTab = 'profile' | 'application' | 'terms' | 'summary' | 'payment' | 'statement'
 
@@ -121,8 +122,7 @@ export function CustomersPage() {
   const [pendingPhoto, setPendingPhoto] = useState<File | null>(null)
   const [photoBusy, setPhotoBusy] = useState(false)
   const [q, setQ] = useState('')
-  const [error, setError] = useState('')
-  const [message, setMessage] = useState('')
+  const toast = useToast()
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [loadingList, setLoadingList] = useState(true)
@@ -163,7 +163,7 @@ export function CustomersPage() {
   useEffect(() => {
     setLoadingList(true)
     Promise.all([loadList(), loadBranches(), loadGroups(), loadAgents()]).catch((err) =>
-      setError(err instanceof Error ? err.message : 'Failed to load'),
+      toast.error(err instanceof Error ? err.message : 'Failed to load'),
     )
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterBranchId])
@@ -179,13 +179,9 @@ export function CustomersPage() {
     setPendingPhoto(null)
     setPendingDocs([{ key: crypto.randomUUID(), label: '', file: null }])
     setTab('profile')
-    setMessage('')
-    setError('')
   }
 
-  const selectCustomer = async (id: number, opts?: { keepMessage?: boolean; keepTab?: boolean }) => {
-    setError('')
-    if (!opts?.keepMessage) setMessage('')
+  const selectCustomer = async (id: number, opts?: { keepTab?: boolean }) => {
     if (!opts?.keepTab) setTab('profile')
     try {
       const detail = await api<CustomerDetail>(`/api/customers/${id}`)
@@ -228,7 +224,7 @@ export function CustomersPage() {
       setPendingPhoto(null)
       setPendingDocs([{ key: crypto.randomUUID(), label: '', file: null }])
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load customer')
+      toast.error(err instanceof Error ? err.message : 'Failed to load customer')
     }
   }
 
@@ -251,8 +247,6 @@ export function CustomersPage() {
   const onSave = async (e: FormEvent) => {
     e.preventDefault()
     setSaving(true)
-    setError('')
-    setMessage('')
     try {
       if (!form.agent1UserId) throw new Error('Collection agent 1 is required.')
       const payload = {
@@ -319,11 +313,11 @@ export function CustomersPage() {
       }
 
       setPendingPhoto(null)
-      setMessage(selectedId == null ? 'Customer created.' : 'Customer updated.')
+      toast.success(selectedId == null ? 'Customer created.' : 'Customer updated.')
       await loadList()
-      await selectCustomer(id, { keepMessage: true })
+      await selectCustomer(id)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Save failed')
+      toast.error(err instanceof Error ? err.message : 'Save failed')
     } finally {
       setSaving(false)
       setUploading(false)
@@ -333,13 +327,12 @@ export function CustomersPage() {
   const onDeleteDoc = async (docId: number) => {
     if (selectedId == null) return
     if (!confirm('Delete this document?')) return
-    setError('')
     try {
       await api(`/api/customers/${selectedId}/documents/${docId}`, { method: 'DELETE' })
       await selectCustomer(selectedId)
       await loadList()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Delete failed')
+      toast.error(err instanceof Error ? err.message : 'Delete failed')
     }
   }
 
@@ -350,7 +343,7 @@ export function CustomersPage() {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     })
     if (!res.ok) {
-      setError('Download failed')
+      toast.error('Download failed')
       return
     }
     const blob = await res.blob()
@@ -366,10 +359,9 @@ export function CustomersPage() {
 
   const useMyLocation = () => {
     if (!navigator.geolocation) {
-      setError('Geolocation is not supported by this browser.')
+      toast.error('Geolocation is not supported by this browser.')
       return
     }
-    setError('')
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         setForm((prev) => ({
@@ -377,9 +369,9 @@ export function CustomersPage() {
           latitude: pos.coords.latitude.toFixed(6),
           longitude: pos.coords.longitude.toFixed(6),
         }))
-        setMessage('Location captured.')
+        toast.success('Location captured.')
       },
-      (err) => setError(err.message || 'Could not get location.'),
+      (err) => toast.error(err.message || 'Could not get location.'),
       { enableHighAccuracy: true, timeout: 15000 },
     )
   }
@@ -426,15 +418,6 @@ export function CustomersPage() {
           </div>
         </div>
       </header>
-
-      {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
-      )}
-      {message && (
-        <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-          {message}
-        </div>
-      )}
 
       <div className="grid gap-5 xl:grid-cols-[320px_1fr]">
         <aside className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white/90 shadow-[0_12px_40px_-24px_rgba(15,39,68,0.45)] backdrop-blur">
@@ -552,8 +535,6 @@ export function CustomersPage() {
                     }`}
                     onClick={() => {
                       setTab(key)
-                      setError('')
-                      setMessage('')
                     }}
                   >
                     {label}
@@ -565,19 +546,19 @@ export function CustomersPage() {
 
           <div className="p-5 sm:p-6">
             {selectedId != null && tab === 'application' && (
-              <LoanApplicationPanel customerId={selectedId} onError={setError} onMessage={setMessage} />
+              <LoanApplicationPanel customerId={selectedId} onError={toast.error} onMessage={toast.success} />
             )}
             {selectedId != null && tab === 'terms' && (
-              <PaymentTermsPanel customerId={selectedId} onError={setError} onMessage={setMessage} />
+              <PaymentTermsPanel customerId={selectedId} onError={toast.error} onMessage={toast.success} />
             )}
             {selectedId != null && tab === 'summary' && (
-              <PaymentSummaryPanel customerId={selectedId} onError={setError} onMessage={setMessage} />
+              <PaymentSummaryPanel customerId={selectedId} onError={toast.error} onMessage={toast.success} />
             )}
             {selectedId != null && tab === 'payment' && (
-              <RecordPaymentPanel customerId={selectedId} onError={setError} onMessage={setMessage} />
+              <RecordPaymentPanel customerId={selectedId} onError={toast.error} onMessage={toast.success} />
             )}
             {selectedId != null && tab === 'statement' && (
-              <StatementOfAccountPanel customerId={selectedId} onError={setError} onMessage={setMessage} />
+              <StatementOfAccountPanel customerId={selectedId} onError={toast.error} onMessage={toast.success} />
             )}
 
             {(selectedId == null || tab === 'profile') && (
@@ -624,15 +605,14 @@ export function CustomersPage() {
                             loadingText="Uploading…"
                             onClick={async () => {
                               setPhotoBusy(true)
-                              setError('')
                               try {
                                 await uploadProfilePicture(selectedId, pendingPhoto)
                                 setPendingPhoto(null)
                                 setHasProfilePicture(true)
-                                setMessage('Profile picture updated.')
+                                toast.success('Profile picture updated.')
                                 await loadList()
                               } catch (err) {
-                                setError(err instanceof Error ? err.message : 'Photo upload failed')
+                                toast.error(err instanceof Error ? err.message : 'Photo upload failed')
                               } finally {
                                 setPhotoBusy(false)
                               }
@@ -649,15 +629,14 @@ export function CustomersPage() {
                             onClick={async () => {
                               if (!confirm('Remove profile picture?')) return
                               setPhotoBusy(true)
-                              setError('')
                               try {
                                 await api(`/api/customers/${selectedId}/profile-picture`, { method: 'DELETE' })
                                 setHasProfilePicture(false)
                                 setPendingPhoto(null)
-                                setMessage('Profile picture removed.')
+                                toast.success('Profile picture removed.')
                                 await loadList()
                               } catch (err) {
-                                setError(err instanceof Error ? err.message : 'Could not remove photo')
+                                toast.error(err instanceof Error ? err.message : 'Could not remove photo')
                               } finally {
                                 setPhotoBusy(false)
                               }

@@ -12,6 +12,7 @@ import {
   notifyPaymentSchedulesChanged,
 } from '../notify'
 import type { Loan, PagedLoans } from '../types'
+import { useToast } from '../toast/ToastContext'
 
 const PAGE_SIZE = 20
 
@@ -42,7 +43,7 @@ export function LoansPage() {
   const [page, setPage] = useState(1)
   const [totalCount, setTotalCount] = useState(0)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+  const toast = useToast()
   const [advancingId, setAdvancingId] = useState<number | null>(null)
   const [detailLoanId, setDetailLoanId] = useState<number | null>(null)
 
@@ -72,9 +73,8 @@ export function LoansPage() {
       setLoans(data.items)
       setTotalCount(data.totalCount)
       setPage(data.page)
-      setError('')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load')
+      toast.error(err instanceof Error ? err.message : 'Failed to load')
     } finally {
       setLoading(false)
     }
@@ -107,7 +107,6 @@ export function LoansPage() {
 
   const onAdvance = async (id: number) => {
     setAdvancingId(id)
-    setError('')
     try {
       await api(`/api/loans/${id}/advance`, { method: 'POST' })
       // Advance can create/clear approvals and reach Approved-Final (schedule queue).
@@ -119,7 +118,7 @@ export function LoansPage() {
       notifyApprovalsChanged()
       notifyPaymentSchedulesChanged()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Advance failed')
+      toast.error(err instanceof Error ? err.message : 'Advance failed')
     } finally {
       setAdvancingId(null)
     }
@@ -136,8 +135,6 @@ export function LoansPage() {
           </p>
         </div>
       </div>
-
-      {error && <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
 
       <div className="flex flex-wrap items-end gap-2">
         <label className="min-w-[16rem] flex-1 text-sm text-slate-600 sm:max-w-md">

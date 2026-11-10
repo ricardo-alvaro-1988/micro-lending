@@ -5,6 +5,7 @@ import { ActionButton } from '../components/ActionButton'
 import { LoadingTableRow } from '../components/ListLoading'
 import { ActiveTag } from '../components/StatusTag'
 import type { LoanProduct } from '../types'
+import { useToast } from '../toast/ToastContext'
 
 const emptyForm = () => ({
   name: '',
@@ -23,8 +24,7 @@ export function LoanProductsPage() {
   const [products, setProducts] = useState<LoanProduct[]>([])
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [form, setForm] = useState(emptyForm())
-  const [error, setError] = useState('')
-  const [message, setMessage] = useState('')
+  const toast = useToast()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [deletingId, setDeletingId] = useState<number | null>(null)
@@ -34,7 +34,7 @@ export function LoanProductsPage() {
     try {
       setProducts(await api<LoanProduct[]>('/api/loan-products'))
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load loan products')
+      toast.error(err instanceof Error ? err.message : 'Failed to load loan products')
     } finally {
       setLoading(false)
     }
@@ -47,8 +47,6 @@ export function LoanProductsPage() {
   const resetNew = () => {
     setSelectedId(null)
     setForm(emptyForm())
-    setMessage('')
-    setError('')
   }
 
   const selectProduct = (product: LoanProduct) => {
@@ -63,15 +61,11 @@ export function LoanProductsPage() {
       interestMethod: product.interestMethod,
       isActive: product.isActive,
     })
-    setMessage('')
-    setError('')
   }
 
   const onSave = async (e: FormEvent) => {
     e.preventDefault()
     setSaving(true)
-    setError('')
-    setMessage('')
     try {
       const payload = {
         name: form.name.trim(),
@@ -88,7 +82,7 @@ export function LoanProductsPage() {
           method: 'POST',
           body: JSON.stringify(payload),
         })
-        setMessage('Loan product created.')
+        toast.success('Loan product created.')
         await load()
         selectProduct(created)
       } else {
@@ -96,12 +90,12 @@ export function LoanProductsPage() {
           method: 'PUT',
           body: JSON.stringify(payload),
         })
-        setMessage('Loan product updated.')
+        toast.success('Loan product updated.')
         await load()
         selectProduct(updated)
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Save failed')
+      toast.error(err instanceof Error ? err.message : 'Save failed')
     } finally {
       setSaving(false)
     }
@@ -110,14 +104,13 @@ export function LoanProductsPage() {
   const onDelete = async (id: number) => {
     if (!confirm('Delete this loan product?')) return
     setDeletingId(id)
-    setError('')
     try {
       await api(`/api/loan-products/${id}`, { method: 'DELETE' })
       if (selectedId === id) resetNew()
-      setMessage('Loan product deleted.')
+      toast.success('Loan product deleted.')
       await load()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Delete failed')
+      toast.error(err instanceof Error ? err.message : 'Delete failed')
     } finally {
       setDeletingId(null)
     }
@@ -138,11 +131,6 @@ export function LoanProductsPage() {
           </ActionButton>
         )}
       </div>
-
-      {error && <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
-      {message && (
-        <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{message}</div>
-      )}
 
       <div className="grid gap-6 xl:grid-cols-[340px_1fr]">
         <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">

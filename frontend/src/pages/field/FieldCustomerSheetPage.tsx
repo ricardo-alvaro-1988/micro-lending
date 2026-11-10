@@ -12,6 +12,7 @@ import type {
   LoanPayment,
   LoanScheduleItem,
 } from '../../types'
+import { useToast } from '../../toast/ToastContext'
 
 const money = (n: number) =>
   n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -38,8 +39,7 @@ export function FieldCustomerSheetPage() {
   const [notes, setNotes] = useState<LoanFieldNote[]>([])
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
-  const [error, setError] = useState('')
-  const [message, setMessage] = useState('')
+  const toast = useToast()
   const [payForm, setPayForm] = useState({
     amount: '',
     paidAt: new Date().toISOString().slice(0, 10),
@@ -104,7 +104,7 @@ export function FieldCustomerSheetPage() {
     if (!Number.isFinite(customerId)) return
     setLoading(true)
     Promise.all([loadCustomer(), loadLoans()])
-      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load'))
+      .catch((err) => toast.error(err instanceof Error ? err.message : 'Failed to load'))
       .finally(() => setLoading(false))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [customerId])
@@ -118,7 +118,7 @@ export function FieldCustomerSheetPage() {
       return
     }
     loadLoanExtras(loanId).catch((err) =>
-      setError(err instanceof Error ? err.message : 'Failed to load loan'),
+      toast.error(err instanceof Error ? err.message : 'Failed to load loan'),
     )
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loanId])
@@ -127,8 +127,6 @@ export function FieldCustomerSheetPage() {
     e.preventDefault()
     if (loanId === '') return
     setBusy(true)
-    setError('')
-    setMessage('')
     try {
       await api(`/api/customers/${customerId}/loans/${loanId}/payments`, {
         method: 'POST',
@@ -141,11 +139,11 @@ export function FieldCustomerSheetPage() {
         }),
       })
       setPayForm((prev) => ({ ...prev, reference: '', notes: '' }))
-      setMessage('Payment recorded.')
+      toast.success('Payment recorded.')
       await loadLoans()
       await loadLoanExtras(loanId)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Payment failed')
+      toast.error(err instanceof Error ? err.message : 'Payment failed')
     } finally {
       setBusy(false)
     }
@@ -155,8 +153,6 @@ export function FieldCustomerSheetPage() {
     e.preventDefault()
     if (loanId === '') return
     setBusy(true)
-    setError('')
-    setMessage('')
     try {
       const created = await api<LoanFieldNote>(`/api/customers/${customerId}/loans/${loanId}/field-notes`, {
         method: 'POST',
@@ -172,10 +168,10 @@ export function FieldCustomerSheetPage() {
       }
       setNoteBody('')
       clearNoteFile()
-      setMessage('Note saved.')
+      toast.success('Note saved.')
       await loadLoanExtras(loanId)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not save note')
+      toast.error(err instanceof Error ? err.message : 'Could not save note')
     } finally {
       setBusy(false)
     }
@@ -259,15 +255,6 @@ export function FieldCustomerSheetPage() {
             </div>
           )}
       </div>
-
-      {error && (
-        <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
-      )}
-      {message && (
-        <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-          {message}
-        </div>
-      )}
 
       <div>
         <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Loan</label>

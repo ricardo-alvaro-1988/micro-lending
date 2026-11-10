@@ -4,6 +4,7 @@ import { useAuth } from '../auth/AuthContext'
 import { ActionButton } from '../components/ActionButton'
 import { LoadingBlock } from '../components/ListLoading'
 import type { AppPage, RolePageAccess } from '../types'
+import { useToast } from '../toast/ToastContext'
 
 function sameCodes(a: string[], b: string[]) {
   if (a.length !== b.length) return false
@@ -20,13 +21,11 @@ export function PageAccessibilityPage() {
   const [selectedRoleId, setSelectedRoleId] = useState<string | null>(null)
   const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-  const [message, setMessage] = useState('')
+  const toast = useToast()
   const [saving, setSaving] = useState(false)
 
   const load = async () => {
     setLoading(true)
-    setError('')
     try {
       const [p, a] = await Promise.all([
         api<AppPage[]>('/api/pages'),
@@ -39,7 +38,7 @@ export function PageAccessibilityPage() {
       setBaseline(nextBaseline)
       setSelectedRoleId((prev) => prev ?? a[0]?.roleId ?? null)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load')
+      toast.error(err instanceof Error ? err.message : 'Failed to load')
     } finally {
       setLoading(false)
     }
@@ -81,7 +80,6 @@ export function PageAccessibilityPage() {
 
   const toggle = (pageCode: string) => {
     if (!selectedRoleId || !canManage) return
-    setMessage('')
     setAccess((prev) =>
       prev.map((row) => {
         if (row.roleId !== selectedRoleId) return row
@@ -97,7 +95,6 @@ export function PageAccessibilityPage() {
   const setGroup = (groupPages: AppPage[], enabled: boolean) => {
     if (!selectedRoleId || !canManage) return
     const codes = groupPages.map((p) => p.code)
-    setMessage('')
     setAccess((prev) =>
       prev.map((row) => {
         if (row.roleId !== selectedRoleId) return row
@@ -113,7 +110,6 @@ export function PageAccessibilityPage() {
   const setAllFiltered = (enabled: boolean) => {
     if (!selectedRoleId || !canManage) return
     const codes = filteredPages.map((p) => p.code)
-    setMessage('')
     setAccess((prev) =>
       prev.map((row) => {
         if (row.roleId !== selectedRoleId) return row
@@ -132,14 +128,11 @@ export function PageAccessibilityPage() {
     setAccess((prev) =>
       prev.map((row) => (row.roleId === selected.roleId ? { ...row, pageCodes: [...original] } : row)),
     )
-    setMessage('')
   }
 
   const save = async () => {
     if (!selected) return
     setSaving(true)
-    setError('')
-    setMessage('')
     try {
       const updated = await api<RolePageAccess>(`/api/pages/access/${selected.roleId}`, {
         method: 'PUT',
@@ -147,9 +140,9 @@ export function PageAccessibilityPage() {
       })
       setAccess((prev) => prev.map((r) => (r.roleId === selected.roleId ? updated : r)))
       setBaseline((prev) => ({ ...prev, [selected.roleId]: [...updated.pageCodes] }))
-      setMessage(`Saved page access for ${updated.roleName}.`)
+      toast.success(`Saved page access for ${updated.roleName}.`)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Save failed')
+      toast.error(err instanceof Error ? err.message : 'Save failed')
     } finally {
       setSaving(false)
     }
@@ -159,7 +152,6 @@ export function PageAccessibilityPage() {
     if (dirty && !confirm('You have unsaved changes for this role. Switch anyway?')) return
     if (dirty && selected) discard()
     setSelectedRoleId(roleId)
-    setMessage('')
     setQuery('')
   }
 
@@ -171,13 +163,6 @@ export function PageAccessibilityPage() {
           Pick a role, then turn pages on or off. Changes apply when you save that role.
         </p>
       </div>
-
-      {error && <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
-      {message && (
-        <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-          {message}
-        </div>
-      )}
 
       {loading && access.length === 0 ? (
         <div className="rounded-xl border border-slate-200 bg-white">

@@ -5,6 +5,7 @@ import { ActionButton } from '../components/ActionButton'
 import { LoadingBlock } from '../components/ListLoading'
 import { ActiveTag } from '../components/StatusTag'
 import type { AppUser, ProcessFlow, Role } from '../types'
+import { useToast } from '../toast/ToastContext'
 
 type StageDraft = {
   name: string
@@ -90,8 +91,7 @@ export function ProcessFlowsPage() {
   const [stages, setStages] = useState<StageDraft[]>(() =>
     ensureApprovedFinalLast([emptyStage(1), emptyStage(2)]),
   )
-  const [error, setError] = useState('')
-  const [message, setMessage] = useState('')
+  const toast = useToast()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [creating, setCreating] = useState(false)
@@ -113,7 +113,7 @@ export function ProcessFlowsPage() {
   }
 
   useEffect(() => {
-    load().catch((err) => setError(err instanceof Error ? err.message : 'Failed to load'))
+    load().catch((err) => toast.error(err instanceof Error ? err.message : 'Failed to load'))
   }, [])
 
   const selectFlow = (flow: ProcessFlow) => {
@@ -138,8 +138,6 @@ export function ProcessFlowsPage() {
           : [emptyStage(1)],
       ),
     )
-    setMessage('')
-    setError('')
   }
 
   const resetNew = () => {
@@ -148,14 +146,11 @@ export function ProcessFlowsPage() {
     setDescription('')
     setIsActive(true)
     setStages(ensureApprovedFinalLast([emptyStage(1), emptyStage(2)]))
-    setMessage('')
-    setError('')
   }
 
   const onCreateFlow = async (e: FormEvent) => {
     e.preventDefault()
     setCreating(true)
-    setError('')
     try {
       const created = await api<ProcessFlow>('/api/flows', {
         method: 'POST',
@@ -165,12 +160,12 @@ export function ProcessFlowsPage() {
         method: 'PUT',
         body: JSON.stringify({ stages: toPayload(stages) }),
       })
-      setMessage('Process flow created.')
+      toast.success('Process flow created.')
       await load()
       const refreshed = await api<ProcessFlow>(`/api/flows/${created.id}`)
       selectFlow(refreshed)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Create failed')
+      toast.error(err instanceof Error ? err.message : 'Create failed')
     } finally {
       setCreating(false)
     }
@@ -180,8 +175,6 @@ export function ProcessFlowsPage() {
     e.preventDefault()
     if (selectedId == null) return
     setSaving(true)
-    setError('')
-    setMessage('')
     try {
       await api(`/api/flows/${selectedId}`, {
         method: 'PUT',
@@ -191,12 +184,12 @@ export function ProcessFlowsPage() {
         method: 'PUT',
         body: JSON.stringify({ stages: toPayload(stages) }),
       })
-      setMessage('Process flow saved.')
+      toast.success('Process flow saved.')
       await load()
       const refreshed = await api<ProcessFlow>(`/api/flows/${selectedId}`)
       selectFlow(refreshed)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Save failed')
+      toast.error(err instanceof Error ? err.message : 'Save failed')
     } finally {
       setSaving(false)
     }
@@ -261,11 +254,6 @@ export function ProcessFlowsPage() {
           </ActionButton>
         )}
       </div>
-
-      {error && <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
-      {message && (
-        <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{message}</div>
-      )}
 
       {loading ? (
         <LoadingBlock label="Loading process flows..." />

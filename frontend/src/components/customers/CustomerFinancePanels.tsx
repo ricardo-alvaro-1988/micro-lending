@@ -112,7 +112,6 @@ export function LoanApplicationPanel({ customerId, onError, onMessage }: SharedP
   const onCreate = async (e: FormEvent) => {
     e.preventDefault()
     setBusy(true)
-    onError('')
     try {
       const created = await api<Loan>('/api/loans', {
         method: 'POST',
@@ -144,7 +143,6 @@ export function LoanApplicationPanel({ customerId, onError, onMessage }: SharedP
 
   const onAdvance = async (loan: Loan) => {
     setBusy(true)
-    onError('')
     try {
       await api(`/api/loans/${loan.id}/advance`, { method: 'POST' })
       onMessage(`Advanced ${loan.loanNumber}.`)
@@ -168,7 +166,6 @@ export function LoanApplicationPanel({ customerId, onError, onMessage }: SharedP
     if (!approvalDialog) return
     const { approvalId, action } = approvalDialog
     setBusy(true)
-    onError('')
     try {
       await api(`/api/approvals/${approvalId}/${action}`, {
         method: 'POST',
@@ -542,7 +539,6 @@ export function PaymentTermsPanel({ customerId, onError, onMessage }: SharedProp
     e.preventDefault()
     if (loanId === '') return
     setBusy(true)
-    onError('')
     try {
       const result = await api<{ loan: Loan; schedule: LoanScheduleItem[] }>(
         `/api/customers/${customerId}/loans/${loanId}/terms`,
@@ -945,7 +941,6 @@ export function RecordPaymentPanel({
     e.preventDefault()
     if (loanId === '') return
     setBusy(true)
-    onError('')
     try {
       await api(`/api/customers/${customerId}/loans/${loanId}/payments`, {
         method: 'POST',
@@ -1127,7 +1122,6 @@ export function StatementOfAccountPanel({ customerId, onError }: SharedProps) {
 
   const loadStatement = async () => {
     setLoading(true)
-    onError('')
     try {
       const qs = new URLSearchParams()
       if (loanId !== '') qs.set('loanId', String(loanId))

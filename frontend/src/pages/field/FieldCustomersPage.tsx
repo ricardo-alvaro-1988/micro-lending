@@ -3,12 +3,13 @@ import { Link } from 'react-router-dom'
 import { api } from '../../api/client'
 import { LoadingBlock } from '../../components/ListLoading'
 import type { CustomerListItem } from '../../types'
+import { useToast } from '../../toast/ToastContext'
 
 export function FieldCustomersPage() {
   const [list, setList] = useState<CustomerListItem[]>([])
   const [q, setQ] = useState('')
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+  const toast = useToast()
 
   const load = async (term = q) => {
     setLoading(true)
@@ -23,7 +24,7 @@ export function FieldCustomersPage() {
   }
 
   useEffect(() => {
-    load().catch((err) => setError(err instanceof Error ? err.message : 'Failed to load'))
+    load().catch((err) => toast.error(err instanceof Error ? err.message : 'Failed to load'))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -52,10 +53,6 @@ export function FieldCustomersPage() {
           Go
         </button>
       </div>
-
-      {error && (
-        <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
-      )}
 
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
         {loading && list.length === 0 ? (

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { api } from '../../api/client'
 import { LoadingBlock } from '../../components/ListLoading'
 import type { FieldDuePayment } from '../../types'
+import { useToast } from '../../toast/ToastContext'
 
 const money = (n: number) =>
   n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -11,13 +12,13 @@ export function FieldDuePage() {
   const [items, setItems] = useState<FieldDuePayment[]>([])
   const [q, setQ] = useState('')
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+  const toast = useToast()
 
   useEffect(() => {
     setLoading(true)
     api<FieldDuePayment[]>('/api/field/due-payments')
       .then(setItems)
-      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load due payments'))
+      .catch((err) => toast.error(err instanceof Error ? err.message : 'Failed to load due payments'))
       .finally(() => setLoading(false))
   }, [])
 
@@ -62,10 +63,6 @@ export function FieldDuePage() {
         onChange={(e) => setQ(e.target.value)}
         autoComplete="off"
       />
-
-      {error && (
-        <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
-      )}
 
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
         {filtered.length === 0 ? (

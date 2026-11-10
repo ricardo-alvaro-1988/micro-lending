@@ -7,6 +7,7 @@ import { LoadingTableRow } from '../components/ListLoading'
 import { StatusTag } from '../components/StatusTag'
 import { notifyPaymentSchedulesChanged } from '../notify'
 import type { LoanProduct } from '../types'
+import { useToast } from '../toast/ToastContext'
 
 /** @deprecated Prefer importing from `../notify`. */
 export { notifyPaymentSchedulesChanged }
@@ -44,8 +45,7 @@ export function PaymentSchedulePage() {
   const canManage = can('paymentSchedule.manage')
   const [items, setItems] = useState<PendingItem[]>([])
   const [selectedId, setSelectedId] = useState<number | null>(null)
-  const [error, setError] = useState('')
-  const [message, setMessage] = useState('')
+  const toast = useToast()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [schedule, setSchedule] = useState<ScheduleRow[]>([])
@@ -63,7 +63,6 @@ export function PaymentSchedulePage() {
 
   const load = useCallback(async () => {
     setLoading(true)
-    setError('')
     try {
       const [list, productList] = await Promise.all([
         api<PendingItem[]>(withBranchQuery('/api/payment-schedules/pending', filterBranchId)),
@@ -76,7 +75,7 @@ export function PaymentSchedulePage() {
         setSchedule([])
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load payment schedules')
+      toast.error(err instanceof Error ? err.message : 'Failed to load payment schedules')
     } finally {
       setLoading(false)
     }
@@ -95,8 +94,6 @@ export function PaymentSchedulePage() {
   const select = (item: PendingItem) => {
     setSelectedId(item.loanId)
     setSchedule([])
-    setMessage('')
-    setError('')
     setForm({
       loanProductId: 0,
       amount: String(item.amount),
@@ -115,8 +112,6 @@ export function PaymentSchedulePage() {
     e.preventDefault()
     if (!selected || !canManage) return
     setSaving(true)
-    setError('')
-    setMessage('')
     try {
       const result = await api<{ schedule: ScheduleRow[] }>(`/api/payment-schedules/${selected.loanId}/terms`, {
         method: 'PUT',
@@ -132,12 +127,12 @@ export function PaymentSchedulePage() {
         }),
       })
       setSchedule(result.schedule ?? [])
-      setMessage(`Payment schedule created for ${selected.loanNumber}.`)
+      toast.success(`Payment schedule created for ${selected.loanNumber}.`)
       notifyPaymentSchedulesChanged()
       await load()
       setSelectedId(null)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save payment schedule')
+      toast.error(err instanceof Error ? err.message : 'Failed to save payment schedule')
     } finally {
       setSaving(false)
     }
@@ -156,13 +151,6 @@ export function PaymentSchedulePage() {
           Refresh
         </ActionButton>
       </div>
-
-      {error && <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
-      {message && (
-        <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-          {message}
-        </div>
-      )}
 
       <div className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
         <div className="overflow-auto rounded-xl border border-slate-200 bg-white shadow-sm">

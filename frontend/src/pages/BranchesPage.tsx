@@ -5,6 +5,7 @@ import { ActionButton } from '../components/ActionButton'
 import { LoadingTableRow } from '../components/ListLoading'
 import { ActiveTag } from '../components/StatusTag'
 import type { Branch } from '../types'
+import { useToast } from '../toast/ToastContext'
 
 const emptyForm = () => ({
   name: '',
@@ -25,8 +26,7 @@ export function BranchesPage() {
   const [branches, setBranches] = useState<Branch[]>([])
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [form, setForm] = useState(emptyForm())
-  const [error, setError] = useState('')
-  const [message, setMessage] = useState('')
+  const toast = useToast()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [deletingId, setDeletingId] = useState<number | null>(null)
@@ -36,7 +36,7 @@ export function BranchesPage() {
     try {
       setBranches(await api<Branch[]>('/api/branches'))
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load branches')
+      toast.error(err instanceof Error ? err.message : 'Failed to load branches')
     } finally {
       setLoading(false)
     }
@@ -49,8 +49,6 @@ export function BranchesPage() {
   const resetNew = () => {
     setSelectedId(null)
     setForm(emptyForm())
-    setMessage('')
-    setError('')
   }
 
   const selectBranch = (branch: Branch) => {
@@ -67,15 +65,11 @@ export function BranchesPage() {
       email: branch.email ?? '',
       isActive: branch.isActive,
     })
-    setMessage('')
-    setError('')
   }
 
   const onSave = async (e: FormEvent) => {
     e.preventDefault()
     setSaving(true)
-    setError('')
-    setMessage('')
     try {
       const payload = {
         name: form.name.trim(),
@@ -94,7 +88,7 @@ export function BranchesPage() {
           method: 'POST',
           body: JSON.stringify(payload),
         })
-        setMessage('Branch created.')
+        toast.success('Branch created.')
         await load()
         selectBranch(created)
       } else {
@@ -102,12 +96,12 @@ export function BranchesPage() {
           method: 'PUT',
           body: JSON.stringify(payload),
         })
-        setMessage('Branch updated.')
+        toast.success('Branch updated.')
         await load()
         selectBranch(updated)
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Save failed')
+      toast.error(err instanceof Error ? err.message : 'Save failed')
     } finally {
       setSaving(false)
     }
@@ -116,14 +110,13 @@ export function BranchesPage() {
   const onDelete = async (id: number) => {
     if (!confirm('Delete this branch?')) return
     setDeletingId(id)
-    setError('')
     try {
       await api(`/api/branches/${id}`, { method: 'DELETE' })
       if (selectedId === id) resetNew()
-      setMessage('Branch deleted.')
+      toast.success('Branch deleted.')
       await load()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Delete failed')
+      toast.error(err instanceof Error ? err.message : 'Delete failed')
     } finally {
       setDeletingId(null)
     }
@@ -144,11 +137,6 @@ export function BranchesPage() {
           </ActionButton>
         )}
       </div>
-
-      {error && <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
-      {message && (
-        <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{message}</div>
-      )}
 
       <div className="grid gap-6 xl:grid-cols-[340px_1fr]">
         <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">

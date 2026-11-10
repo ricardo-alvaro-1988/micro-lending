@@ -4,6 +4,7 @@ import { useAuth } from '../auth/AuthContext'
 import { ActionButton } from '../components/ActionButton'
 import { LoadingBlock } from '../components/ListLoading'
 import type { AgentOption } from '../types'
+import { useToast } from '../toast/ToastContext'
 
 type Assignee = {
   userId: string
@@ -16,14 +17,12 @@ export function PaymentScheduleSettingsPage() {
   const canManage = can('paymentSchedule.settings')
   const [users, setUsers] = useState<AgentOption[]>([])
   const [selected, setSelected] = useState<string[]>([])
-  const [error, setError] = useState('')
-  const [message, setMessage] = useState('')
+  const toast = useToast()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
   const load = async () => {
     setLoading(true)
-    setError('')
     try {
       const [options, assignees] = await Promise.all([
         api<AgentOption[]>('/api/users/options'),
@@ -32,7 +31,7 @@ export function PaymentScheduleSettingsPage() {
       setUsers(options)
       setSelected(assignees.map((a) => a.userId))
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load settings')
+      toast.error(err instanceof Error ? err.message : 'Failed to load settings')
     } finally {
       setLoading(false)
     }
@@ -52,21 +51,19 @@ export function PaymentScheduleSettingsPage() {
     e.preventDefault()
     if (!canManage) return
     setSaving(true)
-    setError('')
-    setMessage('')
     try {
       const saved = await api<Assignee[]>('/api/payment-schedules/assignees', {
         method: 'PUT',
         body: JSON.stringify({ userIds: selected }),
       })
       setSelected(saved.map((a) => a.userId))
-      setMessage(
+      toast.success(
         saved.length === 0
           ? 'No users assigned. Approved-Final loans will not notify anyone.'
           : `${saved.length} user${saved.length === 1 ? '' : 's'} will be notified for Approved-Final payment schedules.`,
       )
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Save failed')
+      toast.error(err instanceof Error ? err.message : 'Save failed')
     } finally {
       setSaving(false)
     }
@@ -81,13 +78,6 @@ export function PaymentScheduleSettingsPage() {
           payment schedule under Transaction → Payment Schedule. You can assign multiple users.
         </p>
       </div>
-
-      {error && <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
-      {message && (
-        <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-          {message}
-        </div>
-      )}
 
       <form onSubmit={onSave} className="space-y-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
         <div className="flex items-center justify-between gap-3">

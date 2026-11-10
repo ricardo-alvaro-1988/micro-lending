@@ -1,7 +1,8 @@
-import type { ReactNode } from 'react'
+import { useEffect, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { ActionButton } from '../../components/ActionButton'
 import { LoadingBlock } from '../../components/ListLoading'
+import { useToast } from '../../toast/ToastContext'
 
 export function ReportChrome({
   title,
@@ -24,6 +25,12 @@ export function ReportChrome({
   summary?: ReactNode
   children: ReactNode
 }) {
+  const toast = useToast()
+
+  useEffect(() => {
+    if (error) toast.error(error)
+  }, [error, toast])
+
   return (
     <div className="space-y-4 print:space-y-2">
       <div className="print:hidden">
@@ -52,12 +59,6 @@ export function ReportChrome({
 
       {filters && (
         <div className="rounded-xl border border-slate-200 bg-white p-3 print:hidden">{filters}</div>
-      )}
-
-      {error && (
-        <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 print:hidden">
-          {error}
-        </div>
       )}
 
       {summary && !loading ? summary : null}

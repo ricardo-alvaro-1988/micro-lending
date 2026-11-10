@@ -4,6 +4,7 @@ import { ActionButton } from '../components/ActionButton'
 import { LoadingTableRow } from '../components/ListLoading'
 import { StatusTag } from '../components/StatusTag'
 import type { AuditLogEntry } from '../types'
+import { useToast } from '../toast/ToastContext'
 
 const fieldClass = 'rounded-md border border-slate-300 px-3 py-2 text-sm'
 
@@ -20,13 +21,12 @@ export function AuditLogPage() {
   const [entityType, setEntityType] = useState('')
   const [from, setFrom] = useState('')
   const [to, setTo] = useState('')
-  const [error, setError] = useState('')
+  const toast = useToast()
   const [loading, setLoading] = useState(true)
   const [expandedId, setExpandedId] = useState<number | null>(null)
 
   const load = async () => {
     setLoading(true)
-    setError('')
     try {
       const params = new URLSearchParams()
       if (entityType.trim()) params.set('entityType', entityType.trim())
@@ -35,7 +35,7 @@ export function AuditLogPage() {
       const qs = params.toString()
       setRows(await api<AuditLogEntry[]>(`/api/audit-logs${qs ? `?${qs}` : ''}`))
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load audit log')
+      toast.error(err instanceof Error ? err.message : 'Failed to load audit log')
     } finally {
       setLoading(false)
     }
@@ -54,10 +54,6 @@ export function AuditLogPage() {
           Who changed roles, users, permissions, late fees, and cash remittances.
         </p>
       </div>
-
-      {error && (
-        <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
-      )}
 
       <div className="flex flex-wrap items-end gap-2">
         <label className="text-sm text-slate-600">

@@ -14,6 +14,7 @@ import { ApprovalCommentViewer } from './ApprovalCommentViewer'
 import { CustomerAvatar } from './CustomerAvatar'
 import { LoadingBlock } from './ListLoading'
 import { StatusTag } from './StatusTag'
+import { useToast } from '../toast/ToastContext'
 
 export type LoanApplicationReview = {
   loan: Loan
@@ -59,7 +60,7 @@ type Props = {
 
 export function LoanApplicationReviewDialog({ loanId, onClose, headerActions }: Props) {
   const [review, setReview] = useState<LoanApplicationReview | null>(null)
-  const [error, setError] = useState('')
+  const toast = useToast()
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<Tab>('personal')
   const [fileError, setFileError] = useState('')
@@ -67,7 +68,6 @@ export function LoanApplicationReviewDialog({ loanId, onClose, headerActions }: 
   useEffect(() => {
     let cancelled = false
     setLoading(true)
-    setError('')
     setFileError('')
     setReview(null)
     setTab('personal')
@@ -76,7 +76,7 @@ export function LoanApplicationReviewDialog({ loanId, onClose, headerActions }: 
         if (!cancelled) setReview(data)
       })
       .catch((err) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load application')
+        if (!cancelled) toast.error(err instanceof Error ? err.message : 'Failed to load application')
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -173,11 +173,6 @@ export function LoanApplicationReviewDialog({ loanId, onClose, headerActions }: 
           </div>
         </div>
 
-        {error && (
-          <div className="mx-5 mt-4 shrink-0 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-            {error}
-          </div>
-        )}
         {fileError && (
           <div className="mx-5 mt-2 shrink-0 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
             {fileError}
