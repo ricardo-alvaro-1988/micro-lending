@@ -83,6 +83,7 @@ public class ActivityController : ControllerBase
             loan.LoanNumber,
             loan.CustomerId,
             loan.Customer.FullName,
+            !string.IsNullOrWhiteSpace(loan.Customer.ProfilePictureStoredFileName),
             loan.Amount,
             loan.Flow.Name,
             loan.CurrentStage.Name,

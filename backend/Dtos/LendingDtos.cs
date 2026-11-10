@@ -499,6 +499,7 @@ public record LoanActivityTrailDto(
     string LoanNumber,
     int CustomerId,
     string CustomerName,
+    bool HasCustomerProfilePicture,
     decimal Amount,
     string FlowName,
     string CurrentStageName,
