@@ -6,13 +6,15 @@ import { ActionButton } from '../components/ActionButton'
 import { ApprovalNotesDialog } from '../components/ApprovalNotesDialog'
 import { LoadingTableRow } from '../components/ListLoading'
 import { StatusTag } from '../components/StatusTag'
+import {
+  notifyApprovalsChanged,
+  notifyLoansChanged,
+  notifyPaymentSchedulesChanged,
+} from '../notify'
 import type { ApprovalItem } from '../types'
-import { notifyLoansChanged } from './LoansPage'
-import { notifyPaymentSchedulesChanged } from './PaymentSchedulePage'
 
-export function notifyApprovalsChanged() {
-  window.dispatchEvent(new Event('ml:approvals-changed'))
-}
+/** @deprecated Prefer importing from `../notify`. */
+export { notifyApprovalsChanged }
 
 type PendingDecision = {
   id: number
