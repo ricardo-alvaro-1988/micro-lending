@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { api } from '../api/client'
 import { useBranchScope, withBranchQuery } from '../branch/BranchContext'
+import { CustomerAvatar } from '../components/CustomerAvatar'
 import { RecordPaymentPanel } from '../components/customers/CustomerFinancePanels'
 import type { CustomerListItem } from '../types'
 
@@ -131,12 +132,21 @@ export function RecordPaymentPage() {
                 <li key={c.id}>
                   <button
                     type="button"
-                    className="flex w-full flex-col items-start px-3 py-2 text-left hover:bg-sky-50"
+                    className="flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-sky-50"
                     onClick={() => pickCustomer(c)}
                   >
-                    <span className="text-sm font-medium text-slate-900">{c.fullName}</span>
-                    <span className="text-xs text-slate-500">
-                      {[c.mobile, c.branchName, c.groupName].filter(Boolean).join(' · ') || 'No mobile'}
+                    <CustomerAvatar
+                      customerId={c.id}
+                      hasPicture={c.hasProfilePicture}
+                      name={c.fullName}
+                      className="h-9 w-9 shrink-0 rounded-full text-[10px]"
+                      textClassName="bg-slate-200 text-slate-700"
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-medium text-slate-900">{c.fullName}</span>
+                      <span className="block truncate text-xs text-slate-500">
+                        {[c.mobile, c.branchName, c.groupName].filter(Boolean).join(' · ') || 'No mobile'}
+                      </span>
                     </span>
                   </button>
                 </li>
@@ -148,10 +158,19 @@ export function RecordPaymentPage() {
           )}
         </div>
         {selected && (
-          <p className="mt-2 text-sm text-slate-600">
-            Selected: <strong>{selected.fullName}</strong>
-            {selected.mobile ? ` · ${selected.mobile}` : ''}
-          </p>
+          <div className="mt-3 flex items-center gap-3">
+            <CustomerAvatar
+              customerId={selected.id}
+              hasPicture={selected.hasProfilePicture}
+              name={selected.fullName}
+              className="h-11 w-11 shrink-0 rounded-full text-xs"
+              textClassName="bg-[#0f2744] text-sky-100"
+            />
+            <p className="text-sm text-slate-600">
+              Selected: <strong>{selected.fullName}</strong>
+              {selected.mobile ? ` · ${selected.mobile}` : ''}
+            </p>
+          </div>
         )}
       </div>
 
