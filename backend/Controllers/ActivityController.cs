@@ -24,12 +24,17 @@ public class ActivityController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<LoanActivityTrailDto>>> GetAll(
+    public async Task<ActionResult<PagedLoanActivityTrailsDto>> GetAll(
         [FromQuery] string? q = null,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
         [FromQuery] int? branchId = null)
     {
         var scope = await _branchScope.ResolveAsync(User, branchId);
         if (scope is null) return Unauthorized();
+
+        page = Math.Max(1, page);
+        pageSize = Math.Clamp(pageSize, 5, 100);
 
         var query = BranchScopeService.Loans(
             _db.Loans
@@ -51,8 +56,18 @@ public class ActivityController : ControllerBase
                 l.Customer.FullName.Contains(term));
         }
 
-        var loans = await query.OrderByDescending(l => l.UpdatedAt).Take(100).ToListAsync();
-        return Ok(loans.Select(MapTrail).ToList());
+        var totalCount = await query.CountAsync();
+        var loans = await query
+            .OrderByDescending(l => l.UpdatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        return Ok(new PagedLoanActivityTrailsDto(
+            loans.Select(MapTrail).ToList(),
+            page,
+            pageSize,
+            totalCount));
     }
 
     [HttpGet("{loanId:int}")]
