@@ -313,6 +313,13 @@ export type LoanActivityTrail = {
   steps: LoanActivityStep[]
 }
 
+export type PagedLoanActivityTrails = {
+  items: LoanActivityTrail[]
+  page: number
+  pageSize: number
+  totalCount: number
+}
+
 export type CustomerDocument = {
   id: number
   label: string

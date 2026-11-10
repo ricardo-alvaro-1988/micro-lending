@@ -5,7 +5,9 @@ import { ActionButton } from '../components/ActionButton'
 import { CustomerAvatar } from '../components/CustomerAvatar'
 import { LoadingBlock } from '../components/ListLoading'
 import { StatusTag } from '../components/StatusTag'
-import type { LoanActivityStep, LoanActivityTrail } from '../types'
+import type { LoanActivityStep, LoanActivityTrail, PagedLoanActivityTrails } from '../types'
+
+const PAGE_SIZE = 20
 
 const money = (n: number) =>
   n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -127,14 +129,28 @@ export function ActivityPage() {
   const { filterBranchId } = useBranchScope()
   const [trails, setTrails] = useState<LoanActivityTrail[]>([])
   const [q, setQ] = useState('')
+  const [page, setPage] = useState(1)
+  const [totalCount, setTotalCount] = useState(0)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
 
-  const load = async (term = q) => {
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE))
+  const from = totalCount === 0 ? 0 : (page - 1) * PAGE_SIZE + 1
+  const to = Math.min(page * PAGE_SIZE, totalCount)
+
+  const load = async (pageNum = page, term = q) => {
     setLoading(true)
     try {
-      const path = term.trim() ? `/api/activity?q=${encodeURIComponent(term.trim())}` : '/api/activity'
-      setTrails(await api<LoanActivityTrail[]>(withBranchQuery(path, filterBranchId)))
+      const params = new URLSearchParams()
+      params.set('page', String(pageNum))
+      params.set('pageSize', String(PAGE_SIZE))
+      if (term.trim()) params.set('q', term.trim())
+      const data = await api<PagedLoanActivityTrails>(
+        withBranchQuery(`/api/activity?${params.toString()}`, filterBranchId),
+      )
+      setTrails(data.items)
+      setTotalCount(data.totalCount)
+      setPage(data.page)
       setError('')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load activity')
@@ -144,9 +160,18 @@ export function ActivityPage() {
   }
 
   useEffect(() => {
-    void load()
+    void load(1)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterBranchId])
+
+  const search = () => {
+    void load(1)
+  }
+
+  const goTo = (next: number) => {
+    const clamped = Math.min(Math.max(1, next), totalPages)
+    void load(clamped)
+  }
 
   return (
     <div className="space-y-6">
@@ -164,10 +189,10 @@ export function ActivityPage() {
             value={q}
             onChange={(e) => setQ(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') void load()
+              if (e.key === 'Enter') search()
             }}
           />
-          <ActionButton type="button" onClick={() => void load()}>
+          <ActionButton type="button" onClick={search}>
             Search
           </ActionButton>
         </div>
@@ -184,51 +209,107 @@ export function ActivityPage() {
           No loan activity yet. Create a loan to start the process trail.
         </div>
       ) : (
-        <div className="space-y-4">
-          {trails.map((trail) => (
-            <article key={trail.loanId} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-              <div className="flex flex-wrap items-start gap-3">
-                <CustomerAvatar
-                  customerId={trail.customerId}
-                  hasPicture={trail.hasCustomerProfilePicture}
-                  name={trail.customerName}
-                  className="h-12 w-12 shrink-0 rounded-full text-sm"
-                  textClassName="bg-[#0f2744] text-sky-100"
-                />
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="font-semibold text-slate-900">{trail.loanNumber}</h3>
-                    <StatusTag status={trail.status} />
-                  </div>
-                  <p className="mt-1 text-sm text-slate-600">
-                    <span className="font-medium text-slate-800">{trail.customerName}</span>
-                    {' · '}
-                    {trail.flowName}
-                    {' · '}
-                    {money(trail.amount)}
-                  </p>
-                  <p className="text-xs text-slate-500">
-                    Created by {trail.createdBy} · {new Date(trail.createdAt).toLocaleString()} · Now at{' '}
-                    {trail.currentStageName}
-                  </p>
-                </div>
-              </div>
+        <>
+          <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-slate-600">
+            <span>
+              Showing {from}–{to} of {totalCount.toLocaleString()}
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-40"
+                disabled={page <= 1 || loading}
+                onClick={() => goTo(page - 1)}
+              >
+                Previous
+              </button>
+              <span className="tabular-nums text-slate-500">
+                Page {page} of {totalPages}
+              </span>
+              <button
+                type="button"
+                className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-40"
+                disabled={page >= totalPages || loading}
+                onClick={() => goTo(page + 1)}
+              >
+                Next
+              </button>
+            </div>
+          </div>
 
-              <div className="mt-4 flex flex-wrap items-center gap-2">
-                {trail.steps.map((step, index) => (
-                  <div key={`${trail.loanId}-${step.id}-${index}`} className="flex items-center gap-2">
-                    <ActivityStepTag step={step} />
-                    {index < trail.steps.length - 1 && (
-                      <span className="text-slate-300" aria-hidden>
-                        →
-                      </span>
-                    )}
+          <div className="space-y-4">
+            {trails.map((trail) => (
+              <article key={trail.loanId} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="flex flex-wrap items-start gap-3">
+                  <CustomerAvatar
+                    customerId={trail.customerId}
+                    hasPicture={trail.hasCustomerProfilePicture}
+                    name={trail.customerName}
+                    className="h-12 w-12 shrink-0 rounded-full text-sm"
+                    textClassName="bg-[#0f2744] text-sky-100"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="font-semibold text-slate-900">{trail.loanNumber}</h3>
+                      <StatusTag status={trail.status} />
+                    </div>
+                    <p className="mt-1 text-sm text-slate-600">
+                      <span className="font-medium text-slate-800">{trail.customerName}</span>
+                      {' · '}
+                      {trail.flowName}
+                      {' · '}
+                      {money(trail.amount)}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      Created by {trail.createdBy} · {new Date(trail.createdAt).toLocaleString()} · Now at{' '}
+                      {trail.currentStageName}
+                    </p>
                   </div>
-                ))}
-              </div>
-            </article>
-          ))}
-        </div>
+                </div>
+
+                <div className="mt-4 flex flex-wrap items-center gap-2">
+                  {trail.steps.map((step, index) => (
+                    <div key={`${trail.loanId}-${step.id}-${index}`} className="flex items-center gap-2">
+                      <ActivityStepTag step={step} />
+                      {index < trail.steps.length - 1 && (
+                        <span className="text-slate-300" aria-hidden>
+                          →
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </article>
+            ))}
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-slate-600">
+            <span>
+              Showing {from}–{to} of {totalCount.toLocaleString()}
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-40"
+                disabled={page <= 1 || loading}
+                onClick={() => goTo(page - 1)}
+              >
+                Previous
+              </button>
+              <span className="tabular-nums text-slate-500">
+                Page {page} of {totalPages}
+              </span>
+              <button
+                type="button"
+                className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-40"
+                disabled={page >= totalPages || loading}
+                onClick={() => goTo(page + 1)}
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        </>
       )}
     </div>
   )

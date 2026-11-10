@@ -508,6 +508,12 @@ public record LoanActivityTrailDto(
     string CreatedBy,
     IReadOnlyList<LoanActivityStepDto> Steps);
 
+public record PagedLoanActivityTrailsDto(
+    IReadOnlyList<LoanActivityTrailDto> Items,
+    int Page,
+    int PageSize,
+    int TotalCount);
+
 public record PaymentScheduleAssigneeDto(
     string UserId,
     string FullName,
