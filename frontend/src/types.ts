@@ -303,6 +303,7 @@ export type LoanActivityTrail = {
   loanNumber: string
   customerId: number
   customerName: string
+  hasCustomerProfilePicture: boolean
   amount: number
   flowName: string
   currentStageName: string

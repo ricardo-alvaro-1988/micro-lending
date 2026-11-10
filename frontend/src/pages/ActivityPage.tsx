@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { api } from '../api/client'
 import { useBranchScope, withBranchQuery } from '../branch/BranchContext'
 import { ActionButton } from '../components/ActionButton'
+import { CustomerAvatar } from '../components/CustomerAvatar'
 import { LoadingBlock } from '../components/ListLoading'
 import { StatusTag } from '../components/StatusTag'
 import type { LoanActivityStep, LoanActivityTrail } from '../types'
@@ -186,8 +187,15 @@ export function ActivityPage() {
         <div className="space-y-4">
           {trails.map((trail) => (
             <article key={trail.loanId} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
+              <div className="flex flex-wrap items-start gap-3">
+                <CustomerAvatar
+                  customerId={trail.customerId}
+                  hasPicture={trail.hasCustomerProfilePicture}
+                  name={trail.customerName}
+                  className="h-12 w-12 shrink-0 rounded-full text-sm"
+                  textClassName="bg-[#0f2744] text-sky-100"
+                />
+                <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <h3 className="font-semibold text-slate-900">{trail.loanNumber}</h3>
                     <StatusTag status={trail.status} />
