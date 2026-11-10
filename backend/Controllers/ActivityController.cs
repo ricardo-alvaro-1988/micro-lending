@@ -70,6 +70,53 @@ public class ActivityController : ControllerBase
             totalCount));
     }
 
+    /// <summary>Day-to-day feed: all loan-process activity events that occurred today (UTC).</summary>
+    [HttpGet("today/summary")]
+    public async Task<ActionResult<TodayActivitySummaryDto>> TodaySummary([FromQuery] int? branchId = null)
+    {
+        var scope = await _branchScope.ResolveAsync(User, branchId);
+        if (scope is null) return Unauthorized();
+
+        var day = DateTime.UtcNow.Date;
+        var dayEnd = day.AddDays(1);
+
+        var scopedLoans = BranchScopeService.Loans(_db.Loans.AsNoTracking(), scope);
+
+        var query =
+            from act in _db.LoanActivities.AsNoTracking()
+            join loan in scopedLoans on act.LoanId equals loan.Id
+            where act.OccurredAt >= day && act.OccurredAt < dayEnd
+            orderby act.OccurredAt descending, act.Id descending
+            select new
+            {
+                act.Id,
+                LoanId = loan.Id,
+                loan.LoanNumber,
+                CustomerName = loan.Customer.FullName,
+                act.Type,
+                act.StageName,
+                act.ActorName,
+                act.Notes,
+                act.OccurredAt,
+            };
+
+        var count = await query.CountAsync();
+        var rows = await query.Take(8).ToListAsync();
+        var latest = rows
+            .Select(r => new TodayActivityItemDto(
+                r.Id,
+                r.LoanId,
+                r.LoanNumber,
+                r.CustomerName,
+                r.Type.ToString(),
+                r.StageName,
+                r.ActorName,
+                r.Notes,
+                r.OccurredAt))
+            .ToList();
+        return Ok(new TodayActivitySummaryDto(count, day, latest));
+    }
+
     [HttpGet("{loanId:int}")]
     public async Task<ActionResult<LoanActivityTrailDto>> Get(int loanId)
     {
