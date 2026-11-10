@@ -116,9 +116,14 @@ public class LoansController : ControllerBase
     }
 
     [HttpGet("{id:int}/details")]
-    [Authorize(Policy = $"perm:{PermissionCodes.LoansView}")]
     public async Task<ActionResult<LoanDetailBundleDto>> GetDetails(int id)
     {
+        // Approvers need full application details without requiring loans.view.
+        var canLoans = User.HasClaim("permission", PermissionCodes.LoansView);
+        var canApprovals = User.HasClaim("permission", PermissionCodes.ApprovalsView)
+            || User.HasClaim("permission", PermissionCodes.ApprovalsManage);
+        if (!canLoans && !canApprovals) return Forbid();
+
         var user = await _userManager.GetUserAsync(User);
         if (user is null) return Unauthorized();
         var scope = await _branchScope.ResolveAsync(User);
