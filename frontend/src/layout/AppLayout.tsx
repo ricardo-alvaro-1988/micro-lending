@@ -404,7 +404,7 @@ export function AppLayout() {
   return (
     <div className="flex min-h-screen">
       <aside
-        className={`flex flex-col bg-[var(--sidebar)] text-white transition-[width] duration-200 ${
+        className={`flex flex-col bg-[var(--sidebar)] text-white transition-[width] duration-200 print:hidden ${
           collapsed ? 'w-[72px]' : 'w-64'
         }`}
       >
@@ -565,7 +565,7 @@ export function AppLayout() {
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex items-center justify-between border-b border-[var(--border)] bg-white px-6 py-4">
+        <header className="flex items-center justify-between border-b border-[var(--border)] bg-white px-6 py-4 print:hidden">
           <div className="flex items-center gap-3">
             <button
               type="button"
