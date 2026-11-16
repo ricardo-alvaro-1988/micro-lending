@@ -239,6 +239,26 @@ public class Loan
     public decimal InterestAmount { get; set; }
     public decimal TotalPayable { get; set; }
     public decimal InstallmentAmount { get; set; }
+
+    /// <summary>Header insurance amount (policy / declared total).</summary>
+    public decimal InsuranceAmount { get; set; }
+    /// <summary>Initial savings held at release (not part of disposition deductions).</summary>
+    public decimal InitialSavings { get; set; }
+    /// <summary>Savings collected each installment.</summary>
+    public decimal SavingsPerPeriod { get; set; }
+    /// <summary>Insurance collected each installment.</summary>
+    public decimal InsurancePerPeriod { get; set; }
+    public decimal MembershipFee { get; set; }
+    public decimal ProcessingFee { get; set; }
+    public decimal LoanRedemptionFee { get; set; }
+    public decimal Taxes { get; set; }
+    public decimal NotarialFee { get; set; }
+    public decimal Raffle { get; set; }
+    /// <summary>Sum of membership + processing + redemption + taxes + notarial + raffle.</summary>
+    public decimal TotalDeductions { get; set; }
+    /// <summary>Loan amount minus total deductions (cash released).</summary>
+    public decimal NetProceeds { get; set; }
+
     public LoanStatus Status { get; set; } = LoanStatus.InProgress;
     public string CreatedByUserId { get; set; } = string.Empty;
     public ApplicationUser CreatedByUser { get; set; } = null!;
@@ -262,6 +282,8 @@ public class LoanScheduleItem
     public decimal AmountDue { get; set; }
     public decimal PrincipalPortion { get; set; }
     public decimal InterestPortion { get; set; }
+    public decimal SavingsPortion { get; set; }
+    public decimal InsurancePortion { get; set; }
     /// <summary>Late fee accrued on this installment (recalculated from settings + days late).</summary>
     public decimal PenaltyAmount { get; set; }
     public decimal PaidAmount { get; set; }

@@ -17,6 +17,22 @@ public class LoanProduct
     public int TermCount { get; set; } = 12;
     public PaymentFrequency PaymentFrequency { get; set; } = PaymentFrequency.Monthly;
     public InterestMethod InterestMethod { get; set; } = InterestMethod.Flat;
+
+    /// <summary>Header insurance amount (policy / declared total).</summary>
+    public decimal InsuranceAmount { get; set; }
+    /// <summary>Initial savings held at release.</summary>
+    public decimal InitialSavings { get; set; }
+    /// <summary>Savings collected each installment.</summary>
+    public decimal SavingsPerPeriod { get; set; }
+    /// <summary>Insurance collected each installment.</summary>
+    public decimal InsurancePerPeriod { get; set; }
+    public decimal MembershipFee { get; set; }
+    public decimal ProcessingFee { get; set; }
+    public decimal LoanRedemptionFee { get; set; }
+    public decimal Taxes { get; set; }
+    public decimal NotarialFee { get; set; }
+    public decimal Raffle { get; set; }
+
     public bool IsActive { get; set; } = true;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;

@@ -148,6 +148,19 @@ export type ProcessFlow = {
   stages: ProcessStage[]
 }
 
+export type LoanCharges = {
+  insuranceAmount: number
+  initialSavings: number
+  savingsPerPeriod: number
+  insurancePerPeriod: number
+  membershipFee: number
+  processingFee: number
+  loanRedemptionFee: number
+  taxes: number
+  notarialFee: number
+  raffle: number
+}
+
 export type Loan = {
   id: number
   loanNumber: string
@@ -177,6 +190,18 @@ export type Loan = {
   loanProductId?: number | null
   loanProductName?: string | null
   interestMethod?: string
+  insuranceAmount?: number
+  initialSavings?: number
+  savingsPerPeriod?: number
+  insurancePerPeriod?: number
+  membershipFee?: number
+  processingFee?: number
+  loanRedemptionFee?: number
+  taxes?: number
+  notarialFee?: number
+  raffle?: number
+  totalDeductions?: number
+  netProceeds?: number
 }
 
 export type LoanProduct = {
@@ -188,6 +213,16 @@ export type LoanProduct = {
   termCount: number
   paymentFrequency: string
   interestMethod: string
+  insuranceAmount?: number
+  initialSavings?: number
+  savingsPerPeriod?: number
+  insurancePerPeriod?: number
+  membershipFee?: number
+  processingFee?: number
+  loanRedemptionFee?: number
+  taxes?: number
+  notarialFee?: number
+  raffle?: number
   isActive: boolean
   loanCount: number
   createdAt: string
@@ -200,6 +235,8 @@ export type LoanScheduleItem = {
   amountDue: number
   principalPortion: number
   interestPortion: number
+  savingsPortion?: number
+  insurancePortion?: number
   penaltyAmount: number
   paidAmount: number
   balance: number

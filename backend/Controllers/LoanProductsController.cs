@@ -39,22 +39,11 @@ public class LoanProductsController : ControllerBase
             query = query.Where(p => p.IsActive);
 
         var list = await query
+            .Include(p => p.Loans)
             .OrderBy(p => p.Name)
-            .Select(p => new LoanProductDto(
-                p.Id,
-                p.Name,
-                p.Description,
-                p.Amount,
-                p.InterestRatePercent,
-                p.TermCount,
-                p.PaymentFrequency.ToString(),
-                p.InterestMethod.ToString(),
-                p.IsActive,
-                p.Loans.Count,
-                p.CreatedAt))
             .ToListAsync();
 
-        return Ok(list);
+        return Ok(list.Select(p => Map(p, p.Loans.Count)).ToList());
     }
 
     [HttpGet("{id:int}")]
@@ -62,21 +51,9 @@ public class LoanProductsController : ControllerBase
     public async Task<ActionResult<LoanProductDto>> Get(int id)
     {
         var product = await _db.LoanProducts
-            .Where(p => p.Id == id)
-            .Select(p => new LoanProductDto(
-                p.Id,
-                p.Name,
-                p.Description,
-                p.Amount,
-                p.InterestRatePercent,
-                p.TermCount,
-                p.PaymentFrequency.ToString(),
-                p.InterestMethod.ToString(),
-                p.IsActive,
-                p.Loans.Count,
-                p.CreatedAt))
-            .FirstOrDefaultAsync();
-        return product is null ? NotFound() : Ok(product);
+            .Include(p => p.Loans)
+            .FirstOrDefaultAsync(p => p.Id == id);
+        return product is null ? NotFound() : Ok(Map(product, product.Loans.Count));
     }
 
     [HttpPost]
@@ -190,6 +167,16 @@ public class LoanProductsController : ControllerBase
         product.TermCount = request.TermCount;
         product.PaymentFrequency = frequency;
         product.InterestMethod = method;
+        product.InsuranceAmount = decimal.Round(request.InsuranceAmount, 2);
+        product.InitialSavings = decimal.Round(request.InitialSavings, 2);
+        product.SavingsPerPeriod = decimal.Round(request.SavingsPerPeriod, 2);
+        product.InsurancePerPeriod = decimal.Round(request.InsurancePerPeriod, 2);
+        product.MembershipFee = decimal.Round(request.MembershipFee, 2);
+        product.ProcessingFee = decimal.Round(request.ProcessingFee, 2);
+        product.LoanRedemptionFee = decimal.Round(request.LoanRedemptionFee, 2);
+        product.Taxes = decimal.Round(request.Taxes, 2);
+        product.NotarialFee = decimal.Round(request.NotarialFee, 2);
+        product.Raffle = decimal.Round(request.Raffle, 2);
         product.IsActive = request.IsActive;
         product.UpdatedAt = DateTime.UtcNow;
     }
@@ -204,6 +191,16 @@ public class LoanProductsController : ControllerBase
             p.TermCount,
             p.PaymentFrequency.ToString(),
             p.InterestMethod.ToString(),
+            p.InsuranceAmount,
+            p.InitialSavings,
+            p.SavingsPerPeriod,
+            p.InsurancePerPeriod,
+            p.MembershipFee,
+            p.ProcessingFee,
+            p.LoanRedemptionFee,
+            p.Taxes,
+            p.NotarialFee,
+            p.Raffle,
             p.IsActive,
             loanCount,
             p.CreatedAt);

@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { api } from '../api/client'
 import { ApprovalCommentViewer } from './ApprovalCommentViewer'
 import { LoadingBlock } from './ListLoading'
+import { LoanProceedsBreakdown } from './LoanProceedsBreakdown'
 import { StageTag, StatusTag } from './StatusTag'
 import type { LoanDetailBundle } from '../types'
 import { useToast } from '../toast/ToastContext'
@@ -135,6 +136,7 @@ export function LoanDetailsPanel({ loanId, onClose, className = '', headerAction
                   value={loan.firstDueDate ? loan.firstDueDate.slice(0, 10) : '—'}
                 />
                 <DetailField label="Installment" value={money(loan.installmentAmount)} />
+                <DetailField label="Net proceeds" value={money(loan.netProceeds ?? 0)} />
                 <DetailField label="Product" value={loan.loanProductName || '—'} />
                 <DetailField label="Interest method" value={loan.interestMethod || '—'} />
                 <DetailField label="Created" value={new Date(loan.createdAt).toLocaleString()} />
@@ -144,6 +146,31 @@ export function LoanDetailsPanel({ loanId, onClose, className = '', headerAction
                     <DetailField label="Notes" value={loan.notes} />
                   </div>
                 )}
+                <div className="sm:col-span-2">
+                  <LoanProceedsBreakdown
+                    values={{
+                      amount: loan.amount,
+                      termCount: loan.termCount,
+                      paymentFrequency: loan.paymentFrequency,
+                      insuranceAmount: loan.insuranceAmount,
+                      initialSavings: loan.initialSavings,
+                      membershipFee: loan.membershipFee,
+                      processingFee: loan.processingFee,
+                      loanRedemptionFee: loan.loanRedemptionFee,
+                      taxes: loan.taxes,
+                      notarialFee: loan.notarialFee,
+                      raffle: loan.raffle,
+                      totalDeductions: loan.totalDeductions,
+                      netProceeds: loan.netProceeds,
+                      savingsPerPeriod: loan.savingsPerPeriod,
+                      insurancePerPeriod: loan.insurancePerPeriod,
+                      principalPerPeriod: loan.termCount > 0 ? loan.amount / loan.termCount : 0,
+                      interestPerPeriod:
+                        loan.termCount > 0 ? loan.interestAmount / loan.termCount : 0,
+                      installmentAmount: loan.installmentAmount,
+                    }}
+                  />
+                </div>
               </div>
             )}
 

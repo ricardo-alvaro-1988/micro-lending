@@ -719,8 +719,17 @@ namespace MicroLending.Api.Migrations
                     b.Property<int>("FlowId")
                         .HasColumnType("int");
 
+                    b.Property<decimal>("InitialSavings")
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<decimal>("InstallmentAmount")
                         .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("InsuranceAmount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("InsurancePerPeriod")
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<decimal>("InterestAmount")
@@ -742,6 +751,18 @@ namespace MicroLending.Api.Migrations
                     b.Property<int?>("LoanProductId")
                         .HasColumnType("int");
 
+                    b.Property<decimal>("LoanRedemptionFee")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("MembershipFee")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("NetProceeds")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("NotarialFee")
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<string>("Notes")
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
@@ -749,11 +770,26 @@ namespace MicroLending.Api.Migrations
                     b.Property<int>("PaymentFrequency")
                         .HasColumnType("int");
 
+                    b.Property<decimal>("ProcessingFee")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("Raffle")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("SavingsPerPeriod")
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<int>("Status")
                         .HasColumnType("int");
 
+                    b.Property<decimal>("Taxes")
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<int>("TermCount")
                         .HasColumnType("int");
+
+                    b.Property<decimal>("TotalDeductions")
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<decimal>("TotalPayable")
                         .HasPrecision(18, 2)
@@ -1004,6 +1040,15 @@ namespace MicroLending.Api.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
+                    b.Property<decimal>("InitialSavings")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("InsuranceAmount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("InsurancePerPeriod")
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<int>("InterestMethod")
                         .HasColumnType("int");
 
@@ -1014,13 +1059,34 @@ namespace MicroLending.Api.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
+                    b.Property<decimal>("LoanRedemptionFee")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("MembershipFee")
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(150)
                         .HasColumnType("nvarchar(150)");
 
+                    b.Property<decimal>("NotarialFee")
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<int>("PaymentFrequency")
                         .HasColumnType("int");
+
+                    b.Property<decimal>("ProcessingFee")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("Raffle")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("SavingsPerPeriod")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("Taxes")
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<int>("TermCount")
                         .HasColumnType("int");
@@ -1054,6 +1120,9 @@ namespace MicroLending.Api.Migrations
                     b.Property<int>("InstallmentNumber")
                         .HasColumnType("int");
 
+                    b.Property<decimal>("InsurancePortion")
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<decimal>("InterestPortion")
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
@@ -1071,6 +1140,9 @@ namespace MicroLending.Api.Migrations
 
                     b.Property<decimal>("PrincipalPortion")
                         .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("SavingsPortion")
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<int>("Status")

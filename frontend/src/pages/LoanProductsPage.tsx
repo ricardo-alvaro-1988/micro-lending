@@ -3,6 +3,13 @@ import { api } from '../api/client'
 import { useAuth } from '../auth/AuthContext'
 import { ActionButton } from '../components/ActionButton'
 import { LoadingTableRow } from '../components/ListLoading'
+import {
+  LoanChargeFields,
+  LoanProceedsBreakdown,
+  chargePayloadFrom,
+  chargeStringsFrom,
+  emptyChargeStrings,
+} from '../components/LoanProceedsBreakdown'
 import { ActiveTag } from '../components/StatusTag'
 import type { LoanProduct } from '../types'
 import { useToast } from '../toast/ToastContext'
@@ -16,6 +23,7 @@ const emptyForm = () => ({
   paymentFrequency: 'Monthly',
   interestMethod: 'Flat',
   isActive: true,
+  ...emptyChargeStrings,
 })
 
 export function LoanProductsPage() {
@@ -60,6 +68,7 @@ export function LoanProductsPage() {
       paymentFrequency: product.paymentFrequency,
       interestMethod: product.interestMethod,
       isActive: product.isActive,
+      ...chargeStringsFrom(product),
     })
   }
 
@@ -76,6 +85,7 @@ export function LoanProductsPage() {
         paymentFrequency: form.paymentFrequency,
         interestMethod: form.interestMethod,
         isActive: form.isActive,
+        ...chargePayloadFrom(form),
       }
       if (selectedId == null) {
         const created = await api<LoanProduct>('/api/loan-products', {
@@ -268,6 +278,25 @@ export function LoanProductsPage() {
               </select>
             </div>
           </div>
+
+          <div>
+            <h3 className="mb-2 text-sm font-semibold text-slate-800">Fees, savings & insurance</h3>
+            <LoanChargeFields form={form} setForm={setForm} disabled={!canManage} />
+          </div>
+
+          {Number(form.amount) > 0 && Number(form.termCount) > 0 && (
+            <LoanProceedsBreakdown
+              values={{
+                amount: Number(form.amount),
+                termCount: Number(form.termCount),
+                paymentFrequency: form.paymentFrequency,
+                ...chargePayloadFrom(form),
+                principalPerPeriod: Number(form.amount) / Number(form.termCount),
+                interestPerPeriod:
+                  (Number(form.amount) * Number(form.interestRatePercent || 0)) / 100 / Number(form.termCount),
+              }}
+            />
+          )}
 
           <label className="flex items-center gap-2 text-sm text-slate-700">
             <input
