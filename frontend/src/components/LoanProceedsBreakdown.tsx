@@ -217,8 +217,8 @@ export function LoanChargeFields<T extends Record<string, unknown>>({
       <div className="grid gap-3 sm:grid-cols-2">
         {num('insuranceAmount', 'Insurance (header)')}
         {num('initialSavings', 'Initial savings')}
-        {num('savingsPerPeriod', 'Savings per period')}
-        {num('insurancePerPeriod', 'Insurance per period')}
+        {num('savingsPerPeriod', 'Savings')}
+        {num('insurancePerPeriod', 'Insurance')}
       </div>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {num('membershipFee', 'Membership fee')}
