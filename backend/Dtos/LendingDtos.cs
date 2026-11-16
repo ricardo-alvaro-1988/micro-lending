@@ -296,7 +296,19 @@ public record LoanDto(
     bool HasTerms,
     int? LoanProductId,
     string? LoanProductName,
-    string InterestMethod);
+    string InterestMethod,
+    decimal InsuranceAmount,
+    decimal InitialSavings,
+    decimal SavingsPerPeriod,
+    decimal InsurancePerPeriod,
+    decimal MembershipFee,
+    decimal ProcessingFee,
+    decimal LoanRedemptionFee,
+    decimal Taxes,
+    decimal NotarialFee,
+    decimal Raffle,
+    decimal TotalDeductions,
+    decimal NetProceeds);
 
 public record PagedLoansDto(
     IReadOnlyList<LoanDto> Items,
@@ -339,7 +351,31 @@ public record LoanApplicationReviewDto(
     IReadOnlyList<LoanApprovalHistoryDto> Approvals,
     IReadOnlyList<LoanFieldNoteDto> FieldNotes);
 
-public class CreateLoanRequest
+public class LoanChargeRequest
+{
+    [Range(0, double.MaxValue)]
+    public decimal InsuranceAmount { get; set; }
+    [Range(0, double.MaxValue)]
+    public decimal InitialSavings { get; set; }
+    [Range(0, double.MaxValue)]
+    public decimal SavingsPerPeriod { get; set; }
+    [Range(0, double.MaxValue)]
+    public decimal InsurancePerPeriod { get; set; }
+    [Range(0, double.MaxValue)]
+    public decimal MembershipFee { get; set; }
+    [Range(0, double.MaxValue)]
+    public decimal ProcessingFee { get; set; }
+    [Range(0, double.MaxValue)]
+    public decimal LoanRedemptionFee { get; set; }
+    [Range(0, double.MaxValue)]
+    public decimal Taxes { get; set; }
+    [Range(0, double.MaxValue)]
+    public decimal NotarialFee { get; set; }
+    [Range(0, double.MaxValue)]
+    public decimal Raffle { get; set; }
+}
+
+public class CreateLoanRequest : LoanChargeRequest
 {
     [Required]
     public int CustomerId { get; set; }
@@ -349,7 +385,7 @@ public class CreateLoanRequest
     public decimal Amount { get; set; }
     [Range(0, 1000)]
     public decimal InterestRatePercent { get; set; }
-    [Range(0, 360)]
+    [Range(0, 720)]
     public int TermCount { get; set; }
     public string? PaymentFrequency { get; set; }
     public DateTime? FirstDueDate { get; set; }
@@ -359,13 +395,13 @@ public class CreateLoanRequest
     public string? Notes { get; set; }
 }
 
-public class UpdateLoanTermsRequest
+public class UpdateLoanTermsRequest : LoanChargeRequest
 {
     [Range(0.01, double.MaxValue)]
     public decimal Amount { get; set; }
     [Range(0, 1000)]
     public decimal InterestRatePercent { get; set; }
-    [Range(1, 360)]
+    [Range(1, 720)]
     public int TermCount { get; set; }
     [Required]
     public string PaymentFrequency { get; set; } = "Monthly";
@@ -386,11 +422,21 @@ public record LoanProductDto(
     int TermCount,
     string PaymentFrequency,
     string InterestMethod,
+    decimal InsuranceAmount,
+    decimal InitialSavings,
+    decimal SavingsPerPeriod,
+    decimal InsurancePerPeriod,
+    decimal MembershipFee,
+    decimal ProcessingFee,
+    decimal LoanRedemptionFee,
+    decimal Taxes,
+    decimal NotarialFee,
+    decimal Raffle,
     bool IsActive,
     int LoanCount,
     DateTime CreatedAt);
 
-public class UpsertLoanProductRequest
+public class UpsertLoanProductRequest : LoanChargeRequest
 {
     [Required, MaxLength(150)]
     public string Name { get; set; } = string.Empty;
@@ -400,7 +446,7 @@ public class UpsertLoanProductRequest
     public decimal Amount { get; set; }
     [Range(0, 1000)]
     public decimal InterestRatePercent { get; set; }
-    [Range(1, 360)]
+    [Range(1, 720)]
     public int TermCount { get; set; } = 12;
     [Required]
     public string PaymentFrequency { get; set; } = "Monthly";
@@ -415,6 +461,8 @@ public record LoanScheduleItemDto(
     decimal AmountDue,
     decimal PrincipalPortion,
     decimal InterestPortion,
+    decimal SavingsPortion,
+    decimal InsurancePortion,
     decimal PenaltyAmount,
     decimal PaidAmount,
     decimal Balance,

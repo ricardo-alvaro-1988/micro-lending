@@ -5,6 +5,13 @@ import { ActionButton } from '../ActionButton'
 import { ApprovalCommentViewer } from '../ApprovalCommentViewer'
 import { ApprovalNotesDialog } from '../ApprovalNotesDialog'
 import { LoadingTableRow, PageLoading } from '../ListLoading'
+import {
+  LoanChargeFields,
+  LoanProceedsBreakdown,
+  chargePayloadFrom,
+  chargeStringsFrom,
+  emptyChargeStrings,
+} from '../LoanProceedsBreakdown'
 import { StageTag, StatusTag } from '../StatusTag'
 import {
   notifyApprovalsChanged,
@@ -60,6 +67,7 @@ export function LoanApplicationPanel({ customerId, onError, onMessage }: SharedP
     interestMethod: 'Flat',
     firstDueDate: '',
     notes: '',
+    ...emptyChargeStrings,
   })
 
   const load = async () => {
@@ -126,12 +134,13 @@ export function LoanApplicationPanel({ customerId, onError, onMessage }: SharedP
           interestMethod: form.interestMethod,
           firstDueDate: form.firstDueDate || null,
           notes: form.notes || null,
+          ...chargePayloadFrom(form),
         }),
       })
       onMessage(`Loan ${created.loanNumber} created.`)
       notifyLoansChanged()
       notifyApprovalsChanged()
-      setForm((prev) => ({ ...prev, amount: '', notes: '' }))
+      setForm((prev) => ({ ...prev, amount: '', notes: '', ...emptyChargeStrings }))
       await load()
       await selectLoan(created.id)
     } catch (err) {
@@ -213,6 +222,7 @@ export function LoanApplicationPanel({ customerId, onError, onMessage }: SharedP
                 termCount: String(product.termCount),
                 paymentFrequency: product.paymentFrequency,
                 interestMethod: product.interestMethod,
+                ...chargeStringsFrom(product),
               }))
             }}
           >
@@ -296,6 +306,26 @@ export function LoanApplicationPanel({ customerId, onError, onMessage }: SharedP
             value={form.notes}
             onChange={(e) => setForm({ ...form, notes: e.target.value })}
           />
+          <div className="md:col-span-3">
+            <LoanChargeFields form={form} setForm={setForm} />
+          </div>
+          {Number(form.amount) > 0 && Number(form.termCount) > 0 && (
+            <div className="md:col-span-3">
+              <LoanProceedsBreakdown
+                values={{
+                  amount: Number(form.amount),
+                  termCount: Number(form.termCount),
+                  paymentFrequency: form.paymentFrequency,
+                  ...chargePayloadFrom(form),
+                  principalPerPeriod: Number(form.amount) / Number(form.termCount),
+                  interestPerPeriod:
+                    (Number(form.amount) * Number(form.interestRatePercent || 0)) /
+                    100 /
+                    Number(form.termCount),
+                }}
+              />
+            </div>
+          )}
           <ActionButton type="submit" loading={busy} loadingText="Creating…">
             Create loan application
           </ActionButton>
@@ -489,6 +519,7 @@ export function PaymentTermsPanel({ customerId, onError, onMessage }: SharedProp
     interestMethod: 'Flat',
     firstDueDate: '',
     notes: '',
+    ...emptyChargeStrings,
   })
 
   const loadLoans = async () => {
@@ -518,6 +549,7 @@ export function PaymentTermsPanel({ customerId, onError, onMessage }: SharedProp
       interestMethod: detail.loan.interestMethod || 'Flat',
       firstDueDate: detail.loan.firstDueDate ? detail.loan.firstDueDate.slice(0, 10) : '',
       notes: detail.loan.notes ?? '',
+      ...chargeStringsFrom(detail.loan),
     })
   }
 
@@ -555,6 +587,7 @@ export function PaymentTermsPanel({ customerId, onError, onMessage }: SharedProp
             interestMethod: form.interestMethod,
             firstDueDate: form.firstDueDate,
             notes: form.notes || null,
+            ...chargePayloadFrom(form),
           }),
         },
       )
@@ -562,6 +595,12 @@ export function PaymentTermsPanel({ customerId, onError, onMessage }: SharedProp
       onMessage('Payment terms saved and schedule generated.')
       notifyPaymentSchedulesChanged()
       await loadLoans()
+      if (result.loan) {
+        setForm((prev) => ({
+          ...prev,
+          ...chargeStringsFrom(result.loan),
+        }))
+      }
     } catch (err) {
       onError(err instanceof Error ? err.message : 'Save terms failed')
     } finally {
@@ -626,6 +665,7 @@ export function PaymentTermsPanel({ customerId, onError, onMessage }: SharedProp
                     termCount: String(product.termCount),
                     paymentFrequency: product.paymentFrequency,
                     interestMethod: product.interestMethod,
+                    ...chargeStringsFrom(product),
                   }))
                 }}
                 disabled={!canManage || !readyForTerms}
@@ -727,8 +767,29 @@ export function PaymentTermsPanel({ customerId, onError, onMessage }: SharedProp
             </div>
           </div>
 
+          <LoanChargeFields form={form} setForm={setForm} disabled={!canManage || !readyForTerms} />
+
+          {Number(form.amount) > 0 && Number(form.termCount) > 0 && (
+            <LoanProceedsBreakdown
+              values={{
+                amount: Number(form.amount),
+                termCount: Number(form.termCount),
+                paymentFrequency: form.paymentFrequency,
+                ...chargePayloadFrom(form),
+                totalDeductions: selected?.totalDeductions,
+                netProceeds: selected?.netProceeds,
+                principalPerPeriod: Number(form.amount) / Number(form.termCount),
+                interestPerPeriod:
+                  (Number(form.amount) * Number(form.interestRatePercent || 0)) /
+                  100 /
+                  Number(form.termCount),
+                installmentAmount: selected?.installmentAmount,
+              }}
+            />
+          )}
+
           {selected?.hasTerms && (
-            <div className="grid gap-3 rounded-lg bg-slate-50 p-3 text-sm md:grid-cols-4">
+            <div className="grid gap-3 rounded-lg bg-slate-50 p-3 text-sm md:grid-cols-5">
               <div>
                 <div className="text-xs text-slate-500">Interest</div>
                 <div className="font-medium">{money(selected.interestAmount)}</div>
@@ -740,6 +801,10 @@ export function PaymentTermsPanel({ customerId, onError, onMessage }: SharedProp
               <div>
                 <div className="text-xs text-slate-500">Installment</div>
                 <div className="font-medium">{money(selected.installmentAmount)}</div>
+              </div>
+              <div>
+                <div className="text-xs text-slate-500">Net proceeds</div>
+                <div className="font-medium">{money(selected.netProceeds ?? 0)}</div>
               </div>
               <div>
                 <div className="text-xs text-slate-500">Remaining</div>
@@ -766,6 +831,8 @@ export function PaymentTermsPanel({ customerId, onError, onMessage }: SharedProp
                 <th className="px-3 py-2 font-medium">Amount</th>
                 <th className="px-3 py-2 font-medium">Principal</th>
                 <th className="px-3 py-2 font-medium">Interest</th>
+                <th className="px-3 py-2 font-medium">Savings</th>
+                <th className="px-3 py-2 font-medium">Insurance</th>
                 <th className="px-3 py-2 font-medium">Penalty</th>
                 <th className="px-3 py-2 font-medium">Paid</th>
                 <th className="px-3 py-2 font-medium">Balance</th>
@@ -780,6 +847,8 @@ export function PaymentTermsPanel({ customerId, onError, onMessage }: SharedProp
                   <td className="px-3 py-2">{money(s.amountDue)}</td>
                   <td className="px-3 py-2">{money(s.principalPortion)}</td>
                   <td className="px-3 py-2">{money(s.interestPortion)}</td>
+                  <td className="px-3 py-2">{money(s.savingsPortion ?? 0)}</td>
+                  <td className="px-3 py-2">{money(s.insurancePortion ?? 0)}</td>
                   <td className="px-3 py-2">{s.penaltyAmount ? money(s.penaltyAmount) : '—'}</td>
                   <td className="px-3 py-2">{money(s.paidAmount)}</td>
                   <td className="px-3 py-2 font-medium">{money(s.balance)}</td>

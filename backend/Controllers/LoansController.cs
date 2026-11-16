@@ -365,6 +365,8 @@ public class LoansController : ControllerBase
                 interestMethod = product.InterestMethod;
         }
 
+        var charges = LoanChargeMapping.Resolve(request, product);
+
         var loan = new Loan
         {
             LoanNumber = $"LN-{DateTime.UtcNow:yyyyMMddHHmmss}-{Random.Shared.Next(100, 999)}",
@@ -389,7 +391,8 @@ public class LoansController : ControllerBase
                     request.TermCount,
                     frequency,
                     request.FirstDueDate,
-                    interestMethod);
+                    interestMethod,
+                    charges);
                 _finance.RebuildSchedule(loan);
             }
             else
@@ -398,6 +401,7 @@ public class LoansController : ControllerBase
                 loan.InterestRatePercent = decimal.Round(request.InterestRatePercent, 4);
                 loan.TermCount = request.TermCount;
                 loan.PaymentFrequency = frequency;
+                LoanFinanceService.ApplyCharges(loan, charges);
             }
         }
         catch (InvalidOperationException ex)
@@ -508,7 +512,19 @@ public class LoansController : ControllerBase
             loan.TermCount > 0 && loan.FirstDueDate is not null,
             loan.LoanProductId,
             loan.LoanProduct?.Name,
-            loan.InterestMethod.ToString());
+            loan.InterestMethod.ToString(),
+            loan.InsuranceAmount,
+            loan.InitialSavings,
+            loan.SavingsPerPeriod,
+            loan.InsurancePerPeriod,
+            loan.MembershipFee,
+            loan.ProcessingFee,
+            loan.LoanRedemptionFee,
+            loan.Taxes,
+            loan.NotarialFee,
+            loan.Raffle,
+            loan.TotalDeductions,
+            loan.NetProceeds);
     }
 
     private static CustomerDetailDto MapCustomerDetail(Customer c) =>
@@ -590,6 +606,8 @@ public class LoansController : ControllerBase
                 s.AmountDue,
                 s.PrincipalPortion,
                 s.InterestPortion,
+                s.SavingsPortion,
+                s.InsurancePortion,
                 s.PenaltyAmount,
                 s.PaidAmount,
                 LoanFinanceService.ItemBalance(s),

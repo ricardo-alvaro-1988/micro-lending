@@ -4,6 +4,13 @@ import { useAuth } from '../auth/AuthContext'
 import { useBranchScope, withBranchQuery } from '../branch/BranchContext'
 import { ActionButton } from '../components/ActionButton'
 import { LoadingTableRow } from '../components/ListLoading'
+import {
+  LoanChargeFields,
+  LoanProceedsBreakdown,
+  chargePayloadFrom,
+  chargeStringsFrom,
+  emptyChargeStrings,
+} from '../components/LoanProceedsBreakdown'
 import { StageTag, StatusTag } from '../components/StatusTag'
 import { notifyPaymentSchedulesChanged } from '../notify'
 import type { LoanProduct } from '../types'
@@ -33,6 +40,8 @@ type ScheduleRow = {
   amountDue: number
   principalPortion: number
   interestPortion: number
+  savingsPortion?: number
+  insurancePortion?: number
   status: string
 }
 
@@ -59,6 +68,7 @@ export function PaymentSchedulePage() {
     interestMethod: 'Flat',
     firstDueDate: '',
     notes: '',
+    ...emptyChargeStrings,
   })
 
   const load = useCallback(async () => {
@@ -103,6 +113,7 @@ export function PaymentSchedulePage() {
       interestMethod: 'Flat',
       firstDueDate: '',
       notes: '',
+      ...emptyChargeStrings,
     })
   }
 
@@ -124,6 +135,7 @@ export function PaymentSchedulePage() {
           interestMethod: form.interestMethod,
           firstDueDate: form.firstDueDate,
           notes: form.notes || null,
+          ...chargePayloadFrom(form),
         }),
       })
       setSchedule(result.schedule ?? [])
@@ -249,6 +261,7 @@ export function PaymentSchedulePage() {
                         termCount: String(product.termCount),
                         paymentFrequency: product.paymentFrequency,
                         interestMethod: product.interestMethod,
+                        ...chargeStringsFrom(product),
                       }))
                     }}
                     disabled={!canManage}
@@ -347,6 +360,24 @@ export function PaymentSchedulePage() {
                 </label>
               </div>
 
+              <LoanChargeFields form={form} setForm={setForm} disabled={!canManage} />
+
+              {Number(form.amount) > 0 && Number(form.termCount) > 0 && (
+                <LoanProceedsBreakdown
+                  values={{
+                    amount: Number(form.amount),
+                    termCount: Number(form.termCount),
+                    paymentFrequency: form.paymentFrequency,
+                    ...chargePayloadFrom(form),
+                    principalPerPeriod: Number(form.amount) / Number(form.termCount),
+                    interestPerPeriod:
+                      (Number(form.amount) * Number(form.interestRatePercent || 0)) /
+                      100 /
+                      Number(form.termCount),
+                  }}
+                />
+              )}
+
               {canManage ? (
                 <ActionButton type="submit" loading={saving} loadingText="Creating…">
                   Create payment schedule
@@ -365,6 +396,8 @@ export function PaymentSchedulePage() {
                         <th className="px-3 py-2">Amount</th>
                         <th className="px-3 py-2">Principal</th>
                         <th className="px-3 py-2">Interest</th>
+                        <th className="px-3 py-2">Savings</th>
+                        <th className="px-3 py-2">Insurance</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -375,6 +408,8 @@ export function PaymentSchedulePage() {
                           <td className="px-3 py-2">{money(s.amountDue)}</td>
                           <td className="px-3 py-2">{money(s.principalPortion)}</td>
                           <td className="px-3 py-2">{money(s.interestPortion)}</td>
+                          <td className="px-3 py-2">{money(s.savingsPortion ?? 0)}</td>
+                          <td className="px-3 py-2">{money(s.insurancePortion ?? 0)}</td>
                         </tr>
                       ))}
                     </tbody>

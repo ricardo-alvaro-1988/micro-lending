@@ -16,6 +16,46 @@ public class LoanFinanceService
     public static decimal ItemBalance(LoanScheduleItem item) =>
         Math.Max(0, ItemTotalDue(item) - item.PaidAmount);
 
+    public static void ApplyCharges(Loan loan, LoanChargeInputs charges)
+    {
+        if (charges.InsuranceAmount < 0
+            || charges.InitialSavings < 0
+            || charges.SavingsPerPeriod < 0
+            || charges.InsurancePerPeriod < 0
+            || charges.MembershipFee < 0
+            || charges.ProcessingFee < 0
+            || charges.LoanRedemptionFee < 0
+            || charges.Taxes < 0
+            || charges.NotarialFee < 0
+            || charges.Raffle < 0)
+            throw new InvalidOperationException("Fees, savings, and insurance cannot be negative.");
+
+        loan.InsuranceAmount = decimal.Round(charges.InsuranceAmount, 2);
+        loan.InitialSavings = decimal.Round(charges.InitialSavings, 2);
+        loan.SavingsPerPeriod = decimal.Round(charges.SavingsPerPeriod, 2);
+        loan.InsurancePerPeriod = decimal.Round(charges.InsurancePerPeriod, 2);
+        loan.MembershipFee = decimal.Round(charges.MembershipFee, 2);
+        loan.ProcessingFee = decimal.Round(charges.ProcessingFee, 2);
+        loan.LoanRedemptionFee = decimal.Round(charges.LoanRedemptionFee, 2);
+        loan.Taxes = decimal.Round(charges.Taxes, 2);
+        loan.NotarialFee = decimal.Round(charges.NotarialFee, 2);
+        loan.Raffle = decimal.Round(charges.Raffle, 2);
+        RecalcProceeds(loan);
+    }
+
+    public static void RecalcProceeds(Loan loan)
+    {
+        loan.TotalDeductions = decimal.Round(
+            loan.MembershipFee
+            + loan.ProcessingFee
+            + loan.LoanRedemptionFee
+            + loan.Taxes
+            + loan.NotarialFee
+            + loan.Raffle,
+            2);
+        loan.NetProceeds = decimal.Round(loan.Amount - loan.TotalDeductions, 2);
+    }
+
     public static void ApplyTerms(
         Loan loan,
         decimal principal,
@@ -23,7 +63,8 @@ public class LoanFinanceService
         int termCount,
         PaymentFrequency frequency,
         DateTime? firstDueDate,
-        InterestMethod interestMethod = InterestMethod.Flat)
+        InterestMethod interestMethod = InterestMethod.Flat,
+        LoanChargeInputs? charges = null)
     {
         if (principal <= 0) throw new InvalidOperationException("Principal amount must be greater than zero.");
         if (interestRatePercent < 0) throw new InvalidOperationException("Interest rate cannot be negative.");
@@ -36,7 +77,18 @@ public class LoanFinanceService
         loan.InterestMethod = interestMethod;
         loan.FirstDueDate = firstDueDate?.Date;
 
-        var portions = ComputeSchedulePortions(loan.Amount, loan.InterestRatePercent, termCount, interestMethod);
+        if (charges is not null)
+            ApplyCharges(loan, charges);
+        else
+            RecalcProceeds(loan);
+
+        var portions = ComputeSchedulePortions(
+            loan.Amount,
+            loan.InterestRatePercent,
+            termCount,
+            interestMethod,
+            loan.SavingsPerPeriod,
+            loan.InsurancePerPeriod);
         loan.InterestAmount = portions.Sum(p => p.Interest);
         loan.TotalPayable = portions.Sum(p => p.AmountDue);
         loan.InstallmentAmount = interestMethod == InterestMethod.DecliningBalance
@@ -70,7 +122,12 @@ public class LoanFinanceService
             return;
 
         var portions = ComputeSchedulePortions(
-            loan.Amount, loan.InterestRatePercent, loan.TermCount, loan.InterestMethod);
+            loan.Amount,
+            loan.InterestRatePercent,
+            loan.TermCount,
+            loan.InterestMethod,
+            loan.SavingsPerPeriod,
+            loan.InsurancePerPeriod);
 
         for (var i = 0; i < portions.Count; i++)
         {
@@ -82,6 +139,8 @@ public class LoanFinanceService
                 AmountDue = portion.AmountDue,
                 PrincipalPortion = portion.Principal,
                 InterestPortion = portion.Interest,
+                SavingsPortion = portion.Savings,
+                InsurancePortion = portion.Insurance,
                 PenaltyAmount = 0,
                 PaidAmount = 0,
                 Status = ScheduleItemStatus.Pending,
@@ -89,46 +148,67 @@ public class LoanFinanceService
         }
     }
 
-    public static List<(decimal Principal, decimal Interest, decimal AmountDue)> ComputeSchedulePortions(
-        decimal principal,
-        decimal ratePercent,
-        int termCount,
-        InterestMethod method)
+    public static List<(decimal Principal, decimal Interest, decimal Savings, decimal Insurance, decimal AmountDue)>
+        ComputeSchedulePortions(
+            decimal principal,
+            decimal ratePercent,
+            int termCount,
+            InterestMethod method,
+            decimal savingsPerPeriod = 0,
+            decimal insurancePerPeriod = 0)
     {
         if (method == InterestMethod.DecliningBalance)
-            return ComputeDecliningPortions(principal, ratePercent, termCount);
+            return ComputeDecliningPortions(principal, ratePercent, termCount, savingsPerPeriod, insurancePerPeriod);
 
         var interestTotal = decimal.Round(principal * ratePercent / 100m, 2);
-        var totalPayable = principal + interestTotal;
-        var installment = decimal.Round(totalPayable / termCount, 2);
+        var savingsEach = decimal.Round(savingsPerPeriod, 2);
+        var insuranceEach = decimal.Round(insurancePerPeriod, 2);
+        var savingsTotal = decimal.Round(savingsEach * termCount, 2);
+        var insuranceTotal = decimal.Round(insuranceEach * termCount, 2);
+        var totalPayable = principal + interestTotal + savingsTotal + insuranceTotal;
+        var baseInstallment = decimal.Round((principal + interestTotal) / termCount, 2);
+        var installment = decimal.Round(baseInstallment + savingsEach + insuranceEach, 2);
         var principalEach = decimal.Round(principal / termCount, 2);
         var interestEach = decimal.Round(interestTotal / termCount, 2);
         var allocatedPrincipal = 0m;
         var allocatedInterest = 0m;
+        var allocatedSavings = 0m;
+        var allocatedInsurance = 0m;
         var allocatedTotal = 0m;
-        var items = new List<(decimal Principal, decimal Interest, decimal AmountDue)>(termCount);
+        var items = new List<(decimal Principal, decimal Interest, decimal Savings, decimal Insurance, decimal AmountDue)>(termCount);
 
         for (var i = 1; i <= termCount; i++)
         {
             var isLast = i == termCount;
             var principalPortion = isLast ? principal - allocatedPrincipal : principalEach;
             var interestPortion = isLast ? interestTotal - allocatedInterest : interestEach;
-            var amountDue = isLast ? totalPayable - allocatedTotal : installment;
+            var savingsPortion = isLast ? savingsTotal - allocatedSavings : savingsEach;
+            var insurancePortion = isLast ? insuranceTotal - allocatedInsurance : insuranceEach;
+            var amountDue = isLast
+                ? totalPayable - allocatedTotal
+                : installment;
             allocatedPrincipal += principalPortion;
             allocatedInterest += interestPortion;
+            allocatedSavings += savingsPortion;
+            allocatedInsurance += insurancePortion;
             allocatedTotal += amountDue;
-            items.Add((principalPortion, interestPortion, amountDue));
+            items.Add((principalPortion, interestPortion, savingsPortion, insurancePortion, amountDue));
         }
 
         return items;
     }
 
-    private static List<(decimal Principal, decimal Interest, decimal AmountDue)> ComputeDecliningPortions(
-        decimal principal,
-        decimal ratePercent,
-        int termCount)
+    private static List<(decimal Principal, decimal Interest, decimal Savings, decimal Insurance, decimal AmountDue)>
+        ComputeDecliningPortions(
+            decimal principal,
+            decimal ratePercent,
+            int termCount,
+            decimal savingsPerPeriod,
+            decimal insurancePerPeriod)
     {
         var r = ratePercent / 100m;
+        var savingsEach = decimal.Round(savingsPerPeriod, 2);
+        var insuranceEach = decimal.Round(insurancePerPeriod, 2);
         decimal regularInstallment;
         if (r == 0m)
         {
@@ -146,27 +226,28 @@ public class LoanFinanceService
         }
 
         var remaining = principal;
-        var items = new List<(decimal Principal, decimal Interest, decimal AmountDue)>(termCount);
+        var items = new List<(decimal Principal, decimal Interest, decimal Savings, decimal Insurance, decimal AmountDue)>(termCount);
         for (var i = 1; i <= termCount; i++)
         {
             var interest = decimal.Round(remaining * r, 2, MidpointRounding.AwayFromZero);
             decimal principalPortion;
-            decimal amountDue;
+            decimal baseDue;
             if (i == termCount)
             {
                 principalPortion = remaining;
-                amountDue = remaining + interest;
+                baseDue = remaining + interest;
             }
             else
             {
                 principalPortion = decimal.Round(regularInstallment - interest, 2, MidpointRounding.AwayFromZero);
                 if (principalPortion < 0) principalPortion = 0;
                 if (principalPortion > remaining) principalPortion = remaining;
-                amountDue = principalPortion + interest;
+                baseDue = principalPortion + interest;
             }
 
             remaining -= principalPortion;
-            items.Add((principalPortion, interest, amountDue));
+            var amountDue = baseDue + savingsEach + insuranceEach;
+            items.Add((principalPortion, interest, savingsEach, insuranceEach, amountDue));
         }
 
         return items;

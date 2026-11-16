@@ -162,6 +162,11 @@ public class CustomerFinanceController : ControllerBase
 
         try
         {
+            var charges = LoanChargeMapping.Resolve(
+                request,
+                request.LoanProductId is int pid
+                    ? await _db.LoanProducts.FirstOrDefaultAsync(p => p.Id == pid)
+                    : loan.LoanProduct);
             LoanFinanceService.ApplyTerms(
                 loan,
                 request.Amount,
@@ -169,7 +174,8 @@ public class CustomerFinanceController : ControllerBase
                 request.TermCount,
                 frequency,
                 request.FirstDueDate,
-                interestMethod);
+                interestMethod,
+                charges);
             loan.Notes = string.IsNullOrWhiteSpace(request.Notes) ? loan.Notes : request.Notes.Trim();
             _finance.RebuildSchedule(loan);
             await _db.SaveChangesAsync();
@@ -477,7 +483,19 @@ public class CustomerFinanceController : ControllerBase
             loan.TermCount > 0 && loan.FirstDueDate is not null,
             loan.LoanProductId,
             loan.LoanProduct?.Name,
-            loan.InterestMethod.ToString());
+            loan.InterestMethod.ToString(),
+            loan.InsuranceAmount,
+            loan.InitialSavings,
+            loan.SavingsPerPeriod,
+            loan.InsurancePerPeriod,
+            loan.MembershipFee,
+            loan.ProcessingFee,
+            loan.LoanRedemptionFee,
+            loan.Taxes,
+            loan.NotarialFee,
+            loan.Raffle,
+            loan.TotalDeductions,
+            loan.NetProceeds);
     }
 
     private static IReadOnlyList<LoanScheduleItemDto> MapSchedule(Loan loan) =>
@@ -490,6 +508,8 @@ public class CustomerFinanceController : ControllerBase
                 s.AmountDue,
                 s.PrincipalPortion,
                 s.InterestPortion,
+                s.SavingsPortion,
+                s.InsurancePortion,
                 s.PenaltyAmount,
                 s.PaidAmount,
                 LoanFinanceService.ItemBalance(s),

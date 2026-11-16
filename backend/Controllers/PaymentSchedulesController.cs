@@ -164,6 +164,11 @@ public class PaymentSchedulesController : ControllerBase
 
         try
         {
+            var charges = LoanChargeMapping.Resolve(
+                request,
+                request.LoanProductId is int pid
+                    ? await _db.LoanProducts.FirstOrDefaultAsync(p => p.Id == pid)
+                    : loan.LoanProduct);
             LoanFinanceService.ApplyTerms(
                 loan,
                 request.Amount,
@@ -171,7 +176,8 @@ public class PaymentSchedulesController : ControllerBase
                 request.TermCount,
                 frequency,
                 request.FirstDueDate,
-                interestMethod);
+                interestMethod,
+                charges);
             loan.Notes = string.IsNullOrWhiteSpace(request.Notes) ? loan.Notes : request.Notes.Trim();
             _finance.RebuildSchedule(loan);
             await _db.SaveChangesAsync();
@@ -197,6 +203,18 @@ public class PaymentSchedulesController : ControllerBase
                 loan.InterestAmount,
                 loan.TotalPayable,
                 loan.InstallmentAmount,
+                loan.InsuranceAmount,
+                loan.InitialSavings,
+                loan.SavingsPerPeriod,
+                loan.InsurancePerPeriod,
+                loan.MembershipFee,
+                loan.ProcessingFee,
+                loan.LoanRedemptionFee,
+                loan.Taxes,
+                loan.NotarialFee,
+                loan.Raffle,
+                loan.TotalDeductions,
+                loan.NetProceeds,
                 hasTerms = loan.TermCount > 0 && loan.FirstDueDate is not null
             },
             schedule = loan.ScheduleItems
@@ -209,6 +227,8 @@ public class PaymentSchedulesController : ControllerBase
                     s.AmountDue,
                     s.PrincipalPortion,
                     s.InterestPortion,
+                    s.SavingsPortion,
+                    s.InsurancePortion,
                     s.PenaltyAmount,
                     s.PaidAmount,
                     balance = Math.Max(0, s.AmountDue + s.PenaltyAmount - s.PaidAmount),
