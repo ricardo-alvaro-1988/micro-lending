@@ -488,5 +488,6 @@ public class LoanFinanceService
             .Include(l => l.Approvals).ThenInclude(a => a.Stage)
             .Include(l => l.Approvals).ThenInclude(a => a.DecidedByUser)
             .Include(l => l.LoanProduct)
+            .Include(l => l.Collaterals)
             .FirstOrDefaultAsync(l => l.Id == loanId);
 }

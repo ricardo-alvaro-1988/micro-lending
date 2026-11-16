@@ -439,6 +439,10 @@ namespace MicroLending.Api.Migrations
                     b.Property<string>("Agent3UserId")
                         .HasColumnType("nvarchar(450)");
 
+                    b.Property<string>("AuthorizationRemarks")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
                     b.Property<string>("Barangay")
                         .HasMaxLength(150)
                         .HasColumnType("nvarchar(150)");
@@ -449,6 +453,10 @@ namespace MicroLending.Api.Migrations
                     b.Property<string>("City")
                         .HasMaxLength(150)
                         .HasColumnType("nvarchar(150)");
+
+                    b.Property<string>("CivilStatus")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<string>("CoMakerIdNumber")
                         .HasMaxLength(100)
@@ -469,6 +477,18 @@ namespace MicroLending.Api.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("Email")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("EmployerContactNumber")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("EmployerOrBusinessAddress")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<string>("EmployerOrBusinessName")
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
@@ -509,6 +529,10 @@ namespace MicroLending.Api.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
+                    b.Property<string>("IncomeVia")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
                     b.Property<string>("LastName")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -530,9 +554,53 @@ namespace MicroLending.Api.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
+                    b.Property<string>("NameExtension")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<decimal?>("NetIncomePerMonth")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("OccupationOrPosition")
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
                     b.Property<string>("Phone")
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("PlaceOfBirth")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("PresentHousingStatus")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("PreviousBarangay")
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<string>("PreviousCity")
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<string>("PreviousHouseUnit")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("PreviousHousingStatus")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("PreviousProvince")
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<string>("PreviousStreet")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
                     b.Property<string>("ProfilePictureContentType")
                         .HasMaxLength(150)
@@ -550,12 +618,28 @@ namespace MicroLending.Api.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<string>("Sex")
+                        .HasMaxLength(1)
+                        .HasColumnType("nvarchar(1)");
+
+                    b.Property<string>("SpouseName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
                     b.Property<string>("Street")
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");
+
+                    b.Property<decimal?>("YearsAtPresentAddress")
+                        .HasPrecision(6, 2)
+                        .HasColumnType("decimal(6,2)");
+
+                    b.Property<decimal?>("YearsAtPreviousAddress")
+                        .HasPrecision(6, 2)
+                        .HasColumnType("decimal(6,2)");
 
                     b.Property<string>("ZipCode")
                         .HasMaxLength(20)
@@ -700,6 +784,14 @@ namespace MicroLending.Api.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
+                    b.Property<string>("ApplicationType")
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<decimal?>("ApprovedAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -711,6 +803,9 @@ namespace MicroLending.Api.Migrations
                         .HasColumnType("int");
 
                     b.Property<int>("CustomerId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("Cycle")
                         .HasColumnType("int");
 
                     b.Property<DateTime?>("FirstDueDate")
@@ -753,6 +848,10 @@ namespace MicroLending.Api.Migrations
 
                     b.Property<decimal>("LoanRedemptionFee")
                         .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("LoanType")
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
 
                     b.Property<decimal>("MembershipFee")
                         .HasColumnType("decimal(18,2)");
@@ -902,6 +1001,40 @@ namespace MicroLending.Api.Migrations
                     b.HasIndex("StageId");
 
                     b.ToTable("LoanApprovals");
+                });
+
+            modelBuilder.Entity("MicroLending.Api.Models.LoanCollateral", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Brand")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("DescriptionOrKind")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<decimal>("EstimatedMarketValue")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("LoanId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LoanId");
+
+                    b.ToTable("LoanCollaterals");
                 });
 
             modelBuilder.Entity("MicroLending.Api.Models.LoanFieldNote", b =>
@@ -1640,6 +1773,17 @@ namespace MicroLending.Api.Migrations
                     b.Navigation("Stage");
                 });
 
+            modelBuilder.Entity("MicroLending.Api.Models.LoanCollateral", b =>
+                {
+                    b.HasOne("MicroLending.Api.Models.Loan", "Loan")
+                        .WithMany("Collaterals")
+                        .HasForeignKey("LoanId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Loan");
+                });
+
             modelBuilder.Entity("MicroLending.Api.Models.LoanFieldNote", b =>
                 {
                     b.HasOne("MicroLending.Api.Models.ApplicationUser", "CreatedByUser")
@@ -1887,6 +2031,8 @@ namespace MicroLending.Api.Migrations
                     b.Navigation("Activities");
 
                     b.Navigation("Approvals");
+
+                    b.Navigation("Collaterals");
 
                     b.Navigation("FieldNotes");
 

@@ -495,7 +495,12 @@ public class CustomerFinanceController : ControllerBase
             loan.NotarialFee,
             loan.Raffle,
             loan.TotalDeductions,
-            loan.NetProceeds);
+            loan.NetProceeds,
+            loan.LoanType,
+            loan.ApplicationType,
+            loan.Cycle,
+            loan.ApprovedAmount,
+            CustomerMapping.MapCollaterals(loan.Collaterals ?? Array.Empty<LoanCollateral>()));
     }
 
     private static IReadOnlyList<LoanScheduleItemDto> MapSchedule(Loan loan) =>

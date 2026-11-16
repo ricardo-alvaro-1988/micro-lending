@@ -21,6 +21,10 @@ type CustomerForm = {
   firstName: string
   middleName: string
   lastName: string
+  nameExtension: string
+  sex: string
+  placeOfBirth: string
+  civilStatus: string
   branchId: number | ''
   groupId: number | ''
   agent1UserId: string
@@ -32,6 +36,21 @@ type CustomerForm = {
   city: string
   province: string
   zipCode: string
+  yearsAtPresentAddress: string
+  presentHousingStatus: string
+  previousHouseUnit: string
+  previousStreet: string
+  previousBarangay: string
+  previousCity: string
+  previousProvince: string
+  yearsAtPreviousAddress: string
+  previousHousingStatus: string
+  employerOrBusinessName: string
+  occupationOrPosition: string
+  employerOrBusinessAddress: string
+  employerContactNumber: string
+  netIncomePerMonth: string
+  incomeVia: string
   mobile: string
   phone: string
   email: string
@@ -39,12 +58,14 @@ type CustomerForm = {
   dateOfBirth: string
   idType: string
   idNumber: string
+  spouseName: string
   coMakerName: string
   coMakerMobile: string
   coMakerIdNumber: string
   guarantorName: string
   guarantorMobile: string
   guarantorIdNumber: string
+  authorizationRemarks: string
   latitude: string
   longitude: string
 }
@@ -76,6 +97,10 @@ const emptyForm = (): CustomerForm => ({
   firstName: '',
   middleName: '',
   lastName: '',
+  nameExtension: '',
+  sex: '',
+  placeOfBirth: '',
+  civilStatus: '',
   branchId: '',
   groupId: '',
   agent1UserId: '',
@@ -87,6 +112,21 @@ const emptyForm = (): CustomerForm => ({
   city: '',
   province: '',
   zipCode: '',
+  yearsAtPresentAddress: '',
+  presentHousingStatus: '',
+  previousHouseUnit: '',
+  previousStreet: '',
+  previousBarangay: '',
+  previousCity: '',
+  previousProvince: '',
+  yearsAtPreviousAddress: '',
+  previousHousingStatus: '',
+  employerOrBusinessName: '',
+  occupationOrPosition: '',
+  employerOrBusinessAddress: '',
+  employerContactNumber: '',
+  netIncomePerMonth: '',
+  incomeVia: '',
   mobile: '',
   phone: '',
   email: '',
@@ -94,12 +134,14 @@ const emptyForm = (): CustomerForm => ({
   dateOfBirth: '',
   idType: '',
   idNumber: '',
+  spouseName: '',
   coMakerName: '',
   coMakerMobile: '',
   coMakerIdNumber: '',
   guarantorName: '',
   guarantorMobile: '',
   guarantorIdNumber: '',
+  authorizationRemarks: '',
   latitude: '',
   longitude: '',
 })
@@ -192,6 +234,10 @@ export function CustomersPage() {
         firstName: detail.firstName,
         middleName: detail.middleName ?? '',
         lastName: detail.lastName,
+        nameExtension: detail.nameExtension ?? '',
+        sex: detail.sex ?? '',
+        placeOfBirth: detail.placeOfBirth ?? '',
+        civilStatus: detail.civilStatus ?? '',
         branchId: detail.branchId ?? '',
         groupId: detail.groupId ?? '',
         agent1UserId: detail.agent1UserId ?? '',
@@ -203,6 +249,23 @@ export function CustomersPage() {
         city: detail.city ?? '',
         province: detail.province ?? '',
         zipCode: detail.zipCode ?? '',
+        yearsAtPresentAddress:
+          detail.yearsAtPresentAddress != null ? String(detail.yearsAtPresentAddress) : '',
+        presentHousingStatus: detail.presentHousingStatus ?? '',
+        previousHouseUnit: detail.previousHouseUnit ?? '',
+        previousStreet: detail.previousStreet ?? '',
+        previousBarangay: detail.previousBarangay ?? '',
+        previousCity: detail.previousCity ?? '',
+        previousProvince: detail.previousProvince ?? '',
+        yearsAtPreviousAddress:
+          detail.yearsAtPreviousAddress != null ? String(detail.yearsAtPreviousAddress) : '',
+        previousHousingStatus: detail.previousHousingStatus ?? '',
+        employerOrBusinessName: detail.employerOrBusinessName ?? '',
+        occupationOrPosition: detail.occupationOrPosition ?? '',
+        employerOrBusinessAddress: detail.employerOrBusinessAddress ?? '',
+        employerContactNumber: detail.employerContactNumber ?? '',
+        netIncomePerMonth: detail.netIncomePerMonth != null ? String(detail.netIncomePerMonth) : '',
+        incomeVia: detail.incomeVia ?? '',
         mobile: detail.mobile ?? '',
         phone: detail.phone ?? '',
         email: detail.email ?? '',
@@ -210,12 +273,14 @@ export function CustomersPage() {
         dateOfBirth: toDateInput(detail.dateOfBirth),
         idType: detail.idType ?? '',
         idNumber: detail.idNumber ?? '',
+        spouseName: detail.spouseName ?? '',
         coMakerName: detail.coMakerName ?? '',
         coMakerMobile: detail.coMakerMobile ?? '',
         coMakerIdNumber: detail.coMakerIdNumber ?? '',
         guarantorName: detail.guarantorName ?? '',
         guarantorMobile: detail.guarantorMobile ?? '',
         guarantorIdNumber: detail.guarantorIdNumber ?? '',
+        authorizationRemarks: detail.authorizationRemarks ?? '',
         latitude: detail.latitude != null ? String(detail.latitude) : '',
         longitude: detail.longitude != null ? String(detail.longitude) : '',
       })
@@ -253,6 +318,10 @@ export function CustomersPage() {
         firstName: form.firstName,
         middleName: form.middleName || null,
         lastName: form.lastName,
+        nameExtension: form.nameExtension || null,
+        sex: form.sex || null,
+        placeOfBirth: form.placeOfBirth || null,
+        civilStatus: form.civilStatus || null,
         branchId: form.branchId === '' ? null : Number(form.branchId),
         groupId: form.groupId === '' ? null : Number(form.groupId),
         agent1UserId: form.agent1UserId,
@@ -264,6 +333,25 @@ export function CustomersPage() {
         city: form.city || null,
         province: form.province || null,
         zipCode: form.zipCode || null,
+        yearsAtPresentAddress: form.yearsAtPresentAddress
+          ? Number(form.yearsAtPresentAddress)
+          : null,
+        presentHousingStatus: form.presentHousingStatus || null,
+        previousHouseUnit: form.previousHouseUnit || null,
+        previousStreet: form.previousStreet || null,
+        previousBarangay: form.previousBarangay || null,
+        previousCity: form.previousCity || null,
+        previousProvince: form.previousProvince || null,
+        yearsAtPreviousAddress: form.yearsAtPreviousAddress
+          ? Number(form.yearsAtPreviousAddress)
+          : null,
+        previousHousingStatus: form.previousHousingStatus || null,
+        employerOrBusinessName: form.employerOrBusinessName || null,
+        occupationOrPosition: form.occupationOrPosition || null,
+        employerOrBusinessAddress: form.employerOrBusinessAddress || null,
+        employerContactNumber: form.employerContactNumber || null,
+        netIncomePerMonth: form.netIncomePerMonth ? Number(form.netIncomePerMonth) : null,
+        incomeVia: form.incomeVia || null,
         mobile: form.mobile || null,
         phone: form.phone || null,
         email: form.email || null,
@@ -271,12 +359,14 @@ export function CustomersPage() {
         dateOfBirth: form.dateOfBirth || null,
         idType: form.idType || null,
         idNumber: form.idNumber || null,
+        spouseName: form.spouseName || null,
         coMakerName: form.coMakerName || null,
         coMakerMobile: form.coMakerMobile || null,
         coMakerIdNumber: form.coMakerIdNumber || null,
         guarantorName: form.guarantorName || null,
         guarantorMobile: form.guarantorMobile || null,
         guarantorIdNumber: form.guarantorIdNumber || null,
+        authorizationRemarks: form.authorizationRemarks || null,
         latitude: parseCoord(form.latitude),
         longitude: parseCoord(form.longitude),
       }
@@ -674,7 +764,20 @@ export function CustomersPage() {
                       </div>
                     </div>
                   </div>
-                  <div className="grid gap-3 md:grid-cols-3">
+                  <div className="rounded-lg bg-sky-700 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-white">
+                    Member — borrower&apos;s data
+                  </div>
+                  <div className="grid gap-3 md:grid-cols-4">
+                    <div>
+                      <FieldLabel>Last name *</FieldLabel>
+                      <input
+                        className={fieldClass}
+                        value={form.lastName}
+                        onChange={(e) => setField('lastName', e.target.value)}
+                        required
+                        disabled={!canManage}
+                      />
+                    </div>
                     <div>
                       <FieldLabel>First name *</FieldLabel>
                       <input
@@ -682,6 +785,15 @@ export function CustomersPage() {
                         value={form.firstName}
                         onChange={(e) => setField('firstName', e.target.value)}
                         required
+                        disabled={!canManage}
+                      />
+                    </div>
+                    <div>
+                      <FieldLabel>Extension (Sr, Jr, III)</FieldLabel>
+                      <input
+                        className={fieldClass}
+                        value={form.nameExtension}
+                        onChange={(e) => setField('nameExtension', e.target.value)}
                         disabled={!canManage}
                       />
                     </div>
@@ -694,13 +806,88 @@ export function CustomersPage() {
                         disabled={!canManage}
                       />
                     </div>
+                  </div>
+                  <div className="grid gap-3 md:grid-cols-3 lg:grid-cols-6">
                     <div>
-                      <FieldLabel>Last name *</FieldLabel>
+                      <FieldLabel>Sex</FieldLabel>
+                      <select
+                        className={fieldClass}
+                        value={form.sex}
+                        onChange={(e) => setField('sex', e.target.value)}
+                        disabled={!canManage}
+                      >
+                        <option value="">—</option>
+                        <option value="F">F</option>
+                        <option value="M">M</option>
+                      </select>
+                    </div>
+                    <div>
+                      <FieldLabel>Date of birth</FieldLabel>
                       <input
                         className={fieldClass}
-                        value={form.lastName}
-                        onChange={(e) => setField('lastName', e.target.value)}
-                        required
+                        type="date"
+                        value={form.dateOfBirth}
+                        onChange={(e) => setField('dateOfBirth', e.target.value)}
+                        disabled={!canManage}
+                      />
+                    </div>
+                    <div>
+                      <FieldLabel>Age</FieldLabel>
+                      <input
+                        className={fieldClass}
+                        value={
+                          form.dateOfBirth
+                            ? String(
+                                Math.max(
+                                  0,
+                                  new Date().getFullYear() -
+                                    new Date(form.dateOfBirth).getFullYear() -
+                                    (new Date() <
+                                    new Date(
+                                      new Date().getFullYear(),
+                                      new Date(form.dateOfBirth).getMonth(),
+                                      new Date(form.dateOfBirth).getDate(),
+                                    )
+                                      ? 1
+                                      : 0),
+                                ),
+                              )
+                            : ''
+                        }
+                        readOnly
+                        disabled
+                      />
+                    </div>
+                    <div>
+                      <FieldLabel>Place of birth</FieldLabel>
+                      <input
+                        className={fieldClass}
+                        value={form.placeOfBirth}
+                        onChange={(e) => setField('placeOfBirth', e.target.value)}
+                        disabled={!canManage}
+                      />
+                    </div>
+                    <div>
+                      <FieldLabel>Civil status</FieldLabel>
+                      <select
+                        className={fieldClass}
+                        value={form.civilStatus}
+                        onChange={(e) => setField('civilStatus', e.target.value)}
+                        disabled={!canManage}
+                      >
+                        <option value="">—</option>
+                        <option value="Single">Single</option>
+                        <option value="Married">Married</option>
+                        <option value="Widowed">Widowed</option>
+                        <option value="Separated">Separated</option>
+                      </select>
+                    </div>
+                    <div>
+                      <FieldLabel>Mobile number</FieldLabel>
+                      <input
+                        className={fieldClass}
+                        value={form.mobile}
+                        onChange={(e) => setField('mobile', e.target.value)}
                         disabled={!canManage}
                       />
                     </div>
@@ -849,64 +1036,117 @@ export function CustomersPage() {
                 </section>
 
                 <section className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <span className="h-4 w-1 rounded-full bg-cyan-500" />
-                    <h4 className="text-sm font-semibold text-slate-800">Address</h4>
+                  <div className="rounded-lg bg-sky-700 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-white">
+                    Present address
                   </div>
-                  <div className="grid gap-3 md:grid-cols-2">
+                  <div className="grid gap-3 md:grid-cols-3 lg:grid-cols-6">
                     <div>
-                      <FieldLabel>House / Unit</FieldLabel>
-                      <input
-                        className={fieldClass}
-                        value={form.houseUnit}
-                        onChange={(e) => setField('houseUnit', e.target.value)}
-                        disabled={!canManage}
-                      />
+                      <FieldLabel>House #</FieldLabel>
+                      <input className={fieldClass} value={form.houseUnit} onChange={(e) => setField('houseUnit', e.target.value)} disabled={!canManage} />
                     </div>
                     <div>
                       <FieldLabel>Street</FieldLabel>
-                      <input
-                        className={fieldClass}
-                        value={form.street}
-                        onChange={(e) => setField('street', e.target.value)}
-                        disabled={!canManage}
-                      />
+                      <input className={fieldClass} value={form.street} onChange={(e) => setField('street', e.target.value)} disabled={!canManage} />
                     </div>
                     <div>
-                      <FieldLabel>Barangay</FieldLabel>
-                      <input
-                        className={fieldClass}
-                        value={form.barangay}
-                        onChange={(e) => setField('barangay', e.target.value)}
-                        disabled={!canManage}
-                      />
+                      <FieldLabel>Brgy</FieldLabel>
+                      <input className={fieldClass} value={form.barangay} onChange={(e) => setField('barangay', e.target.value)} disabled={!canManage} />
                     </div>
                     <div>
                       <FieldLabel>City / Municipality</FieldLabel>
-                      <input
-                        className={fieldClass}
-                        value={form.city}
-                        onChange={(e) => setField('city', e.target.value)}
-                        disabled={!canManage}
-                      />
+                      <input className={fieldClass} value={form.city} onChange={(e) => setField('city', e.target.value)} disabled={!canManage} />
                     </div>
                     <div>
                       <FieldLabel>Province</FieldLabel>
-                      <input
-                        className={fieldClass}
-                        value={form.province}
-                        onChange={(e) => setField('province', e.target.value)}
-                        disabled={!canManage}
-                      />
+                      <input className={fieldClass} value={form.province} onChange={(e) => setField('province', e.target.value)} disabled={!canManage} />
                     </div>
                     <div>
-                      <FieldLabel>ZIP code</FieldLabel>
-                      <input
-                        className={fieldClass}
-                        value={form.zipCode}
-                        onChange={(e) => setField('zipCode', e.target.value)}
-                        disabled={!canManage}
-                      />
+                      <FieldLabel>ZIP</FieldLabel>
+                      <input className={fieldClass} value={form.zipCode} onChange={(e) => setField('zipCode', e.target.value)} disabled={!canManage} />
+                    </div>
+                    <div>
+                      <FieldLabel>Years in address</FieldLabel>
+                      <input className={fieldClass} type="number" min="0" step="0.1" value={form.yearsAtPresentAddress} onChange={(e) => setField('yearsAtPresentAddress', e.target.value)} disabled={!canManage} />
+                    </div>
+                    <div>
+                      <FieldLabel>Own / Rented</FieldLabel>
+                      <select className={fieldClass} value={form.presentHousingStatus} onChange={(e) => setField('presentHousingStatus', e.target.value)} disabled={!canManage}>
+                        <option value="">—</option>
+                        <option value="Own">Own</option>
+                        <option value="Rented">Rented</option>
+                      </select>
+                    </div>
+                  </div>
+                </section>
+
+                <section className="space-y-3">
+                  <div className="rounded-lg bg-sky-700 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-white">
+                    Previous address
+                  </div>
+                  <div className="grid gap-3 md:grid-cols-3 lg:grid-cols-6">
+                    <div>
+                      <FieldLabel>House #</FieldLabel>
+                      <input className={fieldClass} value={form.previousHouseUnit} onChange={(e) => setField('previousHouseUnit', e.target.value)} disabled={!canManage} />
+                    </div>
+                    <div>
+                      <FieldLabel>Street</FieldLabel>
+                      <input className={fieldClass} value={form.previousStreet} onChange={(e) => setField('previousStreet', e.target.value)} disabled={!canManage} />
+                    </div>
+                    <div>
+                      <FieldLabel>Brgy</FieldLabel>
+                      <input className={fieldClass} value={form.previousBarangay} onChange={(e) => setField('previousBarangay', e.target.value)} disabled={!canManage} />
+                    </div>
+                    <div>
+                      <FieldLabel>City / Municipality</FieldLabel>
+                      <input className={fieldClass} value={form.previousCity} onChange={(e) => setField('previousCity', e.target.value)} disabled={!canManage} />
+                    </div>
+                    <div>
+                      <FieldLabel>Province</FieldLabel>
+                      <input className={fieldClass} value={form.previousProvince} onChange={(e) => setField('previousProvince', e.target.value)} disabled={!canManage} />
+                    </div>
+                    <div>
+                      <FieldLabel>Years in address</FieldLabel>
+                      <input className={fieldClass} type="number" min="0" step="0.1" value={form.yearsAtPreviousAddress} onChange={(e) => setField('yearsAtPreviousAddress', e.target.value)} disabled={!canManage} />
+                    </div>
+                    <div>
+                      <FieldLabel>Own / Rented</FieldLabel>
+                      <select className={fieldClass} value={form.previousHousingStatus} onChange={(e) => setField('previousHousingStatus', e.target.value)} disabled={!canManage}>
+                        <option value="">—</option>
+                        <option value="Own">Own</option>
+                        <option value="Rented">Rented</option>
+                      </select>
+                    </div>
+                  </div>
+                </section>
+
+                <section className="space-y-3">
+                  <div className="rounded-lg bg-sky-700 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-white">
+                    Employer / business
+                  </div>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <div>
+                      <FieldLabel>Employer / business name</FieldLabel>
+                      <input className={fieldClass} value={form.employerOrBusinessName} onChange={(e) => setField('employerOrBusinessName', e.target.value)} disabled={!canManage} />
+                    </div>
+                    <div>
+                      <FieldLabel>Occupation / position</FieldLabel>
+                      <input className={fieldClass} value={form.occupationOrPosition} onChange={(e) => setField('occupationOrPosition', e.target.value)} disabled={!canManage} />
+                    </div>
+                    <div>
+                      <FieldLabel>Employer / business address</FieldLabel>
+                      <input className={fieldClass} value={form.employerOrBusinessAddress} onChange={(e) => setField('employerOrBusinessAddress', e.target.value)} disabled={!canManage} />
+                    </div>
+                    <div>
+                      <FieldLabel>Contact number</FieldLabel>
+                      <input className={fieldClass} value={form.employerContactNumber} onChange={(e) => setField('employerContactNumber', e.target.value)} disabled={!canManage} />
+                    </div>
+                    <div>
+                      <FieldLabel>Net income per month</FieldLabel>
+                      <input className={fieldClass} type="number" min="0" step="0.01" value={form.netIncomePerMonth} onChange={(e) => setField('netIncomePerMonth', e.target.value)} disabled={!canManage} />
+                    </div>
+                    <div>
+                      <FieldLabel>Via</FieldLabel>
+                      <input className={fieldClass} value={form.incomeVia} onChange={(e) => setField('incomeVia', e.target.value)} disabled={!canManage} placeholder="Salary / business / remittance" />
                     </div>
                   </div>
                 </section>
@@ -967,19 +1207,9 @@ export function CustomersPage() {
                 <section className="space-y-3">
                   <div className="flex items-center gap-2">
                     <span className="h-4 w-1 rounded-full bg-violet-500" />
-                    <h4 className="text-sm font-semibold text-slate-800">KYC</h4>
+                    <h4 className="text-sm font-semibold text-slate-800">ID documents</h4>
                   </div>
-                  <div className="grid gap-3 md:grid-cols-3">
-                    <div>
-                      <FieldLabel>Date of birth</FieldLabel>
-                      <input
-                        className={fieldClass}
-                        type="date"
-                        value={form.dateOfBirth}
-                        onChange={(e) => setField('dateOfBirth', e.target.value)}
-                        disabled={!canManage}
-                      />
-                    </div>
+                  <div className="grid gap-3 md:grid-cols-2">
                     <div>
                       <FieldLabel>ID type</FieldLabel>
                       <select
@@ -1009,7 +1239,22 @@ export function CustomersPage() {
                       />
                     </div>
                   </div>
+                </section>
+
+                <section className="space-y-3">
+                  <div className="rounded-lg bg-sky-700 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-white">
+                    Authorization
+                  </div>
                   <div className="grid gap-3 md:grid-cols-3">
+                    <div>
+                      <FieldLabel>Spouse name</FieldLabel>
+                      <input
+                        className={fieldClass}
+                        value={form.spouseName}
+                        onChange={(e) => setField('spouseName', e.target.value)}
+                        disabled={!canManage}
+                      />
+                    </div>
                     <div>
                       <FieldLabel>Co-maker name</FieldLabel>
                       <input
@@ -1034,6 +1279,15 @@ export function CustomersPage() {
                         className={fieldClass}
                         value={form.coMakerIdNumber}
                         onChange={(e) => setField('coMakerIdNumber', e.target.value)}
+                        disabled={!canManage}
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <FieldLabel>Remarks</FieldLabel>
+                      <input
+                        className={fieldClass}
+                        value={form.authorizationRemarks}
+                        onChange={(e) => setField('authorizationRemarks', e.target.value)}
                         disabled={!canManage}
                       />
                     </div>

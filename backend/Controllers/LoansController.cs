@@ -291,7 +291,8 @@ public class LoansController : ControllerBase
             MapSchedule(loan),
             MapPayments(loan),
             MapApprovals(loan),
-            notes.Select(n => MapFieldNote(n, customer.Id)).ToList()));
+            notes.Select(n => MapFieldNote(n, customer.Id)).ToList(),
+            CustomerMapping.MapCollaterals(loan.Collaterals ?? Array.Empty<LoanCollateral>())));
     }
 
     /// <summary>Active loans (In Progress + Pending Approval) — for Loans menu badge / notifications.</summary>
@@ -378,7 +379,14 @@ public class LoansController : ControllerBase
             CreatedByUserId = user.Id,
             Status = LoanStatus.InProgress,
             InterestMethod = interestMethod,
+            LoanType = CustomerMapping.NormalizeLoanType(request.LoanType),
+            ApplicationType = CustomerMapping.NormalizeApplicationType(request.ApplicationType),
+            Cycle = request.Cycle,
+            ApprovedAmount = request.ApprovedAmount is decimal approved && approved > 0
+                ? decimal.Round(approved, 2)
+                : null,
         };
+        CustomerMapping.ReplaceCollaterals(loan, request.Collaterals);
 
         try
         {
@@ -524,58 +532,15 @@ public class LoansController : ControllerBase
             loan.NotarialFee,
             loan.Raffle,
             loan.TotalDeductions,
-            loan.NetProceeds);
+            loan.NetProceeds,
+            loan.LoanType,
+            loan.ApplicationType,
+            loan.Cycle,
+            loan.ApprovedAmount,
+            CustomerMapping.MapCollaterals(loan.Collaterals ?? Array.Empty<LoanCollateral>()));
     }
 
-    private static CustomerDetailDto MapCustomerDetail(Customer c) =>
-        new(
-            c.Id,
-            c.FirstName,
-            c.MiddleName,
-            c.LastName,
-            c.FullName,
-            c.BranchId,
-            c.Branch?.Name,
-            c.GroupId,
-            c.Group?.Name,
-            c.Agent1UserId,
-            c.Agent1?.FullName,
-            c.Agent2UserId,
-            c.Agent2?.FullName,
-            c.Agent3UserId,
-            c.Agent3?.FullName,
-            c.HouseUnit,
-            c.Street,
-            c.Barangay,
-            c.City,
-            c.Province,
-            c.ZipCode,
-            FormatAddress(c.HouseUnit, c.Street, c.Barangay, c.City, c.Province, c.ZipCode),
-            c.Mobile,
-            c.Phone,
-            c.Email,
-            c.ReferredBy,
-            c.DateOfBirth,
-            c.IdType,
-            c.IdNumber,
-            c.CoMakerName,
-            c.CoMakerMobile,
-            c.CoMakerIdNumber,
-            c.GuarantorName,
-            c.GuarantorMobile,
-            c.GuarantorIdNumber,
-            c.Latitude,
-            c.Longitude,
-            c.CreatedAt,
-            !string.IsNullOrWhiteSpace(c.ProfilePictureStoredFileName),
-            c.Documents
-                .OrderByDescending(d => d.UploadedAt)
-                .Select(d => new CustomerDocumentDto(
-                    d.Id, d.Label, d.OriginalFileName, d.ContentType, d.SizeBytes, d.UploadedAt))
-                .ToList());
-
-    private static string FormatAddress(params string?[] parts) =>
-        string.Join(", ", parts.Where(x => !string.IsNullOrWhiteSpace(x)).Select(x => x!.Trim()));
+    private static CustomerDetailDto MapCustomerDetail(Customer c) => CustomerMapping.MapDetail(c);
 
     private static LoanFieldNoteDto MapFieldNote(LoanFieldNote note, int customerId) =>
         new(

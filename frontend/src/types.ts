@@ -161,6 +161,14 @@ export type LoanCharges = {
   raffle: number
 }
 
+export type LoanCollateral = {
+  id?: number
+  descriptionOrKind: string
+  brand?: string | null
+  estimatedMarketValue: number
+  sortOrder?: number
+}
+
 export type Loan = {
   id: number
   loanNumber: string
@@ -202,6 +210,11 @@ export type Loan = {
   raffle?: number
   totalDeductions?: number
   netProceeds?: number
+  loanType?: string | null
+  applicationType?: string | null
+  cycle?: number | null
+  approvedAmount?: number | null
+  collaterals?: LoanCollateral[]
 }
 
 export type LoanProduct = {
@@ -445,6 +458,7 @@ export type CustomerDetail = {
   firstName: string
   middleName?: string | null
   lastName: string
+  nameExtension?: string | null
   fullName: string
   branchId?: number | null
   branchName?: string | null
@@ -456,26 +470,47 @@ export type CustomerDetail = {
   agent2Name?: string | null
   agent3UserId?: string | null
   agent3Name?: string | null
+  sex?: string | null
+  dateOfBirth?: string | null
+  age?: number | null
+  placeOfBirth?: string | null
+  civilStatus?: string | null
   houseUnit?: string | null
   street?: string | null
   barangay?: string | null
   city?: string | null
   province?: string | null
   zipCode?: string | null
+  yearsAtPresentAddress?: number | null
+  presentHousingStatus?: string | null
   addressDisplay: string
+  previousHouseUnit?: string | null
+  previousStreet?: string | null
+  previousBarangay?: string | null
+  previousCity?: string | null
+  previousProvince?: string | null
+  yearsAtPreviousAddress?: number | null
+  previousHousingStatus?: string | null
+  employerOrBusinessName?: string | null
+  occupationOrPosition?: string | null
+  employerOrBusinessAddress?: string | null
+  employerContactNumber?: string | null
+  netIncomePerMonth?: number | null
+  incomeVia?: string | null
   mobile?: string | null
   phone?: string | null
   email?: string | null
   referredBy?: string | null
-  dateOfBirth?: string | null
   idType?: string | null
   idNumber?: string | null
+  spouseName?: string | null
   coMakerName?: string | null
   coMakerMobile?: string | null
   coMakerIdNumber?: string | null
   guarantorName?: string | null
   guarantorMobile?: string | null
   guarantorIdNumber?: string | null
+  authorizationRemarks?: string | null
   latitude?: number | null
   longitude?: number | null
   createdAt: string
