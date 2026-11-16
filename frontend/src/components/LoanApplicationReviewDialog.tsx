@@ -5,6 +5,7 @@ import type {
   CustomerDocument,
   Loan,
   LoanApprovalHistory,
+  LoanCollateral,
   LoanFieldNote,
   LoanFieldNoteAttachment,
   LoanPayment,
@@ -23,6 +24,7 @@ export type LoanApplicationReview = {
   payments: LoanPayment[]
   approvals: LoanApprovalHistory[]
   fieldNotes: LoanFieldNote[]
+  collaterals?: LoanCollateral[]
 }
 
 type Tab =
@@ -30,6 +32,7 @@ type Tab =
   | 'documents'
   | 'notes'
   | 'loan'
+  | 'collateral'
   | 'schedule'
   | 'payments'
   | 'approvals'
@@ -190,6 +193,7 @@ export function LoanApplicationReviewDialog({ loanId, onClose, headerActions }: 
                   ['documents', `Documents (${customer.documents.length})`],
                   ['notes', `Agent notes (${review.fieldNotes.length})`],
                   ['loan', 'Loan'],
+                  ['collateral', `Collateral (${(review.collaterals ?? loan.collaterals ?? []).length})`],
                   ['schedule', `Schedule (${review.schedule.length})`],
                   ['payments', `Payments (${review.payments.length})`],
                   ['approvals', `Approvals (${review.approvals.length})`],
@@ -219,6 +223,9 @@ export function LoanApplicationReviewDialog({ loanId, onClose, headerActions }: 
                 <NotesTab notes={review.fieldNotes} onDownload={(a) => void downloadNoteFile(a)} />
               )}
               {tab === 'loan' && <LoanTab loan={loan} />}
+              {tab === 'collateral' && (
+                <CollateralTab rows={review.collaterals ?? loan.collaterals ?? []} />
+              )}
               {tab === 'schedule' && <ScheduleTab rows={review.schedule} />}
               {tab === 'payments' && <PaymentsTab rows={review.payments} />}
               {tab === 'approvals' && <ApprovalsTab rows={review.approvals} />}
@@ -261,38 +268,57 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 function PersonalTab({ customer }: { customer: CustomerDetail }) {
   return (
     <div className="space-y-5">
-      <Section title="Identity">
-        <Field label="First name" value={customer.firstName} />
-        <Field label="Middle name" value={customer.middleName} />
+      <Section title="Member — borrower's data">
         <Field label="Last name" value={customer.lastName} />
+        <Field label="First name" value={customer.firstName} />
+        <Field label="Extension" value={customer.nameExtension} />
+        <Field label="Middle name" value={customer.middleName} />
+        <Field label="Sex" value={customer.sex} />
         <Field label="Date of birth" value={customer.dateOfBirth?.slice(0, 10)} />
+        <Field label="Age" value={customer.age != null ? String(customer.age) : null} />
+        <Field label="Place of birth" value={customer.placeOfBirth} />
+        <Field label="Civil status" value={customer.civilStatus} />
+        <Field label="Mobile" value={customer.mobile} />
         <Field label="ID type" value={customer.idType} />
         <Field label="ID number" value={customer.idNumber} />
       </Section>
-      <Section title="Contact">
-        <Field label="Mobile" value={customer.mobile} />
-        <Field label="Phone" value={customer.phone} />
-        <Field label="Email" value={customer.email} />
-        <Field label="Referred by" value={customer.referredBy} />
-      </Section>
-      <Section title="Address">
-        <Field label="House / unit" value={customer.houseUnit} />
+      <Section title="Present address">
+        <Field label="House #" value={customer.houseUnit} />
         <Field label="Street" value={customer.street} />
-        <Field label="Barangay" value={customer.barangay} />
-        <Field label="City" value={customer.city} />
+        <Field label="Brgy" value={customer.barangay} />
+        <Field label="City / Municipality" value={customer.city} />
         <Field label="Province" value={customer.province} />
         <Field label="ZIP" value={customer.zipCode} />
-        <div className="sm:col-span-2 lg:col-span-3">
-          <Field label="Full address" value={customer.addressDisplay} />
-        </div>
         <Field
-          label="Coordinates"
+          label="Years in address"
+          value={customer.yearsAtPresentAddress != null ? String(customer.yearsAtPresentAddress) : null}
+        />
+        <Field label="Own / Rented" value={customer.presentHousingStatus} />
+      </Section>
+      <Section title="Previous address">
+        <Field label="House #" value={customer.previousHouseUnit} />
+        <Field label="Street" value={customer.previousStreet} />
+        <Field label="Brgy" value={customer.previousBarangay} />
+        <Field label="City / Municipality" value={customer.previousCity} />
+        <Field label="Province" value={customer.previousProvince} />
+        <Field
+          label="Years in address"
           value={
-            customer.latitude != null && customer.longitude != null
-              ? `${customer.latitude}, ${customer.longitude}`
-              : null
+            customer.yearsAtPreviousAddress != null ? String(customer.yearsAtPreviousAddress) : null
           }
         />
+        <Field label="Own / Rented" value={customer.previousHousingStatus} />
+      </Section>
+      <Section title="Employer / business">
+        <Field label="Employer / business name" value={customer.employerOrBusinessName} />
+        <Field label="Occupation / position" value={customer.occupationOrPosition} />
+        <Field label="Employer / business address" value={customer.employerOrBusinessAddress} />
+        <Field label="Contact number" value={customer.employerContactNumber} />
+        <Field
+          label="Net income / month"
+          value={customer.netIncomePerMonth != null ? money(customer.netIncomePerMonth) : null}
+        />
+        <Field label="Via" value={customer.incomeVia} />
       </Section>
       <Section title="Assignment">
         <Field label="Branch" value={customer.branchName} />
@@ -300,16 +326,21 @@ function PersonalTab({ customer }: { customer: CustomerDetail }) {
         <Field label="Agent 1" value={customer.agent1Name} />
         <Field label="Agent 2" value={customer.agent2Name} />
         <Field label="Agent 3" value={customer.agent3Name} />
+        <Field label="Phone" value={customer.phone} />
+        <Field label="Email" value={customer.email} />
+        <Field label="Referred by" value={customer.referredBy} />
       </Section>
-      <Section title="Co-maker">
-        <Field label="Name" value={customer.coMakerName} />
-        <Field label="Mobile" value={customer.coMakerMobile} />
-        <Field label="ID number" value={customer.coMakerIdNumber} />
-      </Section>
-      <Section title="Guarantor">
-        <Field label="Name" value={customer.guarantorName} />
-        <Field label="Mobile" value={customer.guarantorMobile} />
-        <Field label="ID number" value={customer.guarantorIdNumber} />
+      <Section title="Authorization">
+        <Field label="Spouse" value={customer.spouseName} />
+        <Field label="Co-maker" value={customer.coMakerName} />
+        <Field label="Co-maker mobile" value={customer.coMakerMobile} />
+        <Field label="Co-maker ID" value={customer.coMakerIdNumber} />
+        <Field label="Guarantor" value={customer.guarantorName} />
+        <Field label="Guarantor mobile" value={customer.guarantorMobile} />
+        <Field label="Guarantor ID" value={customer.guarantorIdNumber} />
+        <div className="sm:col-span-2 lg:col-span-3">
+          <Field label="Remarks" value={customer.authorizationRemarks} />
+        </div>
       </Section>
     </div>
   )
@@ -416,20 +447,28 @@ function LoanTab({ loan }: { loan: Loan }) {
       <Field label="Current stage">
         <StageTag stage={loan.currentStageName} />
       </Field>
+      <Field label="Loan type" value={loan.loanType} />
+      <Field label="Application type" value={loan.applicationType} />
+      <Field label="Cycle" value={loan.cycle != null ? String(loan.cycle) : null} />
+      <Field
+        label="Approved amount"
+        value={loan.approvedAmount != null ? money(loan.approvedAmount) : null}
+      />
+      <Field label="Amount applied" value={money(loan.amount)} />
+      <Field label="Terms" value={String(loan.termCount || '—')} />
+      <Field label="Schedule of payment" value={loan.paymentFrequency || '—'} />
+      <Field label="Daily / installment" value={money(loan.installmentAmount)} />
       <Field label="Flow" value={loan.flowName} />
       <Field label="Customer" value={loan.customerName} />
       <Field label="Created by" value={loan.createdBy} />
       <Field label="Created" value={new Date(loan.createdAt).toLocaleString()} />
-      <Field label="Principal" value={money(loan.amount)} />
       <Field label="Interest rate" value={`${loan.interestRatePercent}%`} />
       <Field label="Interest amount" value={money(loan.interestAmount)} />
       <Field label="Total payable" value={money(loan.totalPayable)} />
+      <Field label="Net proceeds" value={money(loan.netProceeds ?? 0)} />
       <Field label="Total paid" value={money(loan.totalPaid)} />
       <Field label="Remaining" value={money(loan.remainingBalance)} />
-      <Field label="Term count" value={String(loan.termCount || '—')} />
-      <Field label="Frequency" value={loan.paymentFrequency || '—'} />
       <Field label="First due" value={loan.firstDueDate?.slice(0, 10)} />
-      <Field label="Installment" value={money(loan.installmentAmount)} />
       <Field label="Product" value={loan.loanProductName} />
       <Field label="Interest method" value={loan.interestMethod} />
       <Field label="Has terms" value={loan.hasTerms ? 'Yes' : 'No'} />
@@ -438,6 +477,34 @@ function LoanTab({ loan }: { loan: Loan }) {
           <Field label="Loan notes" value={loan.notes} />
         </div>
       )}
+    </div>
+  )
+}
+
+function CollateralTab({ rows }: { rows: LoanCollateral[] }) {
+  if (rows.length === 0) {
+    return <p className="py-10 text-center text-sm text-slate-500">No collateral listed.</p>
+  }
+  return (
+    <div className="overflow-auto rounded-lg border border-slate-200">
+      <table className="min-w-full text-left text-sm">
+        <thead className="bg-slate-50 text-slate-600">
+          <tr>
+            <th className="px-3 py-2 font-medium">Description / kind</th>
+            <th className="px-3 py-2 font-medium">Brand</th>
+            <th className="px-3 py-2 font-medium text-right">Est. market value</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, i) => (
+            <tr key={row.id ?? i} className="border-t border-slate-100">
+              <td className="px-3 py-2">{row.descriptionOrKind || '—'}</td>
+              <td className="px-3 py-2">{row.brand || '—'}</td>
+              <td className="px-3 py-2 text-right tabular-nums">{money(row.estimatedMarketValue)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   )
 }

@@ -100,7 +100,9 @@ public class Customer
     public string FirstName { get; set; } = string.Empty;
     public string? MiddleName { get; set; }
     public string LastName { get; set; } = string.Empty;
-    /// <summary>Denormalized display name: First + Middle + Last.</summary>
+    /// <summary>Jr, Sr, III, etc.</summary>
+    public string? NameExtension { get; set; }
+    /// <summary>Denormalized display name: First + Middle + Last (+ extension).</summary>
     public string FullName { get; set; } = string.Empty;
 
     public int? BranchId { get; set; }
@@ -119,12 +121,36 @@ public class Customer
     public string? Agent3UserId { get; set; }
     public ApplicationUser? Agent3 { get; set; }
 
+    /// <summary>F or M.</summary>
+    public string? Sex { get; set; }
+    public string? PlaceOfBirth { get; set; }
+    public string? CivilStatus { get; set; }
+
     public string? HouseUnit { get; set; }
     public string? Street { get; set; }
     public string? Barangay { get; set; }
     public string? City { get; set; }
     public string? Province { get; set; }
     public string? ZipCode { get; set; }
+    public decimal? YearsAtPresentAddress { get; set; }
+    /// <summary>Own or Rented.</summary>
+    public string? PresentHousingStatus { get; set; }
+
+    public string? PreviousHouseUnit { get; set; }
+    public string? PreviousStreet { get; set; }
+    public string? PreviousBarangay { get; set; }
+    public string? PreviousCity { get; set; }
+    public string? PreviousProvince { get; set; }
+    public decimal? YearsAtPreviousAddress { get; set; }
+    public string? PreviousHousingStatus { get; set; }
+
+    public string? EmployerOrBusinessName { get; set; }
+    public string? OccupationOrPosition { get; set; }
+    public string? EmployerOrBusinessAddress { get; set; }
+    public string? EmployerContactNumber { get; set; }
+    public decimal? NetIncomePerMonth { get; set; }
+    /// <summary>Income channel (salary, business, remittance, etc.).</summary>
+    public string? IncomeVia { get; set; }
 
     public string? Mobile { get; set; }
     public string? Phone { get; set; }
@@ -135,12 +161,14 @@ public class Customer
     public DateTime? DateOfBirth { get; set; }
     public string? IdType { get; set; }
     public string? IdNumber { get; set; }
+    public string? SpouseName { get; set; }
     public string? CoMakerName { get; set; }
     public string? CoMakerMobile { get; set; }
     public string? CoMakerIdNumber { get; set; }
     public string? GuarantorName { get; set; }
     public string? GuarantorMobile { get; set; }
     public string? GuarantorIdNumber { get; set; }
+    public string? AuthorizationRemarks { get; set; }
 
     public decimal? Latitude { get; set; }
     public decimal? Longitude { get; set; }
@@ -157,7 +185,7 @@ public class Customer
 
     public void RefreshFullName()
     {
-        FullName = string.Join(" ", new[] { FirstName, MiddleName, LastName }
+        FullName = string.Join(" ", new[] { FirstName, MiddleName, LastName, NameExtension }
             .Where(x => !string.IsNullOrWhiteSpace(x))
             .Select(x => x!.Trim()));
     }
@@ -233,6 +261,14 @@ public class Loan
     public int TermCount { get; set; }
     public PaymentFrequency PaymentFrequency { get; set; } = PaymentFrequency.Monthly;
     public InterestMethod InterestMethod { get; set; } = InterestMethod.Flat;
+    /// <summary>Providential or Business.</summary>
+    public string? LoanType { get; set; }
+    /// <summary>New, Renewal, or Restructured.</summary>
+    public string? ApplicationType { get; set; }
+    /// <summary>Borrower loan cycle number (1st, 2nd, …).</summary>
+    public int? Cycle { get; set; }
+    /// <summary>Final approved amount when different from applied amount.</summary>
+    public decimal? ApprovedAmount { get; set; }
     public int? LoanProductId { get; set; }
     public LoanProduct? LoanProduct { get; set; }
     public DateTime? FirstDueDate { get; set; }
@@ -270,6 +306,19 @@ public class Loan
     public ICollection<LoanPayment> Payments { get; set; } = new List<LoanPayment>();
     public ICollection<LoanActivity> Activities { get; set; } = new List<LoanActivity>();
     public ICollection<LoanFieldNote> FieldNotes { get; set; } = new List<LoanFieldNote>();
+    public ICollection<LoanCollateral> Collaterals { get; set; } = new List<LoanCollateral>();
+}
+
+/// <summary>Assets / properties pledged on a loan application.</summary>
+public class LoanCollateral
+{
+    public int Id { get; set; }
+    public int LoanId { get; set; }
+    public Loan Loan { get; set; } = null!;
+    public string DescriptionOrKind { get; set; } = string.Empty;
+    public string? Brand { get; set; }
+    public decimal EstimatedMarketValue { get; set; }
+    public int SortOrder { get; set; }
 }
 
 public class LoanScheduleItem

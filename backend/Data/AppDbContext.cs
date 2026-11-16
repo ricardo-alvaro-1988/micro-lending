@@ -21,6 +21,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
     public DbSet<CustomerDocument> CustomerDocuments => Set<CustomerDocument>();
     public DbSet<LoanProduct> LoanProducts => Set<LoanProduct>();
     public DbSet<Loan> Loans => Set<Loan>();
+    public DbSet<LoanCollateral> LoanCollaterals => Set<LoanCollateral>();
     public DbSet<LoanScheduleItem> LoanScheduleItems => Set<LoanScheduleItem>();
     public DbSet<LoanPayment> LoanPayments => Set<LoanPayment>();
     public DbSet<LoanApproval> LoanApprovals => Set<LoanApproval>();
@@ -141,25 +142,46 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
             e.Property(x => x.FirstName).HasMaxLength(100).IsRequired();
             e.Property(x => x.MiddleName).HasMaxLength(100);
             e.Property(x => x.LastName).HasMaxLength(100).IsRequired();
+            e.Property(x => x.NameExtension).HasMaxLength(20);
             e.Property(x => x.FullName).HasMaxLength(300).IsRequired();
+            e.Property(x => x.Sex).HasMaxLength(1);
+            e.Property(x => x.PlaceOfBirth).HasMaxLength(200);
+            e.Property(x => x.CivilStatus).HasMaxLength(50);
             e.Property(x => x.HouseUnit).HasMaxLength(100);
             e.Property(x => x.Street).HasMaxLength(200);
             e.Property(x => x.Barangay).HasMaxLength(150);
             e.Property(x => x.City).HasMaxLength(150);
             e.Property(x => x.Province).HasMaxLength(150);
             e.Property(x => x.ZipCode).HasMaxLength(20);
+            e.Property(x => x.YearsAtPresentAddress).HasPrecision(6, 2);
+            e.Property(x => x.PresentHousingStatus).HasMaxLength(20);
+            e.Property(x => x.PreviousHouseUnit).HasMaxLength(100);
+            e.Property(x => x.PreviousStreet).HasMaxLength(200);
+            e.Property(x => x.PreviousBarangay).HasMaxLength(150);
+            e.Property(x => x.PreviousCity).HasMaxLength(150);
+            e.Property(x => x.PreviousProvince).HasMaxLength(150);
+            e.Property(x => x.YearsAtPreviousAddress).HasPrecision(6, 2);
+            e.Property(x => x.PreviousHousingStatus).HasMaxLength(20);
+            e.Property(x => x.EmployerOrBusinessName).HasMaxLength(200);
+            e.Property(x => x.OccupationOrPosition).HasMaxLength(150);
+            e.Property(x => x.EmployerOrBusinessAddress).HasMaxLength(300);
+            e.Property(x => x.EmployerContactNumber).HasMaxLength(50);
+            e.Property(x => x.NetIncomePerMonth).HasPrecision(18, 2);
+            e.Property(x => x.IncomeVia).HasMaxLength(100);
             e.Property(x => x.Mobile).HasMaxLength(50);
             e.Property(x => x.Phone).HasMaxLength(50);
             e.Property(x => x.Email).HasMaxLength(200);
             e.Property(x => x.ReferredBy).HasMaxLength(200);
             e.Property(x => x.IdType).HasMaxLength(50);
             e.Property(x => x.IdNumber).HasMaxLength(100);
+            e.Property(x => x.SpouseName).HasMaxLength(200);
             e.Property(x => x.CoMakerName).HasMaxLength(200);
             e.Property(x => x.CoMakerMobile).HasMaxLength(50);
             e.Property(x => x.CoMakerIdNumber).HasMaxLength(100);
             e.Property(x => x.GuarantorName).HasMaxLength(200);
             e.Property(x => x.GuarantorMobile).HasMaxLength(50);
             e.Property(x => x.GuarantorIdNumber).HasMaxLength(100);
+            e.Property(x => x.AuthorizationRemarks).HasMaxLength(1000);
             e.Property(x => x.Latitude).HasPrecision(9, 6);
             e.Property(x => x.Longitude).HasPrecision(9, 6);
             e.Property(x => x.ProfilePictureStoredFileName).HasMaxLength(260);
@@ -198,12 +220,23 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
             e.Property(x => x.InterestAmount).HasPrecision(18, 2);
             e.Property(x => x.TotalPayable).HasPrecision(18, 2);
             e.Property(x => x.InstallmentAmount).HasPrecision(18, 2);
+            e.Property(x => x.ApprovedAmount).HasPrecision(18, 2);
+            e.Property(x => x.LoanType).HasMaxLength(40);
+            e.Property(x => x.ApplicationType).HasMaxLength(40);
             e.Property(x => x.Notes).HasMaxLength(1000);
             e.HasOne(x => x.Customer).WithMany(c => c.Loans).HasForeignKey(x => x.CustomerId);
             e.HasOne(x => x.Flow).WithMany().HasForeignKey(x => x.FlowId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(x => x.CurrentStage).WithMany().HasForeignKey(x => x.CurrentStageId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(x => x.CreatedByUser).WithMany().HasForeignKey(x => x.CreatedByUserId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(x => x.LoanProduct).WithMany(p => p.Loans).HasForeignKey(x => x.LoanProductId).OnDelete(DeleteBehavior.SetNull);
+            e.HasMany(x => x.Collaterals).WithOne(c => c.Loan).HasForeignKey(c => c.LoanId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<LoanCollateral>(e =>
+        {
+            e.Property(x => x.DescriptionOrKind).HasMaxLength(200).IsRequired();
+            e.Property(x => x.Brand).HasMaxLength(100);
+            e.Property(x => x.EstimatedMarketValue).HasPrecision(18, 2);
         });
 
         builder.Entity<LoanScheduleItem>(e =>

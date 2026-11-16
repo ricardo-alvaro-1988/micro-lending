@@ -167,6 +167,7 @@ public record CustomerDetailDto(
     string FirstName,
     string? MiddleName,
     string LastName,
+    string? NameExtension,
     string FullName,
     int? BranchId,
     string? BranchName,
@@ -178,26 +179,47 @@ public record CustomerDetailDto(
     string? Agent2Name,
     string? Agent3UserId,
     string? Agent3Name,
+    string? Sex,
+    DateTime? DateOfBirth,
+    int? Age,
+    string? PlaceOfBirth,
+    string? CivilStatus,
     string? HouseUnit,
     string? Street,
     string? Barangay,
     string? City,
     string? Province,
     string? ZipCode,
+    decimal? YearsAtPresentAddress,
+    string? PresentHousingStatus,
     string AddressDisplay,
+    string? PreviousHouseUnit,
+    string? PreviousStreet,
+    string? PreviousBarangay,
+    string? PreviousCity,
+    string? PreviousProvince,
+    decimal? YearsAtPreviousAddress,
+    string? PreviousHousingStatus,
+    string? EmployerOrBusinessName,
+    string? OccupationOrPosition,
+    string? EmployerOrBusinessAddress,
+    string? EmployerContactNumber,
+    decimal? NetIncomePerMonth,
+    string? IncomeVia,
     string? Mobile,
     string? Phone,
     string? Email,
     string? ReferredBy,
-    DateTime? DateOfBirth,
     string? IdType,
     string? IdNumber,
+    string? SpouseName,
     string? CoMakerName,
     string? CoMakerMobile,
     string? CoMakerIdNumber,
     string? GuarantorName,
     string? GuarantorMobile,
     string? GuarantorIdNumber,
+    string? AuthorizationRemarks,
     decimal? Latitude,
     decimal? Longitude,
     DateTime CreatedAt,
@@ -212,6 +234,8 @@ public class UpsertCustomerRequest
     public string? MiddleName { get; set; }
     [Required, MaxLength(100)]
     public string LastName { get; set; } = string.Empty;
+    [MaxLength(20)]
+    public string? NameExtension { get; set; }
 
     public int? BranchId { get; set; }
     public int? GroupId { get; set; }
@@ -220,6 +244,14 @@ public class UpsertCustomerRequest
     public string Agent1UserId { get; set; } = string.Empty;
     public string? Agent2UserId { get; set; }
     public string? Agent3UserId { get; set; }
+
+    [MaxLength(1)]
+    public string? Sex { get; set; }
+    public DateTime? DateOfBirth { get; set; }
+    [MaxLength(200)]
+    public string? PlaceOfBirth { get; set; }
+    [MaxLength(50)]
+    public string? CivilStatus { get; set; }
 
     [MaxLength(100)]
     public string? HouseUnit { get; set; }
@@ -233,6 +265,35 @@ public class UpsertCustomerRequest
     public string? Province { get; set; }
     [MaxLength(20)]
     public string? ZipCode { get; set; }
+    public decimal? YearsAtPresentAddress { get; set; }
+    [MaxLength(20)]
+    public string? PresentHousingStatus { get; set; }
+
+    [MaxLength(100)]
+    public string? PreviousHouseUnit { get; set; }
+    [MaxLength(200)]
+    public string? PreviousStreet { get; set; }
+    [MaxLength(150)]
+    public string? PreviousBarangay { get; set; }
+    [MaxLength(150)]
+    public string? PreviousCity { get; set; }
+    [MaxLength(150)]
+    public string? PreviousProvince { get; set; }
+    public decimal? YearsAtPreviousAddress { get; set; }
+    [MaxLength(20)]
+    public string? PreviousHousingStatus { get; set; }
+
+    [MaxLength(200)]
+    public string? EmployerOrBusinessName { get; set; }
+    [MaxLength(150)]
+    public string? OccupationOrPosition { get; set; }
+    [MaxLength(300)]
+    public string? EmployerOrBusinessAddress { get; set; }
+    [MaxLength(50)]
+    public string? EmployerContactNumber { get; set; }
+    public decimal? NetIncomePerMonth { get; set; }
+    [MaxLength(100)]
+    public string? IncomeVia { get; set; }
 
     [MaxLength(50)]
     public string? Mobile { get; set; }
@@ -244,11 +305,12 @@ public class UpsertCustomerRequest
     [MaxLength(200)]
     public string? ReferredBy { get; set; }
 
-    public DateTime? DateOfBirth { get; set; }
     [MaxLength(50)]
     public string? IdType { get; set; }
     [MaxLength(100)]
     public string? IdNumber { get; set; }
+    [MaxLength(200)]
+    public string? SpouseName { get; set; }
     [MaxLength(200)]
     public string? CoMakerName { get; set; }
     [MaxLength(50)]
@@ -261,6 +323,8 @@ public class UpsertCustomerRequest
     public string? GuarantorMobile { get; set; }
     [MaxLength(100)]
     public string? GuarantorIdNumber { get; set; }
+    [MaxLength(1000)]
+    public string? AuthorizationRemarks { get; set; }
 
     public decimal? Latitude { get; set; }
     public decimal? Longitude { get; set; }
@@ -308,7 +372,29 @@ public record LoanDto(
     decimal NotarialFee,
     decimal Raffle,
     decimal TotalDeductions,
-    decimal NetProceeds);
+    decimal NetProceeds,
+    string? LoanType,
+    string? ApplicationType,
+    int? Cycle,
+    decimal? ApprovedAmount,
+    IReadOnlyList<LoanCollateralDto> Collaterals);
+
+public record LoanCollateralDto(
+    int Id,
+    string DescriptionOrKind,
+    string? Brand,
+    decimal EstimatedMarketValue,
+    int SortOrder);
+
+public class LoanCollateralInput
+{
+    [Required, MaxLength(200)]
+    public string DescriptionOrKind { get; set; } = string.Empty;
+    [MaxLength(100)]
+    public string? Brand { get; set; }
+    [Range(0, double.MaxValue)]
+    public decimal EstimatedMarketValue { get; set; }
+}
 
 public record PagedLoansDto(
     IReadOnlyList<LoanDto> Items,
@@ -349,7 +435,8 @@ public record LoanApplicationReviewDto(
     IReadOnlyList<LoanScheduleItemDto> Schedule,
     IReadOnlyList<LoanPaymentDto> Payments,
     IReadOnlyList<LoanApprovalHistoryDto> Approvals,
-    IReadOnlyList<LoanFieldNoteDto> FieldNotes);
+    IReadOnlyList<LoanFieldNoteDto> FieldNotes,
+    IReadOnlyList<LoanCollateralDto> Collaterals);
 
 public class LoanChargeRequest
 {
@@ -391,6 +478,14 @@ public class CreateLoanRequest : LoanChargeRequest
     public DateTime? FirstDueDate { get; set; }
     public int? LoanProductId { get; set; }
     public string? InterestMethod { get; set; }
+    [MaxLength(40)]
+    public string? LoanType { get; set; }
+    [MaxLength(40)]
+    public string? ApplicationType { get; set; }
+    [Range(1, 1000)]
+    public int? Cycle { get; set; }
+    public decimal? ApprovedAmount { get; set; }
+    public List<LoanCollateralInput>? Collaterals { get; set; }
     [MaxLength(1000)]
     public string? Notes { get; set; }
 }

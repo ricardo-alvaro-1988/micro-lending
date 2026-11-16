@@ -351,91 +351,11 @@ public class CustomersController : ControllerBase
         return null;
     }
 
-    private static void Apply(Customer customer, UpsertCustomerRequest request)
-    {
-        customer.FirstName = request.FirstName.Trim();
-        customer.MiddleName = string.IsNullOrWhiteSpace(request.MiddleName) ? null : request.MiddleName.Trim();
-        customer.LastName = request.LastName.Trim();
-        customer.FullName = string.Join(' ', new[] { customer.FirstName, customer.MiddleName, customer.LastName }
-            .Where(x => !string.IsNullOrWhiteSpace(x)));
-        customer.BranchId = request.BranchId;
-        customer.GroupId = request.GroupId;
-        customer.Agent1UserId = TrimOrNull(request.Agent1UserId)!;
-        customer.Agent2UserId = TrimOrNull(request.Agent2UserId);
-        customer.Agent3UserId = TrimOrNull(request.Agent3UserId);
-        customer.HouseUnit = TrimOrNull(request.HouseUnit);
-        customer.Street = TrimOrNull(request.Street);
-        customer.Barangay = TrimOrNull(request.Barangay);
-        customer.City = TrimOrNull(request.City);
-        customer.Province = TrimOrNull(request.Province);
-        customer.ZipCode = TrimOrNull(request.ZipCode);
-        customer.Mobile = TrimOrNull(request.Mobile);
-        customer.Phone = TrimOrNull(request.Phone);
-        customer.Email = TrimOrNull(request.Email);
-        customer.ReferredBy = TrimOrNull(request.ReferredBy);
-        customer.DateOfBirth = request.DateOfBirth;
-        customer.IdType = TrimOrNull(request.IdType);
-        customer.IdNumber = TrimOrNull(request.IdNumber);
-        customer.CoMakerName = TrimOrNull(request.CoMakerName);
-        customer.CoMakerMobile = TrimOrNull(request.CoMakerMobile);
-        customer.CoMakerIdNumber = TrimOrNull(request.CoMakerIdNumber);
-        customer.GuarantorName = TrimOrNull(request.GuarantorName);
-        customer.GuarantorMobile = TrimOrNull(request.GuarantorMobile);
-        customer.GuarantorIdNumber = TrimOrNull(request.GuarantorIdNumber);
-        customer.Latitude = request.Latitude;
-        customer.Longitude = request.Longitude;
-        customer.UpdatedAt = DateTime.UtcNow;
-    }
+    private static void Apply(Customer customer, UpsertCustomerRequest request) =>
+        CustomerMapping.Apply(customer, request);
 
     private static string? TrimOrNull(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
-    private static CustomerDetailDto MapDetail(Customer c) =>
-        new(
-            c.Id,
-            c.FirstName,
-            c.MiddleName,
-            c.LastName,
-            c.FullName,
-            c.BranchId,
-            c.Branch?.Name,
-            c.GroupId,
-            c.Group?.Name,
-            c.Agent1UserId,
-            c.Agent1?.FullName,
-            c.Agent2UserId,
-            c.Agent2?.FullName,
-            c.Agent3UserId,
-            c.Agent3?.FullName,
-            c.HouseUnit,
-            c.Street,
-            c.Barangay,
-            c.City,
-            c.Province,
-            c.ZipCode,
-            FormatAddress(c.HouseUnit, c.Street, c.Barangay, c.City, c.Province, c.ZipCode),
-            c.Mobile,
-            c.Phone,
-            c.Email,
-            c.ReferredBy,
-            c.DateOfBirth,
-            c.IdType,
-            c.IdNumber,
-            c.CoMakerName,
-            c.CoMakerMobile,
-            c.CoMakerIdNumber,
-            c.GuarantorName,
-            c.GuarantorMobile,
-            c.GuarantorIdNumber,
-            c.Latitude,
-            c.Longitude,
-            c.CreatedAt,
-            !string.IsNullOrWhiteSpace(c.ProfilePictureStoredFileName),
-            c.Documents
-                .OrderByDescending(d => d.UploadedAt)
-                .Select(d => new CustomerDocumentDto(d.Id, d.Label, d.OriginalFileName, d.ContentType, d.SizeBytes, d.UploadedAt))
-                .ToList());
-
-    private static string FormatAddress(params string?[] parts) =>
-        string.Join(", ", parts.Where(x => !string.IsNullOrWhiteSpace(x)).Select(x => x!.Trim()));
+    private static CustomerDetailDto MapDetail(Customer c) => CustomerMapping.MapDetail(c);
 }

@@ -22,6 +22,7 @@ import type {
   CustomerPaymentSummary,
   Loan,
   LoanApprovalHistory,
+  LoanCollateral,
   LoanDetailBundle,
   LoanFieldNote,
   LoanPayment,
@@ -62,13 +63,22 @@ export function LoanApplicationPanel({ customerId, onError, onMessage }: SharedP
     flowId: 0,
     amount: '',
     interestRatePercent: '0',
-    termCount: '12',
-    paymentFrequency: 'Monthly',
+    termCount: '70',
+    paymentFrequency: 'Daily',
     interestMethod: 'Flat',
+    loanType: 'Providential',
+    applicationType: 'New',
+    cycle: '1',
+    approvedAmount: '',
     firstDueDate: '',
     notes: '',
     ...emptyChargeStrings,
   })
+  const [collaterals, setCollaterals] = useState<LoanCollateral[]>([
+    { descriptionOrKind: '', brand: '', estimatedMarketValue: 0 },
+    { descriptionOrKind: '', brand: '', estimatedMarketValue: 0 },
+    { descriptionOrKind: '', brand: '', estimatedMarketValue: 0 },
+  ])
 
   const load = async () => {
     setLoading(true)
@@ -132,15 +142,37 @@ export function LoanApplicationPanel({ customerId, onError, onMessage }: SharedP
           termCount: form.firstDueDate ? Number(form.termCount || 0) : 0,
           paymentFrequency: form.paymentFrequency,
           interestMethod: form.interestMethod,
+          loanType: form.loanType || null,
+          applicationType: form.applicationType || null,
+          cycle: form.cycle ? Number(form.cycle) : null,
+          approvedAmount: form.approvedAmount ? Number(form.approvedAmount) : null,
           firstDueDate: form.firstDueDate || null,
           notes: form.notes || null,
+          collaterals: collaterals
+            .filter((c) => c.descriptionOrKind.trim() || Number(c.estimatedMarketValue) > 0)
+            .map((c) => ({
+              descriptionOrKind: c.descriptionOrKind.trim(),
+              brand: c.brand || null,
+              estimatedMarketValue: Number(c.estimatedMarketValue || 0),
+            })),
           ...chargePayloadFrom(form),
         }),
       })
       onMessage(`Loan ${created.loanNumber} created.`)
       notifyLoansChanged()
       notifyApprovalsChanged()
-      setForm((prev) => ({ ...prev, amount: '', notes: '', ...emptyChargeStrings }))
+      setForm((prev) => ({
+        ...prev,
+        amount: '',
+        notes: '',
+        approvedAmount: '',
+        ...emptyChargeStrings,
+      }))
+      setCollaterals([
+        { descriptionOrKind: '', brand: '', estimatedMarketValue: 0 },
+        { descriptionOrKind: '', brand: '', estimatedMarketValue: 0 },
+        { descriptionOrKind: '', brand: '', estimatedMarketValue: 0 },
+      ])
       await load()
       await selectLoan(created.id)
     } catch (err) {
@@ -247,65 +279,192 @@ export function LoanApplicationPanel({ customerId, onError, onMessage }: SharedP
               </option>
             ))}
           </select>
-          <input
-            className="rounded-md border border-slate-300 px-3 py-2 text-sm"
-            placeholder="Principal amount *"
-            type="number"
-            min="0.01"
-            step="0.01"
-            value={form.amount}
-            onChange={(e) => setForm({ ...form, amount: e.target.value })}
-            required
-          />
-          <input
-            className="rounded-md border border-slate-300 px-3 py-2 text-sm"
-            placeholder="Interest %"
-            type="number"
-            min="0"
-            step="0.01"
-            value={form.interestRatePercent}
-            onChange={(e) => setForm({ ...form, interestRatePercent: e.target.value })}
-          />
-          <input
-            className="rounded-md border border-slate-300 px-3 py-2 text-sm"
-            placeholder="Term count"
-            type="number"
-            min="1"
-            value={form.termCount}
-            onChange={(e) => setForm({ ...form, termCount: e.target.value })}
-          />
-          <select
-            className="rounded-md border border-slate-300 px-3 py-2 text-sm"
-            value={form.paymentFrequency}
-            onChange={(e) => setForm({ ...form, paymentFrequency: e.target.value })}
-          >
-            <option value="Daily">Daily</option>
-            <option value="Weekly">Weekly</option>
-            <option value="BiWeekly">Bi-weekly</option>
-            <option value="Monthly">Monthly</option>
-          </select>
-          <select
-            className="rounded-md border border-slate-300 px-3 py-2 text-sm"
-            value={form.interestMethod}
-            onChange={(e) => setForm({ ...form, interestMethod: e.target.value })}
-            title="Interest method"
-          >
-            <option value="Flat">Flat interest</option>
-            <option value="DecliningBalance">Declining balance</option>
-          </select>
-          <input
-            className="rounded-md border border-slate-300 px-3 py-2 text-sm"
-            type="date"
-            value={form.firstDueDate}
-            onChange={(e) => setForm({ ...form, firstDueDate: e.target.value })}
-            title="First due date (optional at create)"
-          />
-          <input
-            className="rounded-md border border-slate-300 px-3 py-2 text-sm md:col-span-2"
-            placeholder="Notes"
-            value={form.notes}
-            onChange={(e) => setForm({ ...form, notes: e.target.value })}
-          />
+          <div className="md:col-span-3 grid gap-3 rounded-lg border border-slate-200 bg-white p-3 sm:grid-cols-2">
+            <label className="text-sm">
+              <span className="mb-1 block text-xs font-medium text-slate-500">Loan type</span>
+              <div className="flex flex-wrap gap-3 pt-1">
+                {['Providential', 'Business'].map((t) => (
+                  <label key={t} className="inline-flex items-center gap-1.5 text-sm text-slate-700">
+                    <input
+                      type="radio"
+                      name="loanType"
+                      checked={form.loanType === t}
+                      onChange={() => setForm({ ...form, loanType: t })}
+                    />
+                    {t} loan
+                  </label>
+                ))}
+              </div>
+            </label>
+            <label className="text-sm">
+              <span className="mb-1 block text-xs font-medium text-slate-500">Application type</span>
+              <div className="flex flex-wrap gap-3 pt-1">
+                {['New', 'Renewal', 'Restructured'].map((t) => (
+                  <label key={t} className="inline-flex items-center gap-1.5 text-sm text-slate-700">
+                    <input
+                      type="radio"
+                      name="applicationType"
+                      checked={form.applicationType === t}
+                      onChange={() => setForm({ ...form, applicationType: t })}
+                    />
+                    {t}
+                  </label>
+                ))}
+              </div>
+            </label>
+            <input
+              className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+              placeholder="Amount applied *"
+              type="number"
+              min="0.01"
+              step="0.01"
+              value={form.amount}
+              onChange={(e) => setForm({ ...form, amount: e.target.value })}
+              required
+            />
+            <input
+              className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+              placeholder="Approved amount / cycle amount"
+              type="number"
+              min="0"
+              step="0.01"
+              value={form.approvedAmount}
+              onChange={(e) => setForm({ ...form, approvedAmount: e.target.value })}
+            />
+            <input
+              className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+              placeholder="Cycle #"
+              type="number"
+              min="1"
+              value={form.cycle}
+              onChange={(e) => setForm({ ...form, cycle: e.target.value })}
+            />
+            <input
+              className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+              placeholder="Terms (e.g. 70 days)"
+              type="number"
+              min="1"
+              value={form.termCount}
+              onChange={(e) => setForm({ ...form, termCount: e.target.value })}
+            />
+            <input
+              className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+              placeholder="Interest %"
+              type="number"
+              min="0"
+              step="0.01"
+              value={form.interestRatePercent}
+              onChange={(e) => setForm({ ...form, interestRatePercent: e.target.value })}
+            />
+            <select
+              className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+              value={form.paymentFrequency}
+              onChange={(e) => setForm({ ...form, paymentFrequency: e.target.value })}
+            >
+              <option value="Daily">Daily payment</option>
+              <option value="Weekly">Weekly</option>
+              <option value="BiWeekly">Bi-weekly</option>
+              <option value="Monthly">Monthly</option>
+            </select>
+            <select
+              className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+              value={form.interestMethod}
+              onChange={(e) => setForm({ ...form, interestMethod: e.target.value })}
+              title="Interest method"
+            >
+              <option value="Flat">Flat interest</option>
+              <option value="DecliningBalance">Declining balance</option>
+            </select>
+            <input
+              className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+              type="date"
+              value={form.firstDueDate}
+              onChange={(e) => setForm({ ...form, firstDueDate: e.target.value })}
+              title="First due date (optional at create)"
+            />
+            <input
+              className="rounded-md border border-slate-300 px-3 py-2 text-sm sm:col-span-2"
+              placeholder="Notes"
+              value={form.notes}
+              onChange={(e) => setForm({ ...form, notes: e.target.value })}
+            />
+          </div>
+          <div className="md:col-span-3 space-y-2 rounded-lg border border-slate-200 bg-white p-3">
+            <div className="rounded bg-sky-700 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white">
+              Assets / properties for collateral
+            </div>
+            <div className="overflow-hidden rounded border border-slate-200">
+              <table className="w-full text-left text-sm">
+                <thead className="bg-slate-50 text-slate-600">
+                  <tr>
+                    <th className="px-3 py-2 font-medium">Description / kind</th>
+                    <th className="px-3 py-2 font-medium">Brand</th>
+                    <th className="px-3 py-2 font-medium">Est. market value</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {collaterals.map((row, index) => (
+                    <tr key={index} className="border-t border-slate-100">
+                      <td className="px-2 py-1.5">
+                        <input
+                          className="w-full rounded border border-slate-200 px-2 py-1.5 text-sm"
+                          value={row.descriptionOrKind}
+                          onChange={(e) =>
+                            setCollaterals((prev) =>
+                              prev.map((r, i) =>
+                                i === index ? { ...r, descriptionOrKind: e.target.value } : r,
+                              ),
+                            )
+                          }
+                        />
+                      </td>
+                      <td className="px-2 py-1.5">
+                        <input
+                          className="w-full rounded border border-slate-200 px-2 py-1.5 text-sm"
+                          value={row.brand ?? ''}
+                          onChange={(e) =>
+                            setCollaterals((prev) =>
+                              prev.map((r, i) => (i === index ? { ...r, brand: e.target.value } : r)),
+                            )
+                          }
+                        />
+                      </td>
+                      <td className="px-2 py-1.5">
+                        <input
+                          className="w-full rounded border border-slate-200 px-2 py-1.5 text-sm"
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={row.estimatedMarketValue || ''}
+                          onChange={(e) =>
+                            setCollaterals((prev) =>
+                              prev.map((r, i) =>
+                                i === index
+                                  ? { ...r, estimatedMarketValue: Number(e.target.value || 0) }
+                                  : r,
+                              ),
+                            )
+                          }
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <button
+              type="button"
+              className="text-xs font-medium text-sky-700 hover:underline"
+              onClick={() =>
+                setCollaterals((prev) => [
+                  ...prev,
+                  { descriptionOrKind: '', brand: '', estimatedMarketValue: 0 },
+                ])
+              }
+            >
+              Add collateral row
+            </button>
+          </div>
           <div className="md:col-span-3">
             <LoanChargeFields form={form} setForm={setForm} />
           </div>
