@@ -131,18 +131,27 @@ export function RemittancesPage() {
           method: 'POST',
           body: JSON.stringify(payload),
         })
-        toast.success('Remittance draft created.')
+        toast.success(
+          created.status === 'Discrepancy'
+            ? `Remittance approved with discrepancy (variance ${money(created.variance)}).`
+            : 'Remittance approved.',
+        )
         await load()
         selectRow(created)
       } else {
-        const updated = await api<CashRemittance>(`/api/remittances/${selectedId}`, {
-          method: 'PUT',
+        // Legacy draft: approve in one step (receive accepts Draft).
+        const updated = await api<CashRemittance>(`/api/remittances/${selectedId}/receive`, {
+          method: 'POST',
           body: JSON.stringify({
             remittedAmount: payload.remittedAmount,
             notes: payload.notes,
           }),
         })
-        toast.success('Draft updated.')
+        toast.success(
+          updated.status === 'Discrepancy'
+            ? `Remittance approved with discrepancy (variance ${money(updated.variance)}).`
+            : 'Remittance approved.',
+        )
         await load()
         selectRow(updated)
       }
@@ -150,20 +159,6 @@ export function RemittancesPage() {
       toast.error(err instanceof Error ? err.message : 'Save failed')
     } finally {
       setSaving(false)
-    }
-  }
-
-  const onSubmit = async (id: number) => {
-    setActingId(id)
-    try {
-      const updated = await api<CashRemittance>(`/api/remittances/${id}/submit`, { method: 'POST' })
-      toast.success('Remittance submitted to office.')
-      await load()
-      selectRow(updated)
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Submit failed')
-    } finally {
-      setActingId(null)
     }
   }
 
@@ -386,30 +381,20 @@ export function RemittancesPage() {
               </label>
 
               {canManage && (selectedId == null || selected?.status === 'Draft') && (
-                <ActionButton type="submit" loading={saving} loadingText="Saving…">
-                  {selectedId == null ? 'Create draft' : 'Save draft'}
-                </ActionButton>
-              )}
-
-              {canManage && selected?.status === 'Draft' && (
-                <ActionButton
-                  type="button"
-                  variant="light"
-                  loading={actingId === selected.id}
-                  loadingText="Submitting…"
-                  onClick={() => void onSubmit(selected.id)}
-                >
-                  Submit to office
+                <ActionButton type="submit" loading={saving} loadingText="Approving…">
+                  Approve
                 </ActionButton>
               )}
             </form>
           )}
 
-          {canReceive && selected && (selected.status === 'Submitted' || selected.status === 'Discrepancy') && (
+          {(canManage || canReceive) &&
+            selected &&
+            (selected.status === 'Submitted' || selected.status === 'Discrepancy') && (
             <div className="space-y-3 rounded-xl border border-amber-200 bg-amber-50/50 p-5 shadow-sm">
-              <h3 className="text-sm font-semibold text-amber-950">Office receive</h3>
+              <h3 className="text-sm font-semibold text-amber-950">Resolve discrepancy</h3>
               <p className="text-xs text-amber-900/80">
-                Confirm the cash turned in. If remitted differs from collected, status becomes Discrepancy.
+                Confirm the cash turned in. When remitted matches collected, status becomes Received.
               </p>
               <label className="block text-sm text-slate-700">
                 Actual remitted
@@ -434,10 +419,10 @@ export function RemittancesPage() {
               <ActionButton
                 type="button"
                 loading={actingId === selected.id}
-                loadingText="Receiving…"
+                loadingText="Approving…"
                 onClick={() => void onReceive(selected.id)}
               >
-                Mark received
+                Approve
               </ActionButton>
             </div>
           )}

@@ -130,6 +130,8 @@ public class RemittancesController : ControllerBase
         var actorId = CurrentUserId();
         if (string.IsNullOrEmpty(actorId)) return Unauthorized();
 
+        // Approve immediately (no draft): Received when balanced, Discrepancy when variance ≠ 0.
+        var status = variance == 0 ? CashRemittanceStatus.Received : CashRemittanceStatus.Discrepancy;
         var row = new CashRemittance
         {
             AgentUserId = agent.Id,
@@ -139,8 +141,10 @@ public class RemittancesController : ControllerBase
             RemittedAmount = remitted,
             Variance = variance,
             Notes = string.IsNullOrWhiteSpace(request.Notes) ? null : request.Notes.Trim(),
-            Status = CashRemittanceStatus.Draft,
+            Status = status,
             CreatedByUserId = actorId,
+            ReceivedByUserId = actorId,
+            ReceivedAt = DateTime.UtcNow,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow,
         };
@@ -149,11 +153,11 @@ public class RemittancesController : ControllerBase
         await _db.SaveChangesAsync();
 
         await _audit.LogAsync(
-            "Created",
+            "Approved",
             "CashRemittance",
             row.Id.ToString(),
-            $"Created remittance draft for {agent.FullName} on {date:yyyy-MM-dd} (collected {collected:0.00}, remitted {remitted:0.00})",
-            new { row.AgentUserId, row.RemittanceDate, row.CollectedAmount, row.RemittedAmount, row.Variance });
+            $"Approved remittance for {agent.FullName} on {date:yyyy-MM-dd} as {status} (collected {collected:0.00}, remitted {remitted:0.00}, variance {variance:0.00})",
+            new { row.AgentUserId, row.RemittanceDate, row.CollectedAmount, row.RemittedAmount, row.Variance, Status = status.ToString() });
 
         row = await LoadAsync(row.Id);
         return CreatedAtAction(nameof(Get), new { id = row!.Id }, Map(row));
@@ -222,17 +226,25 @@ public class RemittancesController : ControllerBase
     }
 
     [HttpPost("{id:int}/receive")]
-    [Authorize(Policy = $"perm:{PermissionCodes.RemittanceReceive}")]
+    [Authorize]
     public async Task<ActionResult<CashRemittanceDto>> Receive(int id, [FromBody] ReceiveCashRemittanceRequest? request)
     {
+        var canApprove =
+            User.HasClaim("permission", PermissionCodes.RemittanceManage)
+            || User.HasClaim("permission", PermissionCodes.RemittanceReceive);
+        if (!canApprove) return Forbid();
+
         var scope = await _branchScope.ResolveAsync(User);
         if (scope is null) return Unauthorized();
 
         var row = await LoadAsync(id);
         if (row is null) return NotFound();
         if (!CanSee(scope, row)) return NotFound();
-        if (row.Status is not (CashRemittanceStatus.Submitted or CashRemittanceStatus.Discrepancy))
-            return BadRequest(new { message = "Only submitted remittances can be received." });
+        if (row.Status is not (
+            CashRemittanceStatus.Draft or
+            CashRemittanceStatus.Submitted or
+            CashRemittanceStatus.Discrepancy))
+            return BadRequest(new { message = "Only open remittances can be approved." });
 
         var actorId = CurrentUserId();
         if (string.IsNullOrEmpty(actorId)) return Unauthorized();
@@ -243,6 +255,8 @@ public class RemittancesController : ControllerBase
         if (!string.IsNullOrWhiteSpace(request?.Notes))
             row.Notes = request.Notes.Trim();
 
+        // Refresh collected from live cash payments before locking approval.
+        row.CollectedAmount = await SumCollectedAsync(row.AgentUserId, row.RemittanceDate.Date);
         row.Variance = row.CollectedAmount - row.RemittedAmount;
         row.Status = row.Variance == 0 ? CashRemittanceStatus.Received : CashRemittanceStatus.Discrepancy;
         row.ReceivedByUserId = actorId;
