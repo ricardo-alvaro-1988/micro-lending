@@ -1685,7 +1685,12 @@ export function StatementOfAccountPanel({ customerId, onError, onMessage }: Shar
                   <th className="px-3 py-2 font-medium">Description</th>
                   <th className="px-3 py-2 font-medium text-right">Debit</th>
                   <th className="px-3 py-2 font-medium text-right">Credit</th>
-                  <th className="px-3 py-2 font-medium text-right">Balance</th>
+                  <th className="px-3 py-2 font-medium text-right">
+                    Balance
+                    <div className="text-[10px] font-normal normal-case text-slate-400">
+                      loan / primary / extra by type
+                    </div>
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -1693,7 +1698,13 @@ export function StatementOfAccountPanel({ customerId, onError, onMessage }: Shar
                   <tr
                     key={`${line.date}-${idx}`}
                     className={`border-t border-slate-100 ${
-                      line.type === 'LateFee' ? 'bg-amber-50/70' : ''
+                      line.type === 'LateFee'
+                        ? 'bg-amber-50/70'
+                        : line.type === 'PrimarySavings'
+                          ? 'bg-sky-50/50'
+                          : line.type === 'ExtraSavings'
+                            ? 'bg-emerald-50/50'
+                            : ''
                     }`}
                   >
                     <td className="px-3 py-2">{dateOnly(line.date)}</td>
@@ -1715,7 +1726,7 @@ export function StatementOfAccountPanel({ customerId, onError, onMessage }: Shar
                     <td className="px-3 py-2">{line.description}</td>
                     <td className="px-3 py-2 text-right">{line.debit ? money(line.debit) : '—'}</td>
                     <td className="px-3 py-2 text-right">{line.credit ? money(line.credit) : '—'}</td>
-                    <td className="px-3 py-2 text-right font-medium">{money(line.balance)}</td>
+                    <td className="px-3 py-2 text-right font-medium tabular-nums">{money(line.balance)}</td>
                   </tr>
                 ))}
                 {statement.lines.length === 0 && (
