@@ -613,6 +613,176 @@ public class ReportsController : ControllerBase
         return Ok(fallback);
     }
 
+    /// <summary>Overall loans granted (Approved-Final / Closed), optional date range.</summary>
+    [HttpGet("loans-granted")]
+    public async Task<ActionResult<ReportLoansGrantedDto>> LoansGranted(
+        [FromQuery] DateTime? from = null,
+        [FromQuery] DateTime? to = null,
+        [FromQuery] int? branchId = null,
+        [FromQuery] string? agent1UserId = null,
+        [FromQuery] int? groupId = null)
+    {
+        var scope = await _branchScope.ResolveAsync(User, branchId);
+        if (scope is null) return Unauthorized();
+        if (scope.IsFieldAgent) return Forbid();
+
+        DateTime? start = from?.Date;
+        DateTime? endExclusive = to?.Date.AddDays(1);
+
+        var customers = BranchScopeService.Customers(_db.Customers.AsNoTracking(), scope);
+        if (!string.IsNullOrWhiteSpace(agent1UserId))
+            customers = customers.Where(c => c.Agent1UserId == agent1UserId);
+        if (groupId is int gid)
+            customers = customers.Where(c => c.GroupId == gid);
+
+        // Prefer ApprovedFinal activity date as "granted at".
+        var activityGranted = await (
+            from act in _db.LoanActivities.AsNoTracking()
+            join loan in _db.Loans.AsNoTracking() on act.LoanId equals loan.Id
+            join customer in customers on loan.CustomerId equals customer.Id
+            where act.Type == LoanActivityType.ApprovedFinal
+                  && (loan.Status == LoanStatus.ApprovedFinal || loan.Status == LoanStatus.Closed)
+                  && (start == null || act.OccurredAt >= start)
+                  && (endExclusive == null || act.OccurredAt < endExclusive)
+            select new
+            {
+                LoanId = loan.Id,
+                loan.LoanNumber,
+                CustomerId = customer.Id,
+                customer.FullName,
+                Agent1Name = customer.Agent1 != null ? customer.Agent1.FullName : null,
+                GroupName = customer.Group != null ? customer.Group.Name : null,
+                customer.BranchId,
+                BranchName = customer.Branch != null ? customer.Branch.Name : null,
+                ProductName = loan.LoanProduct != null ? loan.LoanProduct.Name : null,
+                GrantedAt = act.OccurredAt,
+                Principal = loan.Amount,
+                loan.InterestAmount,
+                loan.TotalPayable,
+                loan.NetProceeds,
+                loan.TotalDeductions,
+                Status = loan.Status.ToString(),
+                loan.TermCount,
+                Frequency = loan.PaymentFrequency.ToString()
+            }
+        ).ToListAsync();
+
+        List<(
+            int LoanId, string LoanNumber, int CustomerId, string FullName,
+            string? Agent1Name, string? GroupName, int? BranchId, string? BranchName,
+            string? ProductName, DateTime GrantedAt, decimal Principal, decimal InterestAmount,
+            decimal TotalPayable, decimal NetProceeds, decimal TotalDeductions,
+            string Status, int TermCount, string Frequency)> rows;
+
+        if (activityGranted.Count > 0)
+        {
+            rows = activityGranted
+                .GroupBy(x => x.LoanId)
+                .Select(g =>
+                {
+                    var x = g.OrderBy(r => r.GrantedAt).First();
+                    return (
+                        x.LoanId, x.LoanNumber, x.CustomerId, x.FullName,
+                        x.Agent1Name, x.GroupName, x.BranchId, x.BranchName,
+                        x.ProductName, x.GrantedAt, x.Principal, x.InterestAmount,
+                        x.TotalPayable, x.NetProceeds, x.TotalDeductions,
+                        x.Status, x.TermCount, x.Frequency);
+                })
+                .ToList();
+        }
+        else
+        {
+            var fallback = await (
+                from loan in _db.Loans.AsNoTracking()
+                join customer in customers on loan.CustomerId equals customer.Id
+                where (loan.Status == LoanStatus.ApprovedFinal || loan.Status == LoanStatus.Closed)
+                      && (start == null || loan.UpdatedAt >= start)
+                      && (endExclusive == null || loan.UpdatedAt < endExclusive)
+                select new
+                {
+                    LoanId = loan.Id,
+                    loan.LoanNumber,
+                    CustomerId = customer.Id,
+                    customer.FullName,
+                    Agent1Name = customer.Agent1 != null ? customer.Agent1.FullName : null,
+                    GroupName = customer.Group != null ? customer.Group.Name : null,
+                    customer.BranchId,
+                    BranchName = customer.Branch != null ? customer.Branch.Name : null,
+                    ProductName = loan.LoanProduct != null ? loan.LoanProduct.Name : null,
+                    GrantedAt = loan.UpdatedAt,
+                    Principal = loan.Amount,
+                    loan.InterestAmount,
+                    loan.TotalPayable,
+                    loan.NetProceeds,
+                    loan.TotalDeductions,
+                    Status = loan.Status.ToString(),
+                    loan.TermCount,
+                    Frequency = loan.PaymentFrequency.ToString()
+                }
+            ).ToListAsync();
+
+            rows = fallback.Select(x => (
+                x.LoanId, x.LoanNumber, x.CustomerId, x.FullName,
+                x.Agent1Name, x.GroupName, x.BranchId, x.BranchName,
+                x.ProductName, x.GrantedAt, x.Principal, x.InterestAmount,
+                x.TotalPayable, x.NetProceeds, x.TotalDeductions,
+                x.Status, x.TermCount, x.Frequency)).ToList();
+        }
+
+        static decimal NetOf(decimal net, decimal principal, decimal deductions) =>
+            net > 0 ? net : Math.Max(0, principal - deductions);
+
+        var loans = rows
+            .Select(x => new ReportLoanGrantedRowDto(
+                x.LoanId,
+                x.LoanNumber,
+                x.CustomerId,
+                x.FullName,
+                x.Agent1Name,
+                x.GroupName,
+                x.BranchId,
+                x.BranchName,
+                x.ProductName,
+                x.GrantedAt,
+                x.Principal,
+                x.InterestAmount,
+                x.TotalPayable,
+                NetOf(x.NetProceeds, x.Principal, x.TotalDeductions),
+                x.Status,
+                x.TermCount,
+                x.Frequency))
+            .OrderByDescending(l => l.GrantedAt)
+            .ThenBy(l => l.CustomerName)
+            .ToList();
+
+        static List<ReportLoanGrantedGroupDto> GroupBy(
+            IEnumerable<ReportLoanGrantedRowDto> source,
+            Func<ReportLoanGrantedRowDto, string> key) =>
+            source
+                .GroupBy(key)
+                .Select(g => new ReportLoanGrantedGroupDto(
+                    g.Key,
+                    g.Count(),
+                    g.Sum(x => x.Principal),
+                    g.Sum(x => x.InterestAmount),
+                    g.Sum(x => x.TotalPayable),
+                    g.Sum(x => x.NetProceeds)))
+                .OrderByDescending(g => g.Principal)
+                .ToList();
+
+        return Ok(new ReportLoansGrantedDto(
+            start,
+            to?.Date,
+            loans.Count,
+            loans.Sum(l => l.Principal),
+            loans.Sum(l => l.InterestAmount),
+            loans.Sum(l => l.TotalPayable),
+            loans.Sum(l => l.NetProceeds),
+            GroupBy(loans, l => string.IsNullOrWhiteSpace(l.Agent1Name) ? "(Unassigned)" : l.Agent1Name!),
+            GroupBy(loans, l => string.IsNullOrWhiteSpace(l.LoanProductName) ? "(No product)" : l.LoanProductName!),
+            loans));
+    }
+
     /// <summary>Expected schedule due vs payments collected by day.</summary>
     [HttpGet("expected-vs-actual")]
     public async Task<ActionResult<ReportExpectedActualResultDto>> ExpectedVsActual(

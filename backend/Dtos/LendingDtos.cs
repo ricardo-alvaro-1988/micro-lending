@@ -1068,6 +1068,46 @@ public record ReportLoanReleaseDto(
     int TermCount = 0,
     string PaymentFrequency = "");
 
+/// <summary>Overall loans granted (approved-final / closed) for a period or all-time.</summary>
+public record ReportLoanGrantedRowDto(
+    int LoanId,
+    string LoanNumber,
+    int CustomerId,
+    string CustomerName,
+    string? Agent1Name,
+    string? GroupName,
+    int? BranchId,
+    string? BranchName,
+    string? LoanProductName,
+    DateTime GrantedAt,
+    decimal Principal,
+    decimal InterestAmount,
+    decimal TotalPayable,
+    decimal NetProceeds,
+    string Status,
+    int TermCount,
+    string PaymentFrequency);
+
+public record ReportLoanGrantedGroupDto(
+    string Name,
+    int LoanCount,
+    decimal Principal,
+    decimal InterestAmount,
+    decimal TotalPayable,
+    decimal NetProceeds);
+
+public record ReportLoansGrantedDto(
+    DateTime? From,
+    DateTime? To,
+    int LoanCount,
+    decimal TotalPrincipal,
+    decimal TotalInterest,
+    decimal TotalPayable,
+    decimal TotalNetProceeds,
+    IReadOnlyList<ReportLoanGrantedGroupDto> ByAgent,
+    IReadOnlyList<ReportLoanGrantedGroupDto> ByProduct,
+    IReadOnlyList<ReportLoanGrantedRowDto> Loans);
+
 public record ReportExpectedActualDayDto(
     DateTime Date,
     decimal ExpectedDue,

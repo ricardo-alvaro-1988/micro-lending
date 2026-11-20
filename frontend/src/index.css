@@ -288,7 +288,9 @@ body {
   .cashflow-print-root,
   .cashflow-print-root *,
   .receivables-print-root,
-  .receivables-print-root * {
+  .receivables-print-root *,
+  .loans-granted-print-root,
+  .loans-granted-print-root * {
     visibility: visible;
   }
 
@@ -297,7 +299,8 @@ body {
   .disbursement-print-root,
   .balancing-print-root,
   .cashflow-print-root,
-  .receivables-print-root {
+  .receivables-print-root,
+  .loans-granted-print-root {
     position: absolute;
     left: 0;
     top: 0;
@@ -315,7 +318,8 @@ body {
   .disbursement-print-root table,
   .balancing-print-root table,
   .cashflow-print-root table,
-  .receivables-print-root table {
+  .receivables-print-root table,
+  .loans-granted-print-root table {
     width: 100%;
     border-collapse: collapse;
   }

@@ -60,6 +60,11 @@ const reports = [
         blurb: 'Outstanding loan balances owed by borrowers — current vs overdue.',
       },
       {
+        to: '/reports/loans-granted',
+        title: 'Loan granted report',
+        blurb: 'Overall loans granted — principal, interest, and net proceeds by agent/product.',
+      },
+      {
         to: '/reports/expected-vs-actual',
         title: 'Expected vs actual',
         blurb: 'Daily schedule due compared with payments received.',
