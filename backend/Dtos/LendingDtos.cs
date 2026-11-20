@@ -677,6 +677,24 @@ public class ExtraSavingsDepositRequest
     public string? Notes { get; set; }
 }
 
+public class ManualLateFeeRequest
+{
+    [Range(0.01, double.MaxValue)]
+    public decimal Amount { get; set; }
+    public DateTime? OccurredAt { get; set; }
+    [MaxLength(500)]
+    public string? Notes { get; set; }
+}
+
+public record LoanLateFeeDto(
+    int Id,
+    int LoanId,
+    string LoanNumber,
+    decimal Amount,
+    DateTime OccurredAt,
+    string? Notes,
+    string? RecordedBy);
+
 public record ReportSavingsRowDto(
     int TransactionId,
     DateTime OccurredAt,

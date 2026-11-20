@@ -1399,19 +1399,24 @@ export function RecordPaymentPanel({
 
 type LoanOption = { id: number; loanNumber: string; status: string }
 
-export function StatementOfAccountPanel({ customerId, onError }: SharedProps) {
+export function StatementOfAccountPanel({ customerId, onError, onMessage }: SharedProps) {
+  const { can } = useAuth()
+  const canManageLoans = can('loans.manage')
   const [loans, setLoans] = useState<LoanOption[]>([])
   const [loanId, setLoanId] = useState<number | ''>('')
   const [from, setFrom] = useState('')
   const [to, setTo] = useState('')
   const [statement, setStatement] = useState<StatementOfAccount | null>(null)
   const [loading, setLoading] = useState(false)
+  const [lateFeeAmount, setLateFeeAmount] = useState('')
+  const [lateFeeBusy, setLateFeeBusy] = useState(false)
 
   useEffect(() => {
     setLoanId('')
     setFrom('')
     setTo('')
     setStatement(null)
+    setLateFeeAmount('')
     api<LoanOption[]>(`/api/customers/${customerId}/loan-options`)
       .then(setLoans)
       .catch((err) => onError(err instanceof Error ? err.message : 'Failed to load loans'))
@@ -1438,6 +1443,32 @@ export function StatementOfAccountPanel({ customerId, onError }: SharedProps) {
     void loadStatement()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [customerId])
+
+  const addLateFee = async () => {
+    if (loanId === '') {
+      onError('Select a loan before adding a late fee.')
+      return
+    }
+    const amount = Number(lateFeeAmount)
+    if (!Number.isFinite(amount) || amount <= 0) {
+      onError('Enter a late fee amount greater than zero.')
+      return
+    }
+    setLateFeeBusy(true)
+    try {
+      await api(`/api/customers/${customerId}/loans/${loanId}/late-fees`, {
+        method: 'POST',
+        body: JSON.stringify({ amount }),
+      })
+      setLateFeeAmount('')
+      onMessage('Late fee added.')
+      await loadStatement()
+    } catch (err) {
+      onError(err instanceof Error ? err.message : 'Failed to add late fee')
+    } finally {
+      setLateFeeBusy(false)
+    }
+  }
 
   return (
     <div className="space-y-4">
@@ -1482,6 +1513,36 @@ export function StatementOfAccountPanel({ customerId, onError }: SharedProps) {
           Print
         </ActionButton>
       </div>
+
+      {canManageLoans && (
+        <div className="flex flex-wrap items-end gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 print:hidden">
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-600">Late fee</label>
+            <input
+              type="number"
+              min="0.01"
+              step="0.01"
+              inputMode="decimal"
+              placeholder="Amount"
+              className="w-40 rounded-md border border-slate-300 px-3 py-2 text-sm"
+              value={lateFeeAmount}
+              onChange={(e) => setLateFeeAmount(e.target.value)}
+            />
+          </div>
+          <ActionButton
+            type="button"
+            loading={lateFeeBusy}
+            loadingText="Saving…"
+            disabled={loanId === '' || !lateFeeAmount}
+            onClick={() => void addLateFee()}
+          >
+            Add late fee
+          </ActionButton>
+          {loanId === '' && (
+            <span className="pb-2 text-xs text-slate-500">Select a loan above to add a late fee.</span>
+          )}
+        </div>
+      )}
 
       {statement && (
         <div className="statement-print-root space-y-3 rounded-xl border border-slate-200 bg-white p-5 print:border-0 print:p-0 print:shadow-none">

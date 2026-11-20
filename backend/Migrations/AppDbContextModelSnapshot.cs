@@ -1116,6 +1116,44 @@ namespace MicroLending.Api.Migrations
                     b.ToTable("LoanFieldNoteAttachments");
                 });
 
+            modelBuilder.Entity("MicroLending.Api.Models.LoanLateFee", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("LoanId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime>("OccurredAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("RecordedByUserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RecordedByUserId");
+
+                    b.HasIndex("LoanId", "OccurredAt");
+
+                    b.ToTable("LoanLateFees");
+                });
+
             modelBuilder.Entity("MicroLending.Api.Models.LoanPayment", b =>
                 {
                     b.Property<int>("Id")
@@ -1884,6 +1922,25 @@ namespace MicroLending.Api.Migrations
                     b.Navigation("Note");
                 });
 
+            modelBuilder.Entity("MicroLending.Api.Models.LoanLateFee", b =>
+                {
+                    b.HasOne("MicroLending.Api.Models.Loan", "Loan")
+                        .WithMany("LateFees")
+                        .HasForeignKey("LoanId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("MicroLending.Api.Models.ApplicationUser", "RecordedByUser")
+                        .WithMany()
+                        .HasForeignKey("RecordedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Loan");
+
+                    b.Navigation("RecordedByUser");
+                });
+
             modelBuilder.Entity("MicroLending.Api.Models.LoanPayment", b =>
                 {
                     b.HasOne("MicroLending.Api.Models.Loan", "Loan")
@@ -2145,6 +2202,8 @@ namespace MicroLending.Api.Migrations
                     b.Navigation("Collaterals");
 
                     b.Navigation("FieldNotes");
+
+                    b.Navigation("LateFees");
 
                     b.Navigation("Payments");
 
