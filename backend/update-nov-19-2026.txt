@@ -31,6 +31,7 @@ the principal should be round off as well
 ====
 daily payment round off to whole pesos
 principal / interest / savings (e.g. 214.29→214, 25.71→26, 21.43→21)
+insurance daily default = 5
 ====
 on record payment, 
 select group,

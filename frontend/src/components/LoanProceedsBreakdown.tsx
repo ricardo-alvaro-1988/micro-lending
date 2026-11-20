@@ -119,7 +119,7 @@ export const emptyLoanCharges = {
   insuranceAmount: 0,
   initialSavings: 0,
   savingsPerPeriod: 0,
-  insurancePerPeriod: 0,
+  insurancePerPeriod: 5,
   membershipFee: 0,
   processingFee: 0,
   loanRedemptionFee: 0,

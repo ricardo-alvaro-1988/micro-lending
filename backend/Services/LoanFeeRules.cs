@@ -14,6 +14,7 @@ public static class LoanFeeRules
 {
     public const decimal DefaultInterestRatePercent = 12m;
     public const decimal MembershipFeeAmount = 125m;
+    public const decimal DefaultInsurancePerPeriod = 5m;
 
     /// <summary>Membership is charged only on the first loan cycle.</summary>
     public static decimal MembershipFeeFor(int? cycle) =>
@@ -64,7 +65,7 @@ public static class LoanFeeRules
             InsuranceAmount: InsuranceForPrincipal(principal),
             InitialSavings: decimal.Round(principal * 0.02m, 2, MidpointRounding.AwayFromZero),
             SavingsPerPeriod: savingsPerPeriod,
-            InsurancePerPeriod: 0,
+            InsurancePerPeriod: DefaultInsurancePerPeriod,
             MembershipFee: MembershipFeeFor(cycle),
             ProcessingFee: ProcessingFeeFor(principal),
             LoanRedemptionFee: LoanRedemptionFeeFor(principal),
