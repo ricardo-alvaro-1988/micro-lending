@@ -96,7 +96,7 @@ export function CashflowReportPage() {
   return (
     <ReportChrome
       title="Cashflow report"
-      description="Beginning + Remitted − Disbursement − Expenses = Cash on hand."
+      description="Beginning + Remitted (cash turned in to office) − Disbursement − Expenses = Cash on hand."
       loading={loading}
       error={error}
       onRefresh={() => void load()}
@@ -191,7 +191,7 @@ export function CashflowReportPage() {
                     <td className="px-4 py-3 font-medium text-violet-900">
                       Remitted
                       <div className="text-xs font-normal text-violet-700/80">
-                        {data.remittanceCount} remittance slip{data.remittanceCount === 1 ? '' : 's'}
+                        {data.remittanceCount} slip{data.remittanceCount === 1 ? '' : 's'} turned in to office
                       </div>
                     </td>
                     <td className="px-4 py-3 text-right tabular-nums font-medium text-violet-900">
