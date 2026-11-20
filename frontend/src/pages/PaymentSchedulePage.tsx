@@ -1,19 +1,20 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { api } from '../api/client'
 import { useAuth } from '../auth/AuthContext'
 import { useBranchScope, withBranchQuery } from '../branch/BranchContext'
 import { ActionButton } from '../components/ActionButton'
-import { LoadingTableRow } from '../components/ListLoading'
+import { LoadingTableRow, PageLoading } from '../components/ListLoading'
 import {
   LoanChargeFields,
   LoanProceedsBreakdown,
   chargePayloadFrom,
+  chargeStringsFrom,
   emptyChargeStrings,
 } from '../components/LoanProceedsBreakdown'
 import { StageTag, StatusTag } from '../components/StatusTag'
-import { dailyPaymentLines, feeFieldsFromPrincipal } from '../lib/loanFeeRules'
+import { DEFAULT_INTEREST_RATE_PERCENT, dailyPaymentLines, feeFieldsFromPrincipal } from '../lib/loanFeeRules'
 import { notifyPaymentSchedulesChanged } from '../notify'
-import type { LoanProduct } from '../types'
+import type { LoanDetailBundle, LoanProduct } from '../types'
 import { useToast } from '../toast/ToastContext'
 
 /** @deprecated Prefer importing from `../notify`. */
@@ -32,6 +33,22 @@ type PendingItem = {
   waitingHours: number
   canManage: boolean
   cycle?: number | null
+  interestRatePercent?: number
+  termCount?: number
+  paymentFrequency?: string
+  interestMethod?: string
+  loanProductId?: number | null
+  notes?: string | null
+  insuranceAmount?: number
+  initialSavings?: number
+  savingsPerPeriod?: number
+  insurancePerPeriod?: number
+  membershipFee?: number
+  processingFee?: number
+  loanRedemptionFee?: number
+  taxes?: number
+  notarialFee?: number
+  raffle?: number
 }
 
 type ScheduleRow = {
@@ -49,6 +66,42 @@ type ScheduleRow = {
 const money = (n: number) =>
   n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
+function todayIso() {
+  const d = new Date()
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
+
+function formFromPending(item: PendingItem) {
+  const termCount = item.termCount && item.termCount > 0 ? item.termCount : 70
+  const amount = item.amount > 0 ? item.amount : 0
+  const hasCharges =
+    (item.processingFee ?? 0) > 0 ||
+    (item.initialSavings ?? 0) > 0 ||
+    (item.membershipFee ?? 0) > 0 ||
+    (item.raffle ?? 0) > 0
+
+  return {
+    loanProductId: item.loanProductId ?? 0,
+    amount: amount ? String(amount) : '',
+    interestRatePercent: String(
+      item.interestRatePercent && item.interestRatePercent > 0
+        ? item.interestRatePercent
+        : DEFAULT_INTEREST_RATE_PERCENT,
+    ),
+    termCount: String(termCount),
+    paymentFrequency: item.paymentFrequency || 'Daily',
+    interestMethod: item.interestMethod || 'Flat',
+    firstDueDate: todayIso(),
+    notes: item.notes ?? '',
+    ...(hasCharges
+      ? chargeStringsFrom(item)
+      : amount > 0
+        ? feeFieldsFromPrincipal(amount, termCount, item.cycle)
+        : emptyChargeStrings),
+  }
+}
+
 export function PaymentSchedulePage() {
   const { can } = useAuth()
   const { filterBranchId } = useBranchScope()
@@ -57,20 +110,22 @@ export function PaymentSchedulePage() {
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const toast = useToast()
   const [loading, setLoading] = useState(true)
+  const [detailLoading, setDetailLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [schedule, setSchedule] = useState<ScheduleRow[]>([])
   const [products, setProducts] = useState<LoanProduct[]>([])
   const [form, setForm] = useState({
     loanProductId: 0,
     amount: '',
-    interestRatePercent: '0',
-    termCount: '12',
-    paymentFrequency: 'Monthly',
+    interestRatePercent: String(DEFAULT_INTEREST_RATE_PERCENT),
+    termCount: '70',
+    paymentFrequency: 'Daily',
     interestMethod: 'Flat',
-    firstDueDate: '',
+    firstDueDate: todayIso(),
     notes: '',
     ...emptyChargeStrings,
   })
+  const selectGen = useRef(0)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -81,16 +136,15 @@ export function PaymentSchedulePage() {
       ])
       setItems(list)
       setProducts(productList)
-      if (selectedId != null && !list.some((x) => x.loanId === selectedId)) {
-        setSelectedId(null)
-        setSchedule([])
-      }
+      setSelectedId((cur) => (cur != null && !list.some((x) => x.loanId === cur) ? null : cur))
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to load payment schedules')
+      toast.error(err instanceof Error ? err.message : 'Failed to load disbursement queue')
     } finally {
       setLoading(false)
     }
-  }, [selectedId, filterBranchId])
+    // toast is stable from ToastProvider
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterBranchId])
 
   useEffect(() => {
     void load()
@@ -102,20 +156,40 @@ export function PaymentSchedulePage() {
     return () => window.removeEventListener('ml:payment-schedules-changed', onChanged)
   }, [load])
 
-  const select = (item: PendingItem) => {
+  const select = async (item: PendingItem) => {
+    const gen = ++selectGen.current
     setSelectedId(item.loanId)
     setSchedule([])
-    setForm({
-      loanProductId: 0,
-      amount: String(item.amount),
-      interestRatePercent: '0',
-      termCount: '12',
-      paymentFrequency: 'Monthly',
-      interestMethod: 'Flat',
-      firstDueDate: '',
-      notes: '',
-      ...emptyChargeStrings,
-    })
+    setForm(formFromPending(item))
+    setDetailLoading(true)
+    try {
+      const detail = await api<LoanDetailBundle>(
+        `/api/customers/${item.customerId}/loans/${item.loanId}`,
+      )
+      if (gen !== selectGen.current) return
+      setForm({
+        loanProductId: detail.loan.loanProductId ?? 0,
+        amount: String(detail.loan.amount || item.amount || ''),
+        interestRatePercent: String(
+          detail.loan.interestRatePercent > 0
+            ? detail.loan.interestRatePercent
+            : DEFAULT_INTEREST_RATE_PERCENT,
+        ),
+        termCount: String(detail.loan.termCount > 0 ? detail.loan.termCount : 70),
+        paymentFrequency: detail.loan.paymentFrequency || item.paymentFrequency || 'Daily',
+        interestMethod: detail.loan.interestMethod || item.interestMethod || 'Flat',
+        firstDueDate: detail.loan.firstDueDate
+          ? detail.loan.firstDueDate.slice(0, 10)
+          : todayIso(),
+        notes: detail.loan.notes ?? '',
+        ...chargeStringsFrom(detail.loan),
+      })
+      setSchedule(detail.schedule ?? [])
+    } catch {
+      // Pending payload already filled the form; detail fetch is best-effort.
+    } finally {
+      if (gen === selectGen.current) setDetailLoading(false)
+    }
   }
 
   const selected = items.find((x) => x.loanId === selectedId) ?? null
@@ -140,12 +214,12 @@ export function PaymentSchedulePage() {
         }),
       })
       setSchedule(result.schedule ?? [])
-      toast.success(`Payment schedule created for ${selected.loanNumber}.`)
+      toast.success(`Disbursement schedule created for ${selected.loanNumber}.`)
       notifyPaymentSchedulesChanged()
       await load()
       setSelectedId(null)
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to save payment schedule')
+      toast.error(err instanceof Error ? err.message : 'Failed to save disbursement schedule')
     } finally {
       setSaving(false)
     }
@@ -179,7 +253,7 @@ export function PaymentSchedulePage() {
             </thead>
             <tbody>
               {loading && items.length === 0 && (
-                <LoadingTableRow colSpan={5} label="Loading payment schedules..." />
+                <LoadingTableRow colSpan={5} label="Loading disbursement queue..." />
               )}
               {items.map((item) => {
                 const active = selectedId === item.loanId
@@ -190,7 +264,7 @@ export function PaymentSchedulePage() {
                     className={`cursor-pointer border-t border-slate-100 hover:bg-rose-50/40 ${
                       active ? 'bg-rose-50' : ''
                     }`}
-                    onClick={() => select(item)}
+                    onClick={() => void select(item)}
                   >
                     <td className="px-4 py-3">
                       <span
@@ -211,7 +285,7 @@ export function PaymentSchedulePage() {
               {!loading && items.length === 0 && (
                 <tr>
                   <td className="px-4 py-6 text-slate-500" colSpan={5}>
-                    No Approved-Final loans waiting for a payment schedule.
+                    No Approved-Final loans waiting for disbursement.
                   </td>
                 </tr>
               )}
@@ -222,8 +296,10 @@ export function PaymentSchedulePage() {
         <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
           {!selected ? (
             <div className="py-10 text-center text-sm text-slate-500">
-              Select an urgent loan to create its payment schedule.
+              Select a loan from the list to load disbursement details.
             </div>
+          ) : detailLoading && !form.amount ? (
+            <PageLoading label="Loading loan details…" compact />
           ) : (
             <form onSubmit={onSave} className="space-y-4">
               <div>
@@ -231,13 +307,16 @@ export function PaymentSchedulePage() {
                   <h3 className="text-lg font-semibold text-slate-900">{selected.loanNumber}</h3>
                   <StatusTag status={selected.status} />
                   <StageTag stage={selected.currentStageName} />
+                  {detailLoading && (
+                    <span className="text-xs text-slate-500">Refreshing details…</span>
+                  )}
                 </div>
                 <p className="mt-1 text-sm text-slate-500">
                   {selected.customerName} · {selected.flowName}
                 </p>
                 <p className="mt-2 text-xs font-medium text-rose-700">
-                  Waiting {selected.waitingHours < 1 ? 'under an hour' : `${selected.waitingHours} hour(s)`} — create
-                  schedule now.
+                  Waiting {selected.waitingHours < 1 ? 'under an hour' : `${selected.waitingHours} hour(s)`} — set
+                  first day of payment and disburse.
                 </p>
               </div>
 
@@ -400,7 +479,7 @@ export function PaymentSchedulePage() {
 
               {canManage ? (
                 <ActionButton type="submit" loading={saving} loadingText="Creating…">
-                  Create payment schedule
+                  Create disbursement schedule
                 </ActionButton>
               ) : (
                 <p className="text-sm text-slate-500">You can view this queue but cannot create schedules.</p>
