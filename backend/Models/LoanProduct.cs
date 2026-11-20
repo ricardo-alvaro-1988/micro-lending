@@ -6,16 +6,6 @@ public enum InterestMethod
     DecliningBalance = 1
 }
 
-/// <summary>
-/// Processing fee step schedule from update-nov-19-2026.
-/// Base70Plus15: 5k=70 then +15/1k; Base100Plus10: 5k=100 then +10/1k.
-/// </summary>
-public enum ProcessingFeeSchedule
-{
-    Base70Plus15 = 0,
-    Base100Plus10 = 1
-}
-
 /// <summary>Reusable loan template (amount, rate, term, frequency, interest method).</summary>
 public class LoanProduct
 {
@@ -27,7 +17,6 @@ public class LoanProduct
     public int TermCount { get; set; } = 70;
     public PaymentFrequency PaymentFrequency { get; set; } = PaymentFrequency.Daily;
     public InterestMethod InterestMethod { get; set; } = InterestMethod.Flat;
-    public ProcessingFeeSchedule ProcessingFeeSchedule { get; set; } = ProcessingFeeSchedule.Base70Plus15;
 
     /// <summary>Header insurance amount (policy / declared total).</summary>
     public decimal InsuranceAmount { get; set; }

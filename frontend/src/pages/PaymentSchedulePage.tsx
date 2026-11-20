@@ -253,11 +253,7 @@ export function PaymentSchedulePage() {
                         setForm((prev) => ({ ...prev, loanProductId: 0 }))
                         return
                       }
-                      const fees = feeFieldsFromPrincipal(
-                        product.amount,
-                        product.termCount,
-                        product.processingFeeSchedule,
-                      )
+                      const fees = feeFieldsFromPrincipal(product.amount, product.termCount)
                       setForm((prev) => ({
                         ...prev,
                         loanProductId: product.id,
@@ -293,7 +289,7 @@ export function PaymentSchedulePage() {
                       if (product && n > 0 && terms > 0) {
                         setForm({
                           ...form,
-                          ...feeFieldsFromPrincipal(n, terms, product.processingFeeSchedule),
+                          ...feeFieldsFromPrincipal(n, terms),
                           termCount: form.termCount,
                         })
                         return

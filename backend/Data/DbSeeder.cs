@@ -459,44 +459,29 @@ public static class DbSeeder
         {
             var daily10k = new LoanProduct
             {
-                Name = "Daily 10,000 (proc 70+15)",
-                Description = "₱10,000 · 70 days · 12% flat · processing 5k=70 +15/1k",
+                Name = "Daily 10,000",
+                Description = "₱10,000 · 70 days · 12% flat · redemption 5k=70 +15/1k · processing 5k=100 +10/1k",
                 Amount = 10000,
                 TermCount = 70,
                 PaymentFrequency = PaymentFrequency.Daily,
                 InterestMethod = InterestMethod.Flat,
-                ProcessingFeeSchedule = ProcessingFeeSchedule.Base70Plus15,
                 IsActive = true,
             };
             LoanFeeRules.ApplyComputedFees(daily10k);
 
-            var daily10kAlt = new LoanProduct
-            {
-                Name = "Daily 10,000 (proc 100+10)",
-                Description = "₱10,000 · 70 days · 12% flat · processing 5k=100 +10/1k",
-                Amount = 10000,
-                TermCount = 70,
-                PaymentFrequency = PaymentFrequency.Daily,
-                InterestMethod = InterestMethod.Flat,
-                ProcessingFeeSchedule = ProcessingFeeSchedule.Base100Plus10,
-                IsActive = true,
-            };
-            LoanFeeRules.ApplyComputedFees(daily10kAlt);
-
             var daily15k = new LoanProduct
             {
-                Name = "Daily 15,000 (proc 70+15)",
-                Description = "₱15,000 · 70 days · 12% flat · processing 5k=70 +15/1k",
+                Name = "Daily 15,000",
+                Description = "₱15,000 · 70 days · 12% flat · redemption 5k=70 +15/1k · processing 5k=100 +10/1k",
                 Amount = 15000,
                 TermCount = 70,
                 PaymentFrequency = PaymentFrequency.Daily,
                 InterestMethod = InterestMethod.Flat,
-                ProcessingFeeSchedule = ProcessingFeeSchedule.Base70Plus15,
                 IsActive = true,
             };
             LoanFeeRules.ApplyComputedFees(daily15k);
 
-            db.LoanProducts.AddRange(daily10k, daily10kAlt, daily15k);
+            db.LoanProducts.AddRange(daily10k, daily15k);
             await db.SaveChangesAsync();
         }
 

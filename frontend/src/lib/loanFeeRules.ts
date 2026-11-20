@@ -1,7 +1,5 @@
 /** Fee formulas from update-nov-19-2026 (loan products). */
 
-export type ProcessingFeeSchedule = 'Base70Plus15' | 'Base100Plus10'
-
 export const DEFAULT_INTEREST_RATE_PERCENT = 12
 
 export function roundToTens(value: number): number {
@@ -28,13 +26,14 @@ export function insuranceForPrincipal(principal: number): number {
   return 300
 }
 
-export function processingFeeFor(
-  principal: number,
-  schedule: ProcessingFeeSchedule = 'Base70Plus15',
-): number {
-  return schedule === 'Base100Plus10'
-    ? steppedFrom5k(principal, 100, 10)
-    : steppedFrom5k(principal, 70, 15)
+/** Processing: 5k = 100, then +10 every 1k. */
+export function processingFeeFor(principal: number): number {
+  return steppedFrom5k(principal, 100, 10)
+}
+
+/** Loan redemption: 5k = 70, then +15 every 1k. */
+export function loanRedemptionFeeFor(principal: number): number {
+  return steppedFrom5k(principal, 70, 15)
 }
 
 export function notarialFeeFor(principal: number): number {
@@ -57,11 +56,7 @@ export type LoanFeeRuleResult = {
 }
 
 /** Compute product/loan charges from principal + terms. Principal is rounded to tens. */
-export function computeLoanFees(
-  principalInput: number,
-  termCount: number,
-  schedule: ProcessingFeeSchedule = 'Base70Plus15',
-): LoanFeeRuleResult {
+export function computeLoanFees(principalInput: number, termCount: number): LoanFeeRuleResult {
   const principal = roundToTens(principalInput)
   const terms = Math.max(0, Math.floor(termCount))
   return {
@@ -72,8 +67,8 @@ export function computeLoanFees(
     savingsPerPeriod: terms > 0 ? round2((principal * 0.1) / terms) : 0,
     insurancePerPeriod: 0,
     membershipFee: 0,
-    processingFee: processingFeeFor(principal, schedule),
-    loanRedemptionFee: 0,
+    processingFee: processingFeeFor(principal),
+    loanRedemptionFee: loanRedemptionFeeFor(principal),
     taxes: round2(principal * 0.01),
     notarialFee: notarialFeeFor(principal),
     raffle: 0,
@@ -97,15 +92,7 @@ export function feeRuleStrings(result: LoanFeeRuleResult) {
   }
 }
 
-export function scheduleFromProduct(value?: string | null): ProcessingFeeSchedule {
-  return value === 'Base100Plus10' ? 'Base100Plus10' : 'Base70Plus15'
-}
-
 /** Charge + interest strings for loan forms when principal/terms change. */
-export function feeFieldsFromPrincipal(
-  amount: number,
-  termCount: number,
-  schedule?: string | null,
-) {
-  return feeRuleStrings(computeLoanFees(amount, termCount, scheduleFromProduct(schedule)))
+export function feeFieldsFromPrincipal(amount: number, termCount: number) {
+  return feeRuleStrings(computeLoanFees(amount, termCount))
 }

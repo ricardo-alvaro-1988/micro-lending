@@ -3,7 +3,7 @@
 Notarial fee
 5000 = 100, then +5 on every 1k
 ==
-processing fee
+Loan redemption fee
 5000 = 70, then +15 on every 1k
 ====
 processing fee

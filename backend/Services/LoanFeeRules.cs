@@ -4,7 +4,7 @@ namespace MicroLending.Api.Services;
 
 /// <summary>
 /// Loan product fee formulas (update-nov-19-2026):
-/// notarial 5k=100 +5/1k; processing A 5k=70 +15/1k or B 5k=100 +10/1k;
+/// notarial 5k=100 +5/1k; loan redemption 5k=70 +15/1k; processing 5k=100 +10/1k;
 /// savings = principal×10%/terms; initial savings 2%; insurance brackets;
 /// tax 1%; interest 12% with principal/interest rounded to tens.
 /// </summary>
@@ -32,18 +32,16 @@ public static class LoanFeeRules
         return 300;
     }
 
-    public static decimal ProcessingFeeFor(decimal principal, ProcessingFeeSchedule schedule) =>
-        schedule == ProcessingFeeSchedule.Base100Plus10
-            ? SteppedFrom5k(principal, 100m, 10m)
-            : SteppedFrom5k(principal, 70m, 15m);
+    public static decimal ProcessingFeeFor(decimal principal) =>
+        SteppedFrom5k(principal, 100m, 10m);
+
+    public static decimal LoanRedemptionFeeFor(decimal principal) =>
+        SteppedFrom5k(principal, 70m, 15m);
 
     public static decimal NotarialFeeFor(decimal principal) =>
         SteppedFrom5k(principal, 100m, 5m);
 
-    public static LoanChargeInputs ComputeCharges(
-        decimal principalInput,
-        int termCount,
-        ProcessingFeeSchedule schedule = ProcessingFeeSchedule.Base70Plus15)
+    public static LoanChargeInputs ComputeCharges(decimal principalInput, int termCount)
     {
         var principal = RoundToTens(principalInput);
         var terms = Math.Max(0, termCount);
@@ -57,8 +55,8 @@ public static class LoanFeeRules
             SavingsPerPeriod: savingsPerPeriod,
             InsurancePerPeriod: 0,
             MembershipFee: 0,
-            ProcessingFee: ProcessingFeeFor(principal, schedule),
-            LoanRedemptionFee: 0,
+            ProcessingFee: ProcessingFeeFor(principal),
+            LoanRedemptionFee: LoanRedemptionFeeFor(principal),
             Taxes: decimal.Round(principal * 0.01m, 2, MidpointRounding.AwayFromZero),
             NotarialFee: NotarialFeeFor(principal),
             Raffle: 0);
@@ -71,7 +69,7 @@ public static class LoanFeeRules
     {
         var principal = RoundToTens(principalInput ?? product.Amount);
         var terms = termCount ?? product.TermCount;
-        var charges = ComputeCharges(principal, terms, product.ProcessingFeeSchedule);
+        var charges = ComputeCharges(principal, terms);
 
         product.Amount = principal;
         product.InterestRatePercent = DefaultInterestRatePercent;

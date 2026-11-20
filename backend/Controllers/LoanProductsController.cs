@@ -60,7 +60,7 @@ public class LoanProductsController : ControllerBase
     [Authorize(Policy = $"perm:{PermissionCodes.LoanProductsManage}")]
     public async Task<ActionResult<LoanProductDto>> Create([FromBody] UpsertLoanProductRequest request)
     {
-        if (!TryParseTerms(request, out var frequency, out var method, out var schedule, out var error))
+        if (!TryParseTerms(request, out var frequency, out var method, out var error))
             return BadRequest(new { message = error });
 
         var name = request.Name.Trim();
@@ -68,7 +68,7 @@ public class LoanProductsController : ControllerBase
             return BadRequest(new { message = "A loan product with this name already exists." });
 
         var product = new LoanProduct();
-        Apply(product, request, frequency, method, schedule);
+        Apply(product, request, frequency, method);
         product.CreatedAt = DateTime.UtcNow;
         _db.LoanProducts.Add(product);
         await _db.SaveChangesAsync();
@@ -87,7 +87,7 @@ public class LoanProductsController : ControllerBase
     [Authorize(Policy = $"perm:{PermissionCodes.LoanProductsManage}")]
     public async Task<ActionResult<LoanProductDto>> Update(int id, [FromBody] UpsertLoanProductRequest request)
     {
-        if (!TryParseTerms(request, out var frequency, out var method, out var schedule, out var error))
+        if (!TryParseTerms(request, out var frequency, out var method, out var error))
             return BadRequest(new { message = error });
 
         var product = await _db.LoanProducts.Include(p => p.Loans).FirstOrDefaultAsync(p => p.Id == id);
@@ -97,7 +97,7 @@ public class LoanProductsController : ControllerBase
         if (await _db.LoanProducts.AnyAsync(p => p.Name == name && p.Id != id))
             return BadRequest(new { message = "A loan product with this name already exists." });
 
-        Apply(product, request, frequency, method, schedule);
+        Apply(product, request, frequency, method);
         await _db.SaveChangesAsync();
 
         await _audit.LogAsync(
@@ -132,12 +132,10 @@ public class LoanProductsController : ControllerBase
         UpsertLoanProductRequest request,
         out PaymentFrequency frequency,
         out InterestMethod method,
-        out ProcessingFeeSchedule schedule,
         out string? error)
     {
         frequency = PaymentFrequency.Daily;
         method = InterestMethod.Flat;
-        schedule = ProcessingFeeSchedule.Base70Plus15;
         error = null;
 
         if (string.IsNullOrWhiteSpace(request.PaymentFrequency)
@@ -153,13 +151,6 @@ public class LoanProductsController : ControllerBase
             return false;
         }
 
-        if (!string.IsNullOrWhiteSpace(request.ProcessingFeeSchedule)
-            && !Enum.TryParse(request.ProcessingFeeSchedule.Replace("-", "").Replace(" ", ""), true, out schedule))
-        {
-            error = "Processing fee schedule must be Base70Plus15 or Base100Plus10.";
-            return false;
-        }
-
         return true;
     }
 
@@ -167,14 +158,12 @@ public class LoanProductsController : ControllerBase
         LoanProduct product,
         UpsertLoanProductRequest request,
         PaymentFrequency frequency,
-        InterestMethod method,
-        ProcessingFeeSchedule schedule)
+        InterestMethod method)
     {
         product.Name = request.Name.Trim();
         product.Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim();
         product.PaymentFrequency = frequency;
         product.InterestMethod = method;
-        product.ProcessingFeeSchedule = schedule;
         product.TermCount = request.TermCount;
         product.IsActive = request.IsActive;
         product.UpdatedAt = DateTime.UtcNow;
@@ -209,7 +198,6 @@ public class LoanProductsController : ControllerBase
             p.TermCount,
             p.PaymentFrequency.ToString(),
             p.InterestMethod.ToString(),
-            p.ProcessingFeeSchedule.ToString(),
             p.InsuranceAmount,
             p.InitialSavings,
             p.SavingsPerPeriod,
