@@ -19,6 +19,7 @@ public class LoansController : ControllerBase
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly LoanWorkflowService _workflow;
     private readonly LoanFinanceService _finance;
+    private readonly SavingsLedgerService _savings;
     private readonly BranchScopeService _branchScope;
 
     public LoansController(
@@ -26,12 +27,14 @@ public class LoansController : ControllerBase
         UserManager<ApplicationUser> userManager,
         LoanWorkflowService workflow,
         LoanFinanceService finance,
+        SavingsLedgerService savings,
         BranchScopeService branchScope)
     {
         _db = db;
         _userManager = userManager;
         _workflow = workflow;
         _finance = finance;
+        _savings = savings;
         _branchScope = branchScope;
     }
 
@@ -421,6 +424,7 @@ public class LoansController : ControllerBase
         _db.Loans.Add(loan);
         await _db.SaveChangesAsync();
 
+        await _savings.EnsurePrimaryFromInitialAsync(loan, user.Id);
         await _workflow.EnterStageAsync(loan, first, user, isInitial: true);
         await _db.SaveChangesAsync();
 
@@ -537,7 +541,9 @@ public class LoansController : ControllerBase
             loan.ApplicationType,
             loan.Cycle,
             loan.ApprovedAmount,
-            CustomerMapping.MapCollaterals(loan.Collaterals ?? Array.Empty<LoanCollateral>()));
+            CustomerMapping.MapCollaterals(loan.Collaterals ?? Array.Empty<LoanCollateral>()),
+            loan.PrimarySavingsBalance,
+            loan.ExtraSavingsBalance);
     }
 
     private static CustomerDetailDto MapCustomerDetail(Customer c) => CustomerMapping.MapDetail(c);

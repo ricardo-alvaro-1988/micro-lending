@@ -215,6 +215,8 @@ export type Loan = {
   cycle?: number | null
   approvedAmount?: number | null
   collaterals?: LoanCollateral[]
+  primarySavingsBalance?: number
+  extraSavingsBalance?: number
 }
 
 export type LoanProduct = {

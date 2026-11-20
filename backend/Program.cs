@@ -74,6 +74,7 @@ builder.Services.AddSingleton<IAuthorizationHandler, PermissionHandler>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<JwtTokenService>();
 builder.Services.AddScoped<LoanWorkflowService>();
+builder.Services.AddScoped<SavingsLedgerService>();
 builder.Services.AddScoped<LoanFinanceService>();
 builder.Services.AddScoped<BranchScopeService>();
 builder.Services.AddScoped<AuditService>();

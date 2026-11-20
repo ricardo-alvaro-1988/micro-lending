@@ -26,7 +26,11 @@ tax = principal * 1%
 12% as interest rate round of tens
 the principal should be round off as well
 ====
-group will be associatiated with group, 1 cluster = 1 field agent
+on record payment, 
+select group,
+then it will load up all the customer on that group...
+then check, check , check as paid for the day....
+
 =====
 regular payment = achive
 partial = if the payment is not equal to the the existing amount it should mark as underpaid

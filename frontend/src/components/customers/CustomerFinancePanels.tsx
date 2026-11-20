@@ -1176,6 +1176,7 @@ export function RecordPaymentPanel({
     method: 'Cash',
     reference: '',
     notes: '',
+    useExtraSavings: false,
   })
 
   const load = async () => {
@@ -1235,9 +1236,10 @@ export function RecordPaymentPanel({
           method: payForm.method || null,
           reference: payForm.reference || null,
           notes: payForm.notes || null,
+          useExtraSavings: payForm.useExtraSavings,
         }),
       })
-      setPayForm((prev) => ({ ...prev, amount: '', reference: '', notes: '' }))
+      setPayForm((prev) => ({ ...prev, amount: '', reference: '', notes: '', useExtraSavings: false }))
       onMessage('Payment recorded.')
       await load()
       await loadLoanDetail(loanId)
@@ -1285,10 +1287,12 @@ export function RecordPaymentPanel({
       </div>
 
       {selected && (
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
           <SummaryCard label="Payable" value={money(selected.totalPayable)} />
           <SummaryCard label="Paid" value={money(selected.totalPaid)} />
           <SummaryCard label="Remaining" value={money(selected.remainingBalance)} />
+          <SummaryCard label="Primary savings" value={money(selected.primarySavingsBalance ?? 0)} />
+          <SummaryCard label="Extra savings" value={money(selected.extraSavingsBalance ?? 0)} />
         </div>
       )}
 
@@ -1309,7 +1313,7 @@ export function RecordPaymentPanel({
           <input
             className="rounded-md border border-slate-300 px-3 py-2 text-sm"
             type="number"
-            min="0.01"
+            min="0"
             step="0.01"
             placeholder="Amount *"
             value={payForm.amount}
@@ -1335,6 +1339,15 @@ export function RecordPaymentPanel({
             value={payForm.reference}
             onChange={(e) => setPayForm({ ...payForm, reference: e.target.value })}
           />
+          <label className="flex items-center gap-2 text-sm text-slate-700 md:col-span-2">
+            <input
+              type="checkbox"
+              checked={payForm.useExtraSavings}
+              disabled={(selected?.extraSavingsBalance ?? 0) <= 0}
+              onChange={(e) => setPayForm({ ...payForm, useExtraSavings: e.target.checked })}
+            />
+            Use extra (daily) savings to cover shortfall
+          </label>
           <input
             className="rounded-md border border-slate-300 px-3 py-2 text-sm md:col-span-2"
             placeholder="Notes"

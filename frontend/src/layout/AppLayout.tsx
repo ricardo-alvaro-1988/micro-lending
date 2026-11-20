@@ -167,6 +167,8 @@ const nav: NavItem[] = [
       { label: 'Assignments', to: '/reports/customer-assignments', permission: 'reports.view', icon: <IconSchedule /> },
       { label: 'Field notes log', to: '/reports/field-notes-log', permission: 'reports.view', icon: <IconSchedule /> },
       { label: 'Payment methods', to: '/reports/payment-methods', permission: 'reports.view', icon: <IconSchedule /> },
+      { label: 'Primary savings', to: '/reports/primary-savings', permission: 'reports.view', icon: <IconSchedule /> },
+      { label: 'Extra savings', to: '/reports/extra-savings', permission: 'reports.view', icon: <IconSchedule /> },
     ],
   },
   {

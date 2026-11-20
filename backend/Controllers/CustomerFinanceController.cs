@@ -19,6 +19,7 @@ public class CustomerFinanceController : ControllerBase
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly LoanWorkflowService _workflow;
     private readonly LoanFinanceService _finance;
+    private readonly SavingsLedgerService _savings;
     private readonly BranchScopeService _branchScope;
 
     public CustomerFinanceController(
@@ -26,12 +27,14 @@ public class CustomerFinanceController : ControllerBase
         UserManager<ApplicationUser> userManager,
         LoanWorkflowService workflow,
         LoanFinanceService finance,
+        SavingsLedgerService savings,
         BranchScopeService branchScope)
     {
         _db = db;
         _userManager = userManager;
         _workflow = workflow;
         _finance = finance;
+        _savings = savings;
         _branchScope = branchScope;
     }
 
@@ -178,6 +181,7 @@ public class CustomerFinanceController : ControllerBase
                 charges);
             loan.Notes = string.IsNullOrWhiteSpace(request.Notes) ? loan.Notes : request.Notes.Trim();
             _finance.RebuildSchedule(loan);
+            await _savings.EnsurePrimaryFromInitialAsync(loan, user.Id);
             await _db.SaveChangesAsync();
         }
         catch (InvalidOperationException ex)
@@ -211,11 +215,10 @@ public class CustomerFinanceController : ControllerBase
 
         try
         {
-            await _finance.ApplyPaymentAsync(loan, request.Amount);
             var method = string.IsNullOrWhiteSpace(request.Method)
                 ? (canField && !canOffice ? "Cash" : null)
                 : request.Method.Trim();
-            loan.Payments.Add(new LoanPayment
+            var payment = new LoanPayment
             {
                 Amount = decimal.Round(request.Amount, 2),
                 PaidAt = (request.PaidAt ?? DateTime.UtcNow).ToUniversalTime(),
@@ -224,7 +227,22 @@ public class CustomerFinanceController : ControllerBase
                 Notes = string.IsNullOrWhiteSpace(request.Notes) ? null : request.Notes.Trim(),
                 RecordedByUserId = user.Id,
                 CreatedAt = DateTime.UtcNow,
-            });
+            };
+            loan.Payments.Add(payment);
+
+            var (_, extraOffset, _) = await _finance.ApplyPaymentAsync(
+                loan,
+                request.Amount,
+                request.UseExtraSavings,
+                user.Id,
+                payment);
+
+            if (extraOffset > 0)
+            {
+                var note = $"Extra savings offset {extraOffset:0.00}";
+                payment.Notes = string.IsNullOrWhiteSpace(payment.Notes) ? note : $"{payment.Notes}; {note}";
+            }
+
             loan.UpdatedAt = DateTime.UtcNow;
             _finance.TryMatureIfFullyPaid(loan, user);
             await _db.SaveChangesAsync();
@@ -243,6 +261,90 @@ public class CustomerFinanceController : ControllerBase
             loan = await MapLoanAsync(loan, user),
             schedule = MapSchedule(loan),
             payments = MapPayments(loan),
+        });
+    }
+
+    [HttpGet("loans/{loanId:int}/savings-transactions")]
+    [Authorize(Policy = $"perm:{PermissionCodes.CustomersView}")]
+    public async Task<ActionResult<IEnumerable<SavingsTransactionDto>>> GetSavingsTransactions(
+        int customerId,
+        int loanId,
+        [FromQuery] string? kind = null,
+        [FromQuery] DateTime? from = null,
+        [FromQuery] DateTime? to = null)
+    {
+        if (await EnsureCustomerAccessAsync(customerId) is { } denied) return denied;
+        var loan = await _db.Loans.AsNoTracking().FirstOrDefaultAsync(l => l.Id == loanId && l.CustomerId == customerId);
+        if (loan is null) return NotFound();
+
+        var q = _db.SavingsTransactions.AsNoTracking()
+            .Include(t => t.Customer)
+            .Include(t => t.Loan)
+            .Include(t => t.RecordedByUser)
+            .Where(t => t.LoanId == loanId);
+
+        if (!string.IsNullOrWhiteSpace(kind)
+            && Enum.TryParse<SavingsKind>(kind, true, out var kindEnum))
+            q = q.Where(t => t.Kind == kindEnum);
+        if (from is DateTime f) q = q.Where(t => t.OccurredAt >= f.Date);
+        if (to is DateTime tto) q = q.Where(t => t.OccurredAt < tto.Date.AddDays(1));
+
+        var rows = await q.OrderByDescending(t => t.OccurredAt).ThenByDescending(t => t.Id).ToListAsync();
+        return Ok(rows.Select(t => new SavingsTransactionDto(
+            t.Id,
+            t.CustomerId,
+            t.Customer.FullName,
+            t.LoanId,
+            t.Loan.LoanNumber,
+            t.Kind.ToString(),
+            t.Type.ToString(),
+            t.Amount,
+            t.BalanceAfter,
+            t.OccurredAt,
+            t.Notes,
+            t.RecordedByUser?.FullName)));
+    }
+
+    [HttpPost("loans/{loanId:int}/extra-savings")]
+    [Authorize]
+    public async Task<ActionResult<object>> DepositExtraSavings(
+        int customerId,
+        int loanId,
+        [FromBody] ExtraSavingsDepositRequest request)
+    {
+        var canOffice = User.HasClaim("permission", PermissionCodes.LoansManage);
+        var canField = User.HasClaim("permission", PermissionCodes.FieldCollect);
+        if (!canOffice && !canField) return Forbid();
+
+        var user = await _userManager.GetUserAsync(User);
+        if (user is null) return Unauthorized();
+        if (await EnsureCustomerAccessAsync(customerId) is { } denied) return denied;
+
+        var loan = await _db.Loans.FirstOrDefaultAsync(l => l.Id == loanId && l.CustomerId == customerId);
+        if (loan is null) return NotFound();
+
+        try
+        {
+            _savings.Post(
+                loan,
+                SavingsKind.Extra,
+                SavingsTransactionType.ExtraDeposit,
+                request.Amount,
+                user.Id,
+                notes: request.Notes,
+                occurredAt: request.OccurredAt?.ToUniversalTime());
+            loan.UpdatedAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+
+        return Ok(new
+        {
+            loan.PrimarySavingsBalance,
+            loan.ExtraSavingsBalance,
         });
     }
 
@@ -398,7 +500,31 @@ public class CustomerFinanceController : ControllerBase
             }
         }
 
-        lines = lines.OrderBy(l => l.Date).ThenBy(l => l.Type == "Charge" ? 0 : 1).ToList();
+        if (loanIds.Count > 0)
+        {
+            var savingsTx = await _db.SavingsTransactions.AsNoTracking()
+                .Where(t => loanIds.Contains(t.LoanId))
+                .OrderBy(t => t.OccurredAt)
+                .ThenBy(t => t.Id)
+                .Select(t => new { t.LoanId, t.OccurredAt, t.Kind, t.Type, t.Amount, t.Notes })
+                .ToListAsync();
+            var loanNumbers = loanRows.ToDictionary(l => l.Id, l => l.LoanNumber);
+            foreach (var t in savingsTx)
+            {
+                var kindLabel = t.Kind == SavingsKind.Primary ? "Primary" : "Extra";
+                var sign = t.Amount >= 0 ? "+" : "";
+                lines.Add(new StatementLineDto(
+                    t.OccurredAt,
+                    "Savings",
+                    $"{kindLabel} {t.Type} {sign}{t.Amount:0.00} on {loanNumbers.GetValueOrDefault(t.LoanId)}"
+                        + (string.IsNullOrWhiteSpace(t.Notes) ? "" : $" — {t.Notes}"),
+                    0,
+                    0,
+                    0));
+            }
+        }
+
+        lines = lines.OrderBy(l => l.Date).ThenBy(l => l.Type == "Charge" ? 0 : l.Type == "Payment" ? 1 : 2).ToList();
         decimal balance = 0;
         decimal opening = 0;
         var ordered = new List<StatementLineDto>();
@@ -500,7 +626,9 @@ public class CustomerFinanceController : ControllerBase
             loan.ApplicationType,
             loan.Cycle,
             loan.ApprovedAmount,
-            CustomerMapping.MapCollaterals(loan.Collaterals ?? Array.Empty<LoanCollateral>()));
+            CustomerMapping.MapCollaterals(loan.Collaterals ?? Array.Empty<LoanCollateral>()),
+            loan.PrimarySavingsBalance,
+            loan.ExtraSavingsBalance);
     }
 
     private static IReadOnlyList<LoanScheduleItemDto> MapSchedule(Loan loan) =>

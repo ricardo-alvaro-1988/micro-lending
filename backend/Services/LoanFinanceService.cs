@@ -7,9 +7,14 @@ namespace MicroLending.Api.Services;
 public class LoanFinanceService
 {
     private readonly AppDbContext _db;
+    private readonly SavingsLedgerService _savings;
     private LateFeeSettings? _cachedLateFees;
 
-    public LoanFinanceService(AppDbContext db) => _db = db;
+    public LoanFinanceService(AppDbContext db, SavingsLedgerService savings)
+    {
+        _db = db;
+        _savings = savings;
+    }
 
     public static decimal ItemTotalDue(LoanScheduleItem item) => item.AmountDue + item.PenaltyAmount;
 
@@ -254,9 +259,22 @@ public class LoanFinanceService
         return items;
     }
 
-    public async Task ApplyPaymentAsync(Loan loan, decimal amount)
+    /// <summary>
+    /// Applies cash (and optional extra-savings offset) FIFO across installments.
+    /// Credits Extra daily savings when installments become Paid.
+    /// Returns cash applied, extra offset used, and newly paid schedule item ids.
+    /// </summary>
+    public async Task<(decimal CashApplied, decimal ExtraOffset, List<int> NewlyPaidIds)> ApplyPaymentAsync(
+        Loan loan,
+        decimal cashAmount,
+        bool useExtraSavings = false,
+        string? recordedByUserId = null,
+        LoanPayment? loanPayment = null,
+        decimal? coverTarget = null)
     {
-        if (amount <= 0) throw new InvalidOperationException("Payment amount must be greater than zero.");
+        if (cashAmount < 0) throw new InvalidOperationException("Payment amount cannot be negative.");
+        if (cashAmount == 0 && !useExtraSavings)
+            throw new InvalidOperationException("Payment amount must be greater than zero.");
         if (loan.Status == LoanStatus.Closed)
             throw new InvalidOperationException("This loan is already closed / matured.");
         if (loan.Status != LoanStatus.ApprovedFinal)
@@ -264,7 +282,37 @@ public class LoanFinanceService
 
         await AccruePenaltiesAsync(loan);
 
-        var remaining = amount;
+        var openBefore = loan.ScheduleItems.Sum(ItemBalance);
+        if (openBefore <= 0)
+            throw new InvalidOperationException("This loan has no open installment balance.");
+
+        var target = decimal.Round(coverTarget ?? openBefore, 2, MidpointRounding.AwayFromZero);
+        if (target <= 0) throw new InvalidOperationException("Nothing to apply toward the loan.");
+        if (target > openBefore) target = openBefore;
+
+        var cash = decimal.Round(cashAmount, 2, MidpointRounding.AwayFromZero);
+        if (cash > openBefore)
+            throw new InvalidOperationException("Payment exceeds remaining loan balance.");
+
+        var extraOffset = 0m;
+        if (useExtraSavings && cash < target)
+        {
+            var shortfall = target - cash;
+            extraOffset = _savings.OffsetUnderpayFromExtra(loan, shortfall, recordedByUserId, loanPayment);
+        }
+
+        var applyTotal = cash + extraOffset;
+        if (applyTotal <= 0)
+            throw new InvalidOperationException("Nothing to apply toward the loan.");
+        if (applyTotal > openBefore)
+            applyTotal = openBefore;
+
+        var previouslyPaid = loan.ScheduleItems
+            .Where(s => s.Status == ScheduleItemStatus.Paid)
+            .Select(s => s.Id)
+            .ToHashSet();
+
+        var remaining = applyTotal;
         var today = DateTime.UtcNow.Date;
         var items = loan.ScheduleItems.OrderBy(s => s.InstallmentNumber).ToList();
 
@@ -280,8 +328,17 @@ public class LoanFinanceService
             RefreshStatus(item, today);
         }
 
-        if (remaining > 0)
+        if (remaining > 0.009m)
             throw new InvalidOperationException("Payment exceeds remaining loan balance.");
+
+        var newlyPaid = loan.ScheduleItems
+            .Where(s => s.Status == ScheduleItemStatus.Paid && !previouslyPaid.Contains(s.Id))
+            .Select(s => s.Id)
+            .ToList();
+
+        _savings.CreditDailySavingsForNewlyPaid(loan, newlyPaid, recordedByUserId, loanPayment);
+
+        return (cash, extraOffset, newlyPaid);
     }
 
     /// <summary>
@@ -406,7 +463,7 @@ public class LoanFinanceService
 
         if (item.PaidAmount > 0)
         {
-            item.Status = ScheduleItemStatus.Partial;
+            item.Status = ScheduleItemStatus.Underpaid;
             return;
         }
 

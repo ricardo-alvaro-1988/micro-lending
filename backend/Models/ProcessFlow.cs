@@ -238,7 +238,8 @@ public enum PaymentFrequency
 public enum ScheduleItemStatus
 {
     Pending = 0,
-    Partial = 1,
+    /// <summary>Installment paid less than amount due (was Partial).</summary>
+    Underpaid = 1,
     Paid = 2,
     Overdue = 3
 }
@@ -295,6 +296,11 @@ public class Loan
     /// <summary>Loan amount minus total deductions (cash released).</summary>
     public decimal NetProceeds { get; set; }
 
+    /// <summary>Cached primary savings (= initial savings ledger).</summary>
+    public decimal PrimarySavingsBalance { get; set; }
+    /// <summary>Cached extra savings (= accumulated daily/period savings).</summary>
+    public decimal ExtraSavingsBalance { get; set; }
+
     public LoanStatus Status { get; set; } = LoanStatus.InProgress;
     public string CreatedByUserId { get; set; } = string.Empty;
     public ApplicationUser CreatedByUser { get; set; } = null!;
@@ -307,6 +313,7 @@ public class Loan
     public ICollection<LoanActivity> Activities { get; set; } = new List<LoanActivity>();
     public ICollection<LoanFieldNote> FieldNotes { get; set; } = new List<LoanFieldNote>();
     public ICollection<LoanCollateral> Collaterals { get; set; } = new List<LoanCollateral>();
+    public ICollection<SavingsTransaction> SavingsTransactions { get; set; } = new List<SavingsTransaction>();
 }
 
 /// <summary>Assets / properties pledged on a loan application.</summary>
