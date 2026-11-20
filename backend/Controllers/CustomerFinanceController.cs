@@ -119,13 +119,30 @@ public class CustomerFinanceController : ControllerBase
 
         await _finance.AccruePenaltiesAsync(loan);
         await _db.SaveChangesAsync();
+
+        IReadOnlyList<LoanLateFeeDto> lateFeeDtos = Array.Empty<LoanLateFeeDto>();
+        try
+        {
+            var lateFees = await _db.LoanLateFees.AsNoTracking()
+                .Include(f => f.RecordedByUser)
+                .Where(f => f.LoanId == loanId)
+                .OrderByDescending(f => f.OccurredAt)
+                .ThenByDescending(f => f.Id)
+                .ToListAsync();
+            lateFeeDtos = MapLateFees(loan, lateFees);
+        }
+        catch
+        {
+            // Keep loan details usable if late-fee ledger is unavailable.
+        }
+
         return Ok(new
         {
             loan = await MapLoanAsync(loan, user),
             schedule = MapSchedule(loan),
             payments = MapPayments(loan),
             approvals = MapApprovals(loan),
-            lateFees = MapLateFees(loan),
+            lateFees = lateFeeDtos,
         });
     }
 
@@ -839,10 +856,8 @@ public class CustomerFinanceController : ControllerBase
                 a.DecidedAt))
             .ToList();
 
-    private static IReadOnlyList<LoanLateFeeDto> MapLateFees(Loan loan) =>
-        (loan.LateFees ?? Array.Empty<LoanLateFee>())
-            .OrderByDescending(f => f.OccurredAt)
-            .ThenByDescending(f => f.Id)
+    private static IReadOnlyList<LoanLateFeeDto> MapLateFees(Loan loan, IEnumerable<LoanLateFee> fees) =>
+        fees
             .Select(f => new LoanLateFeeDto(
                 f.Id,
                 loan.Id,

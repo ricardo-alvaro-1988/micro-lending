@@ -129,7 +129,11 @@ export default function App() {
             <Route path="/transaction/activity" element={<ActivityPage />} />
           </Route>
           <Route element={<RequireAuth permission="paymentSchedule.view" />}>
-            <Route path="/transaction/payment-schedule" element={<PaymentSchedulePage />} />
+            <Route path="/transaction/disbursement" element={<PaymentSchedulePage />} />
+            <Route
+              path="/transaction/payment-schedule"
+              element={<Navigate to="/transaction/disbursement" replace />}
+            />
           </Route>
           <Route element={<RequireAuth permission="remittance.view" />}>
             <Route path="/transaction/remittances" element={<RemittancesPage />} />

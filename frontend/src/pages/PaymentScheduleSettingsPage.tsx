@@ -75,7 +75,7 @@ export function PaymentScheduleSettingsPage() {
         <h2 className="text-xl font-semibold">Payment Schedule Notify</h2>
         <p className="mt-1 max-w-2xl text-sm text-slate-500">
           When a loan reaches <strong>Approved-Final</strong>, assigned users are notified urgently to create the
-          payment schedule under Transaction → Payment Schedule. You can assign multiple users.
+          disbursement queue under Transaction → Disbursement. You can assign multiple users.
         </p>
       </div>
 

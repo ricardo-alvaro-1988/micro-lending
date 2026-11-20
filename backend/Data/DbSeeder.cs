@@ -82,7 +82,7 @@ public static class DbSeeder
             ("customers", "Customers", "/transaction/customers", "Transaction", 5, "customers.view"),
             ("record-payment", "Record Payment", "/transaction/record-payment", "Transaction", 6, "loans.manage"),
             ("activity", "Activity", "/transaction/activity", "Transaction", 7, "activity.view"),
-            ("payment-schedule", "Payment Schedule", "/transaction/payment-schedule", "Transaction", 8, "paymentSchedule.view"),
+            ("payment-schedule", "Disbursement", "/transaction/disbursement", "Transaction", 8, "paymentSchedule.view"),
             ("loan-tutorial", "How to Apply a Loan", "/lending/how-to-apply", "Lending", 9, "dashboard.view"),
             ("process-flows", "Process Flows", "/lending/flows", "Lending", 10, "flows.view"),
             ("loan-products", "Loan Products", "/lending/products", "Lending", 11, "loanProducts.view"),
