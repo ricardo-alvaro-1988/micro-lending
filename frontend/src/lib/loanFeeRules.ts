@@ -96,3 +96,12 @@ export function feeRuleStrings(result: LoanFeeRuleResult) {
 export function feeFieldsFromPrincipal(amount: number, termCount: number) {
   return feeRuleStrings(computeLoanFees(amount, termCount))
 }
+
+/**
+ * Same as feeFieldsFromPrincipal but leaves the typed loan amount alone
+ * (avoids wiping/rounding the input on every keystroke).
+ */
+export function feeChargesFromPrincipal(amount: number, termCount: number) {
+  const { amount: _roundedAmount, ...charges } = feeFieldsFromPrincipal(amount, termCount)
+  return charges
+}

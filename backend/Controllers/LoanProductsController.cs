@@ -145,12 +145,8 @@ public class LoanProductsController : ControllerBase
             return false;
         }
 
-        if (!LoanFinanceService.TryParseInterestMethod(request.InterestMethod, out method))
-        {
-            error = "Interest method must be Flat or DecliningBalance.";
-            return false;
-        }
-
+        // Interest method is always Flat (no declining-balance products).
+        method = InterestMethod.Flat;
         return true;
     }
 
@@ -163,7 +159,7 @@ public class LoanProductsController : ControllerBase
         product.Name = request.Name.Trim();
         product.Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim();
         product.PaymentFrequency = frequency;
-        product.InterestMethod = method;
+        product.InterestMethod = InterestMethod.Flat;
         product.TermCount = request.TermCount;
         product.IsActive = request.IsActive;
         product.UpdatedAt = DateTime.UtcNow;
