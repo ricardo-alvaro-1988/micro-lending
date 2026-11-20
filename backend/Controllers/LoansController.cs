@@ -249,7 +249,8 @@ public class LoansController : ControllerBase
             await MapLoanAsync(loan, user),
             MapSchedule(loan),
             MapPayments(loan),
-            MapApprovals(loan)));
+            MapApprovals(loan),
+            MapLateFees(loan)));
     }
 
     /// <summary>Full application review: customer personal data, documents, agent notes, loan package.</summary>
@@ -623,6 +624,20 @@ public class LoansController : ControllerBase
                 a.Comments,
                 a.RequestedAt,
                 a.DecidedAt))
+            .ToList();
+
+    private static IReadOnlyList<LoanLateFeeDto> MapLateFees(Loan loan) =>
+        (loan.LateFees ?? Array.Empty<LoanLateFee>())
+            .OrderByDescending(f => f.OccurredAt)
+            .ThenByDescending(f => f.Id)
+            .Select(f => new LoanLateFeeDto(
+                f.Id,
+                loan.Id,
+                loan.LoanNumber,
+                f.Amount,
+                f.OccurredAt,
+                f.Notes,
+                f.RecordedByUser?.FullName))
             .ToList();
 
     private static bool TryParseFrequency(string? value, out PaymentFrequency frequency)

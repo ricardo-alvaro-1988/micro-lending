@@ -125,6 +125,7 @@ public class CustomerFinanceController : ControllerBase
             schedule = MapSchedule(loan),
             payments = MapPayments(loan),
             approvals = MapApprovals(loan),
+            lateFees = MapLateFees(loan),
         });
     }
 
@@ -603,7 +604,9 @@ public class CustomerFinanceController : ControllerBase
                 $"Loan {loan.LoanNumber} principal + interest",
                 principalCharge,
                 0,
-                0));
+                0,
+                loan.Id,
+                loan.LoanNumber));
 
             if (lateFeesByLoan.TryGetValue(loan.Id, out var feesForLoan))
             {
@@ -612,11 +615,13 @@ public class CustomerFinanceController : ControllerBase
                     lines.Add(new StatementLineDto(
                         fee.OccurredAt,
                         "LateFee",
-                        $"Late fee on {loan.LoanNumber}"
+                        $"Late fee · Loan {loan.LoanNumber}"
                             + (string.IsNullOrWhiteSpace(fee.Notes) ? "" : $" — {fee.Notes}"),
                         fee.Amount,
                         0,
-                        0));
+                        0,
+                        loan.Id,
+                        loan.LoanNumber));
                 }
             }
 
@@ -629,7 +634,9 @@ public class CustomerFinanceController : ControllerBase
                     $"Payment on {loan.LoanNumber}" + (string.IsNullOrWhiteSpace(payment.Reference) ? "" : $" ({payment.Reference})"),
                     0,
                     payment.Amount,
-                    0));
+                    0,
+                    loan.Id,
+                    loan.LoanNumber));
             }
         }
 
@@ -661,7 +668,7 @@ public class CustomerFinanceController : ControllerBase
                 // Display amount on statement; does not affect loan receivable balance.
                 var debit = t.Amount < 0 ? Math.Abs(t.Amount) : 0m;
                 var credit = t.Amount > 0 ? t.Amount : 0m;
-                lines.Add(new StatementLineDto(t.OccurredAt, typeLabel, desc, debit, credit, 0));
+                lines.Add(new StatementLineDto(t.OccurredAt, typeLabel, desc, debit, credit, 0, t.LoanId, loanNo));
             }
         }
 
@@ -830,6 +837,20 @@ public class CustomerFinanceController : ControllerBase
                 a.Comments,
                 a.RequestedAt,
                 a.DecidedAt))
+            .ToList();
+
+    private static IReadOnlyList<LoanLateFeeDto> MapLateFees(Loan loan) =>
+        (loan.LateFees ?? Array.Empty<LoanLateFee>())
+            .OrderByDescending(f => f.OccurredAt)
+            .ThenByDescending(f => f.Id)
+            .Select(f => new LoanLateFeeDto(
+                f.Id,
+                loan.Id,
+                loan.LoanNumber,
+                f.Amount,
+                f.OccurredAt,
+                f.Notes,
+                f.RecordedByUser?.FullName))
             .ToList();
 
     private static bool TryParseFrequency(string? value, out PaymentFrequency frequency)

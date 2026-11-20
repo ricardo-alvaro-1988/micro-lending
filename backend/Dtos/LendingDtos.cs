@@ -428,7 +428,8 @@ public record LoanDetailBundleDto(
     LoanDto Loan,
     IReadOnlyList<LoanScheduleItemDto> Schedule,
     IReadOnlyList<LoanPaymentDto> Payments,
-    IReadOnlyList<LoanApprovalHistoryDto> Approvals);
+    IReadOnlyList<LoanApprovalHistoryDto> Approvals,
+    IReadOnlyList<LoanLateFeeDto> LateFees);
 
 /// <summary>Full application package for approval / loan review.</summary>
 public record LoanApplicationReviewDto(
@@ -753,7 +754,9 @@ public record StatementLineDto(
     string Description,
     decimal Debit,
     decimal Credit,
-    decimal Balance);
+    decimal Balance,
+    int? LoanId = null,
+    string? LoanNumber = null);
 
 public record StatementOfAccountDto(
     int CustomerId,

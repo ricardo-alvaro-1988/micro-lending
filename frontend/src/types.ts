@@ -320,11 +320,22 @@ export type LoanApprovalHistory = {
   decidedAt?: string | null
 }
 
+export type LoanLateFee = {
+  id: number
+  loanId: number
+  loanNumber: string
+  amount: number
+  occurredAt: string
+  notes?: string | null
+  recordedBy?: string | null
+}
+
 export type LoanDetailBundle = {
   loan: Loan
   schedule: LoanScheduleItem[]
   payments: LoanPayment[]
   approvals: LoanApprovalHistory[]
+  lateFees?: LoanLateFee[]
 }
 
 export type PagedLoans = {
@@ -354,6 +365,8 @@ export type StatementLine = {
   debit: number
   credit: number
   balance: number
+  loanId?: number | null
+  loanNumber?: string | null
 }
 
 export type StatementOfAccount = {
