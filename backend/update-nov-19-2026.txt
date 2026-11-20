@@ -16,9 +16,10 @@ initial saving
 2% of the principal
 ====
 insurance
-5k-10 = 200
-11k - 15k = 250
-16-20 - 300
+5k-10k = 200
+11k-15k = 250
+16k-20k = 300
+and so on (+50 every next 5k)
 
 ===
 tax = principal * 1%
