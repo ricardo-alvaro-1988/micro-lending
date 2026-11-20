@@ -1463,7 +1463,9 @@ public record ExpenseSummaryDto(
 
 /// <summary>
 /// Cashflow: Beginning + Remitted + Injected − Disbursement − Expenses = Cash on hand.
-/// Savings = Primary + Extra balances (memo; not in cash-on-hand formula).
+/// Remitted is gross office cash-in (includes savings portions of collections).
+/// Savings = Primary + Extra balances (customer liability inside cash on hand).
+/// Cash available = Cash on hand − Savings.
 /// </summary>
 public record ReportCashflowDto(
     DateTime From,
@@ -1482,11 +1484,13 @@ public record ReportCashflowDto(
     int ExpenseCount,
     /// <summary>Beginning + Remitted + Injected − Disbursement − Expenses.</summary>
     decimal CashOnHand,
-    /// <summary>Primary + Extra savings balances (as of To).</summary>
+    /// <summary>Primary + Extra savings balances (liability; remitted cash already includes these inflows).</summary>
     decimal Savings,
     decimal PrimarySavings,
     decimal ExtraSavings,
     int SavingsLoanCount,
+    /// <summary>Cash on hand − Savings.</summary>
+    decimal CashAvailable,
     IReadOnlyList<ReportCashflowDayDto> Days);
 
 public record ReportCashflowDayDto(
