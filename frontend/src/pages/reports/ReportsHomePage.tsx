@@ -45,6 +45,11 @@ const reports = [
         blurb: 'Printable disbursement sheet by date or date range (principal, deductions, net).',
       },
       {
+        to: '/reports/balancing',
+        title: 'Balancing report',
+        blurb: 'Collected vs remitted kept separate, with variance by agent and remittance slips.',
+      },
+      {
         to: '/reports/expected-vs-actual',
         title: 'Expected vs actual',
         blurb: 'Daily schedule due compared with payments received.',
