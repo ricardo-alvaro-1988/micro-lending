@@ -280,8 +280,8 @@ export function PaymentSchedulePage() {
                   <input
                     className="w-full rounded-md border border-slate-300 px-3 py-2"
                     type="number"
-                    min="0.01"
-                    step="10"
+                    min="0"
+                    step="any"
                     value={form.amount}
                     onChange={(e) => {
                       const amount = e.target.value

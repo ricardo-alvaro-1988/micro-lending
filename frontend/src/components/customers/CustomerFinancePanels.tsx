@@ -326,8 +326,8 @@ export function LoanApplicationPanel({ customerId, onError, onMessage }: SharedP
               className="rounded-md border border-slate-300 px-3 py-2 text-sm"
               placeholder="Amount applied *"
               type="number"
-              min="0.01"
-              step="10"
+              min="0"
+              step="any"
               value={form.amount}
               onChange={(e) => {
                 const amount = e.target.value
@@ -916,8 +916,8 @@ export function PaymentTermsPanel({ customerId, onError, onMessage }: SharedProp
               <input
                 className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
                 type="number"
-                min="0.01"
-                step="10"
+                min="0"
+                step="any"
                 value={form.amount}
                 onChange={(e) => {
                   const amount = e.target.value

@@ -265,8 +265,8 @@ export function LoanProductsPage() {
               <input
                 className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
                 type="number"
-                min="0.01"
-                step="1"
+                min="0"
+                step="any"
                 inputMode="decimal"
                 placeholder="e.g. 5000"
                 value={form.amount}
