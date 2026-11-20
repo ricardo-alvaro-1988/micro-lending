@@ -24,6 +24,7 @@ function toneFor(raw: string): Tone {
   if (['rejected', 'overdue', 'declined', 'failed', 'discrepancy'].includes(key)) return 'danger'
   if (['charge', 'debit'].includes(key)) return 'info'
   if (['payment', 'credit'].includes(key)) return 'purple'
+  if (['primarysavings', 'extrasavings', 'savings'].includes(key)) return 'info'
   return 'info'
 }
 
@@ -37,6 +38,8 @@ function displayLabel(raw: string) {
   const key = raw.replace(/[\s_-]/g, '').toLowerCase()
   if (key === 'approvedfinal') return 'Approved-Final'
   if (key === 'closed') return 'Matured / Closed'
+  if (key === 'primarysavings') return 'Primary savings'
+  if (key === 'extrasavings') return 'Extra savings'
   return humanize(raw)
 }
 
