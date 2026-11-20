@@ -12,7 +12,7 @@ import { useToast } from '../toast/ToastContext'
 const money = (n: number) =>
   n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
-type Tab = 'overview' | 'schedule' | 'payments' | 'approvals'
+type Tab = 'overview' | 'schedule' | 'payments' | 'lateFees' | 'approvals'
 
 type Props = {
   loanId: number
@@ -103,6 +103,7 @@ export function LoanDetailsPanel({ loanId, onClose, className = '', headerAction
                 ['overview', 'Overview'],
                 ['schedule', `Schedule (${detail.schedule.length})`],
                 ['payments', `Payments (${detail.payments.length})`],
+                ['lateFees', `Late fees (${detail.lateFees?.length ?? 0})`],
                 ['approvals', `Approvals (${detail.approvals.length})`],
               ] as const
             ).map(([key, label]) => (
@@ -249,6 +250,47 @@ export function LoanDetailsPanel({ loanId, onClose, className = '', headerAction
                       ))}
                     </tbody>
                   </table>
+                </div>
+              ))}
+
+            {tab === 'lateFees' &&
+              (!(detail.lateFees?.length) ? (
+                <p className="py-8 text-center text-sm text-slate-500">
+                  No late fees on loan {loan.loanNumber}.
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-sm text-slate-600">
+                    Late fees linked to <span className="font-semibold text-slate-900">{loan.loanNumber}</span>
+                  </p>
+                  <div className="overflow-auto rounded-lg border border-slate-200">
+                    <table className="min-w-full text-left text-sm">
+                      <thead className="bg-slate-50 text-slate-600">
+                        <tr>
+                          <th className="px-3 py-2 font-medium">Loan #</th>
+                          <th className="px-3 py-2 font-medium">Date</th>
+                          <th className="px-3 py-2 font-medium text-right">Amount</th>
+                          <th className="px-3 py-2 font-medium">Notes</th>
+                          <th className="px-3 py-2 font-medium">By</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {detail.lateFees.map((f) => (
+                          <tr key={f.id} className="border-t border-slate-100">
+                            <td className="px-3 py-2 font-medium">{f.loanNumber || loan.loanNumber}</td>
+                            <td className="px-3 py-2 whitespace-nowrap">
+                              {new Date(f.occurredAt).toLocaleString()}
+                            </td>
+                            <td className="px-3 py-2 text-right font-medium tabular-nums">
+                              {money(f.amount)}
+                            </td>
+                            <td className="px-3 py-2 text-slate-600">{f.notes || '—'}</td>
+                            <td className="px-3 py-2">{f.recordedBy || '—'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               ))}
 

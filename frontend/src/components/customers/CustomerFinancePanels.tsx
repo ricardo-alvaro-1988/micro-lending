@@ -1487,19 +1487,25 @@ export function StatementOfAccountPanel({ customerId, onError, onMessage }: Shar
   const canManageLoans = can('loans.manage')
   const [loans, setLoans] = useState<LoanOption[]>([])
   const [loanId, setLoanId] = useState<number | ''>('')
+  const [lateFeeLoanId, setLateFeeLoanId] = useState<number | ''>('')
   const [from, setFrom] = useState('')
   const [to, setTo] = useState('')
   const [statement, setStatement] = useState<StatementOfAccount | null>(null)
   const [loading, setLoading] = useState(false)
   const [lateFeeAmount, setLateFeeAmount] = useState('')
+  const [lateFeeNotes, setLateFeeNotes] = useState('')
   const [lateFeeBusy, setLateFeeBusy] = useState(false)
+
+  const lateFeeLoan = lateFeeLoanId === '' ? null : loans.find((l) => l.id === lateFeeLoanId) ?? null
 
   useEffect(() => {
     setLoanId('')
+    setLateFeeLoanId('')
     setFrom('')
     setTo('')
     setStatement(null)
     setLateFeeAmount('')
+    setLateFeeNotes('')
     api<LoanOption[]>(`/api/customers/${customerId}/loan-options`)
       .then(setLoans)
       .catch((err) => onError(err instanceof Error ? err.message : 'Failed to load loans'))
@@ -1528,8 +1534,8 @@ export function StatementOfAccountPanel({ customerId, onError, onMessage }: Shar
   }, [customerId])
 
   const addLateFee = async () => {
-    if (loanId === '') {
-      onError('Select a loan before adding a late fee.')
+    if (lateFeeLoanId === '') {
+      onError('Select the loan # for this late fee.')
       return
     }
     const amount = Number(lateFeeAmount)
@@ -1539,12 +1545,17 @@ export function StatementOfAccountPanel({ customerId, onError, onMessage }: Shar
     }
     setLateFeeBusy(true)
     try {
-      await api(`/api/customers/${customerId}/loans/${loanId}/late-fees`, {
+      await api(`/api/customers/${customerId}/loans/${lateFeeLoanId}/late-fees`, {
         method: 'POST',
-        body: JSON.stringify({ amount }),
+        body: JSON.stringify({
+          amount,
+          notes: lateFeeNotes.trim() || null,
+        }),
       })
+      const loanNo = lateFeeLoan?.loanNumber ?? `#${lateFeeLoanId}`
       setLateFeeAmount('')
-      onMessage('Late fee added.')
+      setLateFeeNotes('')
+      onMessage(`Late fee added to loan ${loanNo}.`)
       await loadStatement()
     } catch (err) {
       onError(err instanceof Error ? err.message : 'Failed to add late fee')
@@ -1598,9 +1609,25 @@ export function StatementOfAccountPanel({ customerId, onError, onMessage }: Shar
       </div>
 
       {canManageLoans && (
-        <div className="flex flex-wrap items-end gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 print:hidden">
+        <div className="flex flex-wrap items-end gap-3 rounded-xl border border-amber-200 bg-amber-50/60 px-4 py-3 print:hidden">
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-600">Late fee</label>
+            <label className="mb-1 block text-sm font-medium text-slate-700">Loan # (late fee)</label>
+            <select
+              className="min-w-[14rem] rounded-md border border-slate-300 px-3 py-2 text-sm"
+              value={lateFeeLoanId === '' ? '' : String(lateFeeLoanId)}
+              onChange={(e) => setLateFeeLoanId(e.target.value ? Number(e.target.value) : '')}
+              required
+            >
+              <option value="">Select loan #…</option>
+              {loans.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.loanNumber} ({l.status})
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">Late fee amount</label>
             <input
               type="number"
               min="0.01"
@@ -1612,18 +1639,27 @@ export function StatementOfAccountPanel({ customerId, onError, onMessage }: Shar
               onChange={(e) => setLateFeeAmount(e.target.value)}
             />
           </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">Notes</label>
+            <input
+              type="text"
+              placeholder="Optional"
+              className="w-48 rounded-md border border-slate-300 px-3 py-2 text-sm"
+              value={lateFeeNotes}
+              onChange={(e) => setLateFeeNotes(e.target.value)}
+            />
+          </div>
           <ActionButton
             type="button"
             loading={lateFeeBusy}
             loadingText="Saving…"
-            disabled={loanId === '' || !lateFeeAmount}
+            disabled={lateFeeLoanId === '' || !lateFeeAmount}
             onClick={() => void addLateFee()}
           >
-            Add late fee
+            {lateFeeLoan
+              ? `Add late fee to ${lateFeeLoan.loanNumber}`
+              : 'Add late fee'}
           </ActionButton>
-          {loanId === '' && (
-            <span className="pb-2 text-xs text-slate-500">Select a loan above to add a late fee.</span>
-          )}
         </div>
       )}
 
@@ -1646,6 +1682,7 @@ export function StatementOfAccountPanel({ customerId, onError, onMessage }: Shar
               <thead className="bg-slate-50 text-slate-600">
                 <tr>
                   <th className="px-3 py-2 font-medium">Date</th>
+                  <th className="px-3 py-2 font-medium">Loan #</th>
                   <th className="px-3 py-2 font-medium">Type</th>
                   <th className="px-3 py-2 font-medium">Description</th>
                   <th className="px-3 py-2 font-medium text-right">Debit</th>
@@ -1655,8 +1692,25 @@ export function StatementOfAccountPanel({ customerId, onError, onMessage }: Shar
               </thead>
               <tbody>
                 {statement.lines.map((line, idx) => (
-                  <tr key={`${line.date}-${idx}`} className="border-t border-slate-100">
+                  <tr
+                    key={`${line.date}-${idx}`}
+                    className={`border-t border-slate-100 ${
+                      line.type === 'LateFee' ? 'bg-amber-50/70' : ''
+                    }`}
+                  >
                     <td className="px-3 py-2">{dateOnly(line.date)}</td>
+                    <td className="px-3 py-2 font-medium">
+                      {line.loanId && line.loanNumber ? (
+                        <Link
+                          to={`/lending/loans/${line.loanId}/agreement`}
+                          className="text-sky-700 underline-offset-2 hover:underline print:text-slate-900 print:no-underline"
+                        >
+                          {line.loanNumber}
+                        </Link>
+                      ) : (
+                        line.loanNumber || '—'
+                      )}
+                    </td>
                     <td className="px-3 py-2">
                       <StatusTag status={line.type} />
                     </td>
@@ -1668,7 +1722,7 @@ export function StatementOfAccountPanel({ customerId, onError, onMessage }: Shar
                 ))}
                 {statement.lines.length === 0 && (
                   <tr>
-                    <td className="px-3 py-4 text-slate-500" colSpan={6}>
+                    <td className="px-3 py-4 text-slate-500" colSpan={7}>
                       No charges, payments, or savings records in this range.
                     </td>
                   </tr>
