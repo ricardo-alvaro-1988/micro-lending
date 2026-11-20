@@ -350,8 +350,9 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
             e.HasIndex(x => new { x.CustomerId, x.Kind, x.OccurredAt });
             e.HasOne(x => x.Customer).WithMany().HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(x => x.Loan).WithMany(l => l.SavingsTransactions).HasForeignKey(x => x.LoanId).OnDelete(DeleteBehavior.Cascade);
-            e.HasOne(x => x.LoanPayment).WithMany().HasForeignKey(x => x.LoanPaymentId).OnDelete(DeleteBehavior.SetNull);
-            e.HasOne(x => x.ScheduleItem).WithMany().HasForeignKey(x => x.ScheduleItemId).OnDelete(DeleteBehavior.SetNull);
+            // NoAction: SQL Server rejects SetNull here (multiple cascade paths via Loan → Payments/Schedule).
+            e.HasOne(x => x.LoanPayment).WithMany().HasForeignKey(x => x.LoanPaymentId).OnDelete(DeleteBehavior.NoAction);
+            e.HasOne(x => x.ScheduleItem).WithMany().HasForeignKey(x => x.ScheduleItemId).OnDelete(DeleteBehavior.NoAction);
             e.HasOne(x => x.RecordedByUser).WithMany().HasForeignKey(x => x.RecordedByUserId).OnDelete(DeleteBehavior.SetNull);
         });
 

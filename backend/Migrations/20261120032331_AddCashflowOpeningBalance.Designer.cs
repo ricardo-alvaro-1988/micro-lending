@@ -2220,7 +2220,7 @@ namespace MicroLending.Api.Migrations
                     b.HasOne("MicroLending.Api.Models.LoanPayment", "LoanPayment")
                         .WithMany()
                         .HasForeignKey("LoanPaymentId")
-                        .OnDelete(DeleteBehavior.SetNull);
+                        .OnDelete(DeleteBehavior.NoAction);
 
                     b.HasOne("MicroLending.Api.Models.ApplicationUser", "RecordedByUser")
                         .WithMany()
@@ -2230,7 +2230,7 @@ namespace MicroLending.Api.Migrations
                     b.HasOne("MicroLending.Api.Models.LoanScheduleItem", "ScheduleItem")
                         .WithMany()
                         .HasForeignKey("ScheduleItemId")
-                        .OnDelete(DeleteBehavior.SetNull);
+                        .OnDelete(DeleteBehavior.NoAction);
 
                     b.Navigation("Customer");
 
