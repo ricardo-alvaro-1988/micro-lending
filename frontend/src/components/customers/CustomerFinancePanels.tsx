@@ -16,6 +16,7 @@ import {
 import { StageTag, StatusTag } from '../StatusTag'
 import {
   DEFAULT_INTEREST_RATE_PERCENT,
+  dailyPaymentLines,
   feeFieldsFromPrincipal,
   membershipFeeFor,
 } from '../../lib/loanFeeRules'
@@ -532,11 +533,13 @@ export function LoanApplicationPanel({ customerId, onError, onMessage }: SharedP
                   termCount: Number(form.termCount),
                   paymentFrequency: form.paymentFrequency,
                   ...chargePayloadFrom(form),
-                  principalPerPeriod: Number(form.amount) / Number(form.termCount),
-                  interestPerPeriod:
-                    (Number(form.amount) * Number(form.interestRatePercent || 0)) /
-                    100 /
-                    Number(form.termCount),
+                  ...dailyPaymentLines({
+                    amount: Number(form.amount),
+                    termCount: Number(form.termCount),
+                    interestRatePercent: Number(form.interestRatePercent || 0),
+                    savingsPerPeriod: Number(form.savingsPerPeriod || 0),
+                    insurancePerPeriod: Number(form.insurancePerPeriod || 0),
+                  }),
                 }}
               />
             </div>
@@ -1034,12 +1037,13 @@ export function PaymentTermsPanel({ customerId, onError, onMessage }: SharedProp
                 ...chargePayloadFrom(form),
                 totalDeductions: selected?.totalDeductions,
                 netProceeds: selected?.netProceeds,
-                principalPerPeriod: Number(form.amount) / Number(form.termCount),
-                interestPerPeriod:
-                  (Number(form.amount) * Number(form.interestRatePercent || 0)) /
-                  100 /
-                  Number(form.termCount),
-                installmentAmount: selected?.installmentAmount,
+                ...dailyPaymentLines({
+                  amount: Number(form.amount),
+                  termCount: Number(form.termCount),
+                  interestRatePercent: Number(form.interestRatePercent || 0),
+                  savingsPerPeriod: Number(form.savingsPerPeriod || 0),
+                  insurancePerPeriod: Number(form.insurancePerPeriod || 0),
+                }),
               }}
             />
           )}

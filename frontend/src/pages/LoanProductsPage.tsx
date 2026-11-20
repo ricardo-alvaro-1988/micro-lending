@@ -10,7 +10,7 @@ import {
   chargeStringsFrom,
 } from '../components/LoanProceedsBreakdown'
 import { ActiveTag } from '../components/StatusTag'
-import { computeLoanFees, feeRuleStrings } from '../lib/loanFeeRules'
+import { computeLoanFees, dailyPaymentLines, feeRuleStrings } from '../lib/loanFeeRules'
 import type { LoanProduct } from '../types'
 import { useToast } from '../toast/ToastContext'
 
@@ -159,11 +159,6 @@ export function LoanProductsPage() {
       setDeletingId(null)
     }
   }
-
-  const interestTotal =
-    Number(form.amount) > 0
-      ? Math.round((Number(form.amount) * Number(form.interestRatePercent || 0)) / 100 / 10) * 10
-      : 0
 
   return (
     <div className="space-y-6">
@@ -375,8 +370,13 @@ export function LoanProductsPage() {
                 termCount: Number(form.termCount),
                 paymentFrequency: form.paymentFrequency,
                 ...chargePayloadFrom(form),
-                principalPerPeriod: Number(form.amount) / Number(form.termCount),
-                interestPerPeriod: interestTotal / Number(form.termCount),
+                ...dailyPaymentLines({
+                  amount: Number(form.amount),
+                  termCount: Number(form.termCount),
+                  interestRatePercent: Number(form.interestRatePercent || 0),
+                  savingsPerPeriod: Number(form.savingsPerPeriod || 0),
+                  insurancePerPeriod: Number(form.insurancePerPeriod || 0),
+                }),
               }}
             />
           )}
