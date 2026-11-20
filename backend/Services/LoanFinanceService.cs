@@ -396,7 +396,9 @@ public class LoanFinanceService
     public async Task AccruePenaltiesAsync(Loan loan, DateTime? asOf = null)
     {
         var settings = await GetLateFeeSettingsAsync();
-        var day = (asOf ?? PhilippineTime.Today).Date;
+        var today = PhilippineTime.Today;
+        var day = (asOf ?? today).Date;
+        if (day > today) day = today;
         foreach (var item in loan.ScheduleItems)
         {
             AccruePenaltyOnItem(item, settings, day);
@@ -411,7 +413,11 @@ public class LoanFinanceService
     public async Task AccrueOpenItemsAsync(DateTime? asOf = null)
     {
         var settings = await GetLateFeeSettingsAsync();
-        var day = (asOf ?? PhilippineTime.Today).Date;
+        // Never accrue against a future "as of" (collection filters) — that would invent late fees
+        // and make daily AmountDue look like it changed when Remaining = AmountDue + Penalty.
+        var today = PhilippineTime.Today;
+        var day = (asOf ?? today).Date;
+        if (day > today) day = today;
 
         var items = await (
             from item in _db.LoanScheduleItems

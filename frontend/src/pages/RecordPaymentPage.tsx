@@ -21,7 +21,7 @@ type GroupDayRow = {
   installmentNumber: number
   dueDate: string
   amountDue: number
-  penaltyAmount: number
+  penaltyAmount?: number
   paidAmount: number
   remaining: number
   status: string
@@ -368,8 +368,14 @@ function GroupDayCollection({
                   }
                   const paid = r.alreadyPaidForDay || r.remaining <= 0.009
                   const offset = paid ? 0 : rowOffset(r, draft)
-                  const predicted = paid ? 'Paid' : predictStatus(r, draft)
+                  // Only predict result for checked rows — prefilled cash must not mark everything Paid.
+                  const predicted = paid
+                    ? 'Paid'
+                    : draft.checked
+                      ? predictStatus(r, draft)
+                      : r.status
                   const showOverdue = !paid && r.isOverdue
+                  const lateFee = r.penaltyAmount ?? 0
                   return (
                     <tr key={r.scheduleItemId} className="border-t border-slate-100">
                       <td className="px-3 py-2">
@@ -395,7 +401,16 @@ function GroupDayCollection({
                         {r.dueDate.slice(0, 10)}
                         {showOverdue ? <span className="ml-1 text-xs text-rose-600">overdue</span> : null}
                       </td>
-                      <td className="px-3 py-2">{money(r.remaining)}</td>
+                      <td className="px-3 py-2">
+                        <div className="tabular-nums">{money(r.remaining)}</div>
+                        {lateFee > 0.009 ? (
+                          <div className="text-[11px] text-rose-600">
+                            due {money(r.amountDue)} + late {money(lateFee)}
+                          </div>
+                        ) : (
+                          <div className="text-[11px] text-slate-400">daily {money(r.amountDue)}</div>
+                        )}
+                      </td>
                       <td className="px-3 py-2">
                         <input
                           className="w-24 rounded border border-slate-300 px-2 py-1 text-sm"
