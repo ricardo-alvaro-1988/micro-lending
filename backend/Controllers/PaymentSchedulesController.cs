@@ -273,7 +273,23 @@ public class PaymentSchedulesController : ControllerBase
                 l.UpdatedAt,
                 waiting,
                 canManage,
-                l.Cycle);
+                l.Cycle,
+                l.InterestRatePercent,
+                l.TermCount,
+                l.PaymentFrequency.ToString(),
+                l.InterestMethod.ToString(),
+                l.LoanProductId,
+                l.Notes,
+                l.InsuranceAmount,
+                l.InitialSavings,
+                l.SavingsPerPeriod,
+                l.InsurancePerPeriod,
+                l.MembershipFee,
+                l.ProcessingFee,
+                l.LoanRedemptionFee,
+                l.Taxes,
+                l.NotarialFee,
+                l.Raffle);
         }).ToList();
     }
 

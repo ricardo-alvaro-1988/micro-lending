@@ -855,7 +855,23 @@ public record PendingPaymentScheduleDto(
     DateTime ReadyAt,
     int WaitingHours,
     bool CanManage,
-    int? Cycle = null);
+    int? Cycle = null,
+    decimal InterestRatePercent = 0,
+    int TermCount = 0,
+    string PaymentFrequency = "Daily",
+    string InterestMethod = "Flat",
+    int? LoanProductId = null,
+    string? Notes = null,
+    decimal InsuranceAmount = 0,
+    decimal InitialSavings = 0,
+    decimal SavingsPerPeriod = 0,
+    decimal InsurancePerPeriod = 0,
+    decimal MembershipFee = 0,
+    decimal ProcessingFee = 0,
+    decimal LoanRedemptionFee = 0,
+    decimal Taxes = 0,
+    decimal NotarialFee = 0,
+    decimal Raffle = 0);
 
 public record PaymentScheduleNotificationSummaryDto(
     int Count,
