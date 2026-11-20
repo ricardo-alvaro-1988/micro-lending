@@ -66,7 +66,7 @@ public class ExpensesController : ControllerBase
         var scope = await _branchScope.ResolveAsync(User, branchId);
         if (scope is null) return Unauthorized();
 
-        var start = (from ?? DateTime.UtcNow.Date).Date;
+        var start = (from ?? PhilippineTime.Today).Date;
         var end = (to ?? start).Date;
         var endExclusive = end.AddDays(1);
 
@@ -99,12 +99,12 @@ public class ExpensesController : ControllerBase
         {
             Label = label,
             Amount = decimal.Round(request.Amount, 2, MidpointRounding.AwayFromZero),
-            ExpenseDate = (request.ExpenseDate == default ? DateTime.UtcNow : request.ExpenseDate).Date,
+            ExpenseDate = (request.ExpenseDate == default ? PhilippineTime.Today : request.ExpenseDate).Date,
             BranchId = branchId,
             Notes = string.IsNullOrWhiteSpace(request.Notes) ? null : request.Notes.Trim(),
             RecordedByUserId = user.Id,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow,
+            CreatedAt = PhilippineTime.Now,
+            UpdatedAt = PhilippineTime.Now,
         };
         _db.ExpenseEntries.Add(row);
         await _db.SaveChangesAsync();
@@ -134,7 +134,7 @@ public class ExpensesController : ControllerBase
         row.Amount = decimal.Round(request.Amount, 2, MidpointRounding.AwayFromZero);
         row.ExpenseDate = (request.ExpenseDate == default ? row.ExpenseDate : request.ExpenseDate).Date;
         row.Notes = string.IsNullOrWhiteSpace(request.Notes) ? null : request.Notes.Trim();
-        row.UpdatedAt = DateTime.UtcNow;
+        row.UpdatedAt = PhilippineTime.Now;
         await _db.SaveChangesAsync();
 
         var saved = await LoadAsync(row.Id);

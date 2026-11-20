@@ -244,12 +244,12 @@ public class CustomerFinanceController : ControllerBase
             var payment = new LoanPayment
             {
                 Amount = cash, // cash only; ExtraSavingsOffset set inside ApplyPaymentAsync
-                PaidAt = (request.PaidAt ?? DateTime.UtcNow).ToUniversalTime(),
+                PaidAt = PhilippineTime.Normalize(request.PaidAt),
                 Method = method,
                 Reference = string.IsNullOrWhiteSpace(request.Reference) ? null : request.Reference.Trim(),
                 Notes = string.IsNullOrWhiteSpace(request.Notes) ? null : request.Notes.Trim(),
                 RecordedByUserId = user.Id,
-                CreatedAt = DateTime.UtcNow,
+                CreatedAt = PhilippineTime.Now,
             };
             loan.Payments.Add(payment);
 
@@ -282,7 +282,7 @@ public class CustomerFinanceController : ControllerBase
                 payment.Notes = string.IsNullOrWhiteSpace(payment.Notes) ? note : $"{payment.Notes}; {note}";
             }
 
-            loan.UpdatedAt = DateTime.UtcNow;
+            loan.UpdatedAt = PhilippineTime.Now;
             _finance.TryMatureIfFullyPaid(loan, user);
             await _db.SaveChangesAsync();
         }
@@ -425,8 +425,8 @@ public class CustomerFinanceController : ControllerBase
                 request.Amount,
                 user.Id,
                 notes: request.Notes,
-                occurredAt: request.OccurredAt?.ToUniversalTime());
-            loan.UpdatedAt = DateTime.UtcNow;
+                occurredAt: PhilippineTime.Normalize(request.OccurredAt));
+            loan.UpdatedAt = PhilippineTime.Now;
             await _db.SaveChangesAsync();
         }
         catch (InvalidOperationException ex)
@@ -459,7 +459,7 @@ public class CustomerFinanceController : ControllerBase
         if (request.Amount <= 0)
             return BadRequest(new { message = "Late fee amount must be greater than zero." });
 
-        var occurredAt = request.OccurredAt?.ToUniversalTime() ?? DateTime.UtcNow;
+        var occurredAt = PhilippineTime.Normalize(request.OccurredAt);
         var fee = new LoanLateFee
         {
             LoanId = loan.Id,
@@ -467,11 +467,11 @@ public class CustomerFinanceController : ControllerBase
             OccurredAt = occurredAt,
             Notes = string.IsNullOrWhiteSpace(request.Notes) ? null : request.Notes.Trim(),
             RecordedByUserId = user.Id,
-            CreatedAt = DateTime.UtcNow,
+            CreatedAt = PhilippineTime.Now,
         };
         _db.LoanLateFees.Add(fee);
         loan.TotalPayable += fee.Amount;
-        loan.UpdatedAt = DateTime.UtcNow;
+        loan.UpdatedAt = PhilippineTime.Now;
         await _db.SaveChangesAsync();
 
         return Ok(new LoanLateFeeDto(
@@ -518,7 +518,7 @@ public class CustomerFinanceController : ControllerBase
                 .Select(g => new { LoanId = g.Key, Total = g.Sum(p => p.Amount + p.ExtraSavingsOffset) })
                 .ToDictionaryAsync(x => x.LoanId, x => x.Total);
 
-        var today = DateTime.UtcNow.Date;
+        var today = PhilippineTime.Today;
         decimal overdueAmount = 0;
         var overdueCount = 0;
         if (loanIds.Count > 0)
@@ -807,7 +807,7 @@ public class CustomerFinanceController : ControllerBase
             customerName,
             loanId,
             loanId is null ? null : loanRows.FirstOrDefault()?.LoanNumber,
-            DateTime.UtcNow,
+            PhilippineTime.Now,
             opening,
             balance,
             ordered,

@@ -12,6 +12,7 @@ import type {
   LoanPayment,
   LoanScheduleItem,
 } from '../../types'
+import { todayIso } from '../../lib/phDate'
 import { useToast } from '../../toast/ToastContext'
 
 const money = (n: number) =>
@@ -42,7 +43,7 @@ export function FieldCustomerSheetPage() {
   const toast = useToast()
   const [payForm, setPayForm] = useState({
     amount: '',
-    paidAt: new Date().toISOString().slice(0, 10),
+    paidAt: todayIso(),
     method: 'Cash',
     reference: '',
     notes: '',

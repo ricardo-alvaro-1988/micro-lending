@@ -17,6 +17,4 @@ export function downloadCsv(filename: string, headers: string[], rows: (string |
 export const money = (n: number) =>
   n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
-export function todayIso() {
-  return new Date().toISOString().slice(0, 10)
-}
+export { todayIso } from '../lib/phDate'

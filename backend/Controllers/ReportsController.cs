@@ -38,7 +38,7 @@ public class ReportsController : ControllerBase
         if (scope is null) return Unauthorized();
         if (scope.IsFieldAgent) return Forbid();
 
-        var day = (asOf ?? DateTime.UtcNow).Date;
+        var day = (asOf ?? PhilippineTime.Today).Date;
         await _finance.AccrueOpenItemsAsync(day);
 
         var customers = BranchScopeService.Customers(_db.Customers.AsNoTracking(), scope);
@@ -116,7 +116,7 @@ public class ReportsController : ControllerBase
         if (scope is null) return Unauthorized();
         if (scope.IsFieldAgent) return Forbid();
 
-        var day = (asOf ?? DateTime.UtcNow).Date;
+        var day = (asOf ?? PhilippineTime.Today).Date;
         await _finance.AccrueOpenItemsAsync(day);
 
         var customers = BranchScopeService.Customers(_db.Customers.AsNoTracking(), scope);
@@ -199,7 +199,7 @@ public class ReportsController : ControllerBase
         if (scope is null) return Unauthorized();
         if (scope.IsFieldAgent) return Forbid();
 
-        var start = (from ?? DateTime.UtcNow.Date).Date;
+        var start = (from ?? PhilippineTime.Today).Date;
         var endExclusive = (to ?? start).Date.AddDays(1);
 
         var customers = BranchScopeService.Customers(_db.Customers.AsNoTracking(), scope);
@@ -277,7 +277,7 @@ public class ReportsController : ControllerBase
         if (scope is null) return Unauthorized();
         if (scope.IsFieldAgent) return Forbid();
 
-        var start = (from ?? DateTime.UtcNow.Date).Date;
+        var start = (from ?? PhilippineTime.Today).Date;
         var endExclusive = (to ?? start).Date.AddDays(1);
 
         var customers = BranchScopeService.Customers(_db.Customers.AsNoTracking(), scope);
@@ -331,7 +331,7 @@ public class ReportsController : ControllerBase
         if (scope is null) return Unauthorized();
         if (scope.IsFieldAgent) return Forbid();
 
-        var day = (asOf ?? DateTime.UtcNow).Date;
+        var day = (asOf ?? PhilippineTime.Today).Date;
         await _finance.AccrueOpenItemsAsync(day);
 
         var customers = BranchScopeService.Customers(_db.Customers.AsNoTracking(), scope);
@@ -443,7 +443,7 @@ public class ReportsController : ControllerBase
         if (scope is null) return Unauthorized();
         if (scope.IsFieldAgent) return Forbid();
 
-        var day = (asOf ?? DateTime.UtcNow).Date;
+        var day = (asOf ?? PhilippineTime.Today).Date;
         await _finance.AccrueOpenItemsAsync(day);
 
         var customers = BranchScopeService.Customers(_db.Customers.AsNoTracking(), scope);
@@ -545,7 +545,7 @@ public class ReportsController : ControllerBase
         if (scope is null) return Unauthorized();
         if (scope.IsFieldAgent) return Forbid();
 
-        var start = (from ?? DateTime.UtcNow.Date).Date;
+        var start = (from ?? PhilippineTime.Today).Date;
         var endExclusive = (to ?? start).Date.AddDays(1);
 
         var customers = BranchScopeService.Customers(_db.Customers.AsNoTracking(), scope);
@@ -797,7 +797,7 @@ public class ReportsController : ControllerBase
         if (scope is null) return Unauthorized();
         if (scope.IsFieldAgent) return Forbid();
 
-        var start = (from ?? DateTime.UtcNow.Date).Date;
+        var start = (from ?? PhilippineTime.Today).Date;
         var end = (to ?? start).Date;
         var endExclusive = end.AddDays(1);
 
@@ -861,7 +861,7 @@ public class ReportsController : ControllerBase
         if (scope is null) return Unauthorized();
         if (scope.IsFieldAgent) return Forbid();
 
-        var day = (asOf ?? DateTime.UtcNow).Date;
+        var day = (asOf ?? PhilippineTime.Today).Date;
         await _finance.AccrueOpenItemsAsync(day);
 
         var customers = BranchScopeService.Customers(_db.Customers.AsNoTracking(), scope);
@@ -951,7 +951,7 @@ public class ReportsController : ControllerBase
         if (scope is null) return Unauthorized();
         if (scope.IsFieldAgent) return Forbid();
 
-        var start = (from ?? DateTime.UtcNow.Date).Date;
+        var start = (from ?? PhilippineTime.Today).Date;
         var endExclusive = (to ?? start).Date.AddDays(1);
 
         var customers = BranchScopeService.Customers(_db.Customers.AsNoTracking(), scope);
@@ -1065,7 +1065,7 @@ public class ReportsController : ControllerBase
         if (scope is null) return Unauthorized();
         if (scope.IsFieldAgent) return Forbid();
 
-        var day = (asOf ?? DateTime.UtcNow).Date;
+        var day = (asOf ?? PhilippineTime.Today).Date;
         await _finance.AccrueOpenItemsAsync(day);
 
         var customers = BranchScopeService.Customers(_db.Customers.AsNoTracking(), scope);
@@ -1340,7 +1340,7 @@ public class ReportsController : ControllerBase
         if (scope is null) return Unauthorized();
         if (scope.IsFieldAgent) return Forbid();
 
-        var start = (from ?? DateTime.UtcNow.Date).Date;
+        var start = (from ?? PhilippineTime.Today).Date;
         var endExclusive = (to ?? start).Date.AddDays(1);
 
         var customers = ScopedCustomers(scope, agent1UserId, groupId);
@@ -1410,8 +1410,8 @@ public class ReportsController : ControllerBase
         if (scope is null) return Unauthorized();
         if (scope.IsFieldAgent) return Forbid();
 
-        var start = (from ?? DateTime.UtcNow.Date.AddDays(-30)).Date;
-        var endExclusive = (to ?? DateTime.UtcNow.Date).Date.AddDays(1);
+        var start = (from ?? PhilippineTime.Today.AddDays(-30)).Date;
+        var endExclusive = (to ?? PhilippineTime.Today).Date.AddDays(1);
 
         var customers = ScopedCustomers(scope, agent1UserId, groupId);
         var raw = await (
@@ -1495,8 +1495,8 @@ public class ReportsController : ControllerBase
         if (scope is null) return Unauthorized();
         if (scope.IsFieldAgent) return Forbid();
 
-        var start = (from ?? DateTime.UtcNow.Date.AddDays(-30)).Date;
-        var endExclusive = (to ?? DateTime.UtcNow.Date).Date.AddDays(1);
+        var start = (from ?? PhilippineTime.Today.AddDays(-30)).Date;
+        var endExclusive = (to ?? PhilippineTime.Today).Date.AddDays(1);
 
         var customers = ScopedCustomers(scope, agent1UserId, groupId);
 
@@ -1615,8 +1615,8 @@ public class ReportsController : ControllerBase
         if (scope is null) return Unauthorized();
         if (scope.IsFieldAgent) return Forbid();
 
-        var start = (from ?? DateTime.UtcNow.Date.AddDays(-30)).Date;
-        var endExclusive = (to ?? DateTime.UtcNow.Date).Date.AddDays(1);
+        var start = (from ?? PhilippineTime.Today.AddDays(-30)).Date;
+        var endExclusive = (to ?? PhilippineTime.Today).Date.AddDays(1);
 
         var customers = ScopedCustomers(scope, agent1UserId, groupId);
         var query =
@@ -1661,7 +1661,7 @@ public class ReportsController : ControllerBase
         if (scope is null) return Unauthorized();
         if (scope.IsFieldAgent) return Forbid();
 
-        var start = (from ?? DateTime.UtcNow.Date).Date;
+        var start = (from ?? PhilippineTime.Today).Date;
         var endExclusive = (to ?? start).Date.AddDays(1);
 
         var customers = ScopedCustomers(scope, agent1UserId, groupId);
@@ -1710,8 +1710,8 @@ public class ReportsController : ControllerBase
         if (!Enum.TryParse<SavingsKind>(kind, true, out var kindEnum))
             return BadRequest(new { message = "kind must be Primary or Extra." });
 
-        var start = (from ?? DateTime.UtcNow.Date.AddMonths(-1)).Date;
-        var endExclusive = (to ?? DateTime.UtcNow.Date).Date.AddDays(1);
+        var start = (from ?? PhilippineTime.Today.AddMonths(-1)).Date;
+        var endExclusive = (to ?? PhilippineTime.Today).Date.AddDays(1);
 
         var customers = BranchScopeService.Customers(_db.Customers.AsNoTracking(), scope);
         if (groupId is int gid) customers = customers.Where(c => c.GroupId == gid);
@@ -1765,7 +1765,7 @@ public class ReportsController : ControllerBase
         if (scope is null) return Unauthorized();
         if (scope.IsFieldAgent) return Forbid();
 
-        var start = (from ?? DateTime.UtcNow.Date).Date;
+        var start = (from ?? PhilippineTime.Today).Date;
         var end = (to ?? start).Date;
         var endExclusive = end.AddDays(1);
 
@@ -1902,7 +1902,7 @@ public class ReportsController : ControllerBase
         if (scope is null) return Unauthorized();
         if (scope.IsFieldAgent) return Forbid();
 
-        var start = (from ?? DateTime.UtcNow.Date).Date;
+        var start = (from ?? PhilippineTime.Today).Date;
         var end = (to ?? start).Date;
         var endExclusive = end.AddDays(1);
         var balanceBranchId = scope.EffectiveBranchId;
@@ -2028,7 +2028,7 @@ public class ReportsController : ControllerBase
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
         if (string.IsNullOrWhiteSpace(userId)) return Unauthorized();
 
-        var asOf = (request.AsOfDate == default ? DateTime.UtcNow : request.AsOfDate).Date;
+        var asOf = (request.AsOfDate == default ? PhilippineTime.Today : request.AsOfDate).Date;
         var balanceBranchId = scope.EffectiveBranchId;
         if (!scope.IsAdmin)
             balanceBranchId = BranchScopeService.EnforceWriteBranchId(scope, balanceBranchId);

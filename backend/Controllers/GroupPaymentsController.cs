@@ -46,7 +46,7 @@ public class GroupPaymentsController : ControllerBase
         var scope = await _branchScope.ResolveAsync(User, branchId);
         if (scope is null) return Unauthorized();
 
-        var day = (asOf ?? DateTime.UtcNow).Date;
+        var day = (asOf ?? PhilippineTime.Today).Date;
         await _finance.AccrueOpenItemsAsync(day);
 
         var customers = BranchScopeService.Customers(_db.Customers.AsNoTracking(), scope)
@@ -128,7 +128,7 @@ public class GroupPaymentsController : ControllerBase
         var groupExists = await _db.CustomerGroups.AsNoTracking().AnyAsync(g => g.Id == request.GroupId);
         if (!groupExists) return BadRequest(new { message = "Group not found." });
 
-        var paidAt = (request.PaidAt ?? DateTime.UtcNow).ToUniversalTime();
+        var paidAt = PhilippineTime.Normalize(request.PaidAt);
         var method = string.IsNullOrWhiteSpace(request.Method) ? "Cash" : request.Method.Trim();
 
         // Aggregate by loan so one payment posts per loan.
@@ -188,7 +188,7 @@ public class GroupPaymentsController : ControllerBase
                     Method = method,
                     Notes = "Group day collection",
                     RecordedByUserId = user.Id,
-                    CreatedAt = DateTime.UtcNow,
+                    CreatedAt = PhilippineTime.Now,
                 };
                 loan.Payments.Add(payment);
 
@@ -204,7 +204,7 @@ public class GroupPaymentsController : ControllerBase
                     payment.Notes =
                         $"Group day collection; Extra savings offset {extraOffset:0.00}; full applied {payment.Amount:0.00}";
 
-                loan.UpdatedAt = DateTime.UtcNow;
+                loan.UpdatedAt = PhilippineTime.Now;
                 _finance.TryMatureIfFullyPaid(loan, user);
                 recorded++;
             }

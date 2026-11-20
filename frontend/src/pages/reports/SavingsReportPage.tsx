@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { api } from '../../api/client'
 import { withBranchQuery } from '../../branch/BranchContext'
+import { monthsAgoIso } from '../../lib/phDate'
 import { downloadCsv, money, todayIso } from '../../reports/csv'
 import { FilterField, ReportChrome, ReportStat, ReportSummary, filterClass } from './ReportChrome'
 import { useReportFilters } from './useReportFilters'
@@ -22,9 +23,7 @@ type Row = {
 }
 
 function monthAgoIso() {
-  const d = new Date()
-  d.setMonth(d.getMonth() - 1)
-  return d.toISOString().slice(0, 10)
+  return monthsAgoIso(1)
 }
 
 export function PrimarySavingsReportPage() {

@@ -20,6 +20,7 @@ import {
   feeFieldsFromPrincipal,
   membershipFeeFor,
 } from '../../lib/loanFeeRules'
+import { formatPhDate, todayIso } from '../../lib/phDate'
 import {
   notifyApprovalsChanged,
   notifyLoansChanged,
@@ -45,13 +46,22 @@ const money = (n: number) =>
 
 const dateOnly = (value?: string | null) => {
   if (!value) return '—'
-  return new Date(value).toLocaleDateString()
+  return formatPhDate(value)
 }
 
-/** Local `YYYY-MM-DDTHH:mm` for datetime-local inputs. */
+/** Philippine `YYYY-MM-DDTHH:mm` for datetime-local inputs. */
 function localDateTimeInputValue(date = new Date()) {
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Manila',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).formatToParts(date)
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? '00'
+  return `${get('year')}-${get('month')}-${get('day')}T${get('hour')}:${get('minute')}`
 }
 
 type SharedProps = {
@@ -1253,7 +1263,7 @@ export function RecordPaymentPanel({
   const [busy, setBusy] = useState(false)
   const [payForm, setPayForm] = useState({
     amount: '',
-    paidAt: new Date().toISOString().slice(0, 10),
+    paidAt: todayIso(),
     method: 'Cash',
     reference: '',
     notes: '',

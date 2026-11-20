@@ -144,9 +144,9 @@ public class RemittancesController : ControllerBase
             Status = status,
             CreatedByUserId = actorId,
             ReceivedByUserId = actorId,
-            ReceivedAt = DateTime.UtcNow,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow,
+            ReceivedAt = PhilippineTime.Now,
+            CreatedAt = PhilippineTime.Now,
+            UpdatedAt = PhilippineTime.Now,
         };
 
         _db.CashRemittances.Add(row);
@@ -180,7 +180,7 @@ public class RemittancesController : ControllerBase
         row.Notes = string.IsNullOrWhiteSpace(request.Notes) ? null : request.Notes.Trim();
         row.CollectedAmount = await SumCollectedAsync(row.AgentUserId, row.RemittanceDate.Date);
         row.Variance = row.CollectedAmount - row.RemittedAmount;
-        row.UpdatedAt = DateTime.UtcNow;
+        row.UpdatedAt = PhilippineTime.Now;
         await _db.SaveChangesAsync();
 
         await _audit.LogAsync(
@@ -211,7 +211,7 @@ public class RemittancesController : ControllerBase
         row.CollectedAmount = await SumCollectedAsync(row.AgentUserId, row.RemittanceDate.Date);
         row.Variance = row.CollectedAmount - row.RemittedAmount;
         row.Status = CashRemittanceStatus.Submitted;
-        row.UpdatedAt = DateTime.UtcNow;
+        row.UpdatedAt = PhilippineTime.Now;
         await _db.SaveChangesAsync();
 
         await _audit.LogAsync(
@@ -260,8 +260,8 @@ public class RemittancesController : ControllerBase
         row.Variance = row.CollectedAmount - row.RemittedAmount;
         row.Status = row.Variance == 0 ? CashRemittanceStatus.Received : CashRemittanceStatus.Discrepancy;
         row.ReceivedByUserId = actorId;
-        row.ReceivedAt = DateTime.UtcNow;
-        row.UpdatedAt = DateTime.UtcNow;
+        row.ReceivedAt = PhilippineTime.Now;
+        row.UpdatedAt = PhilippineTime.Now;
         await _db.SaveChangesAsync();
 
         await _audit.LogAsync(

@@ -395,10 +395,8 @@ public class LoansController : ControllerBase
             ? decimal.Round(approved, 2)
             : appliedAmount;
         var applicationDate = request.ApplicationDate is DateTime appDate && appDate > DateTime.MinValue.AddYears(1)
-            ? (appDate.Kind == DateTimeKind.Unspecified
-                ? DateTime.SpecifyKind(appDate, DateTimeKind.Local).ToUniversalTime()
-                : appDate.ToUniversalTime())
-            : DateTime.UtcNow;
+            ? PhilippineTime.Normalize(appDate)
+            : PhilippineTime.Now;
 
         var loan = new Loan
         {

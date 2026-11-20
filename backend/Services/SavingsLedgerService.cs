@@ -74,12 +74,12 @@ public class SavingsLedgerService
             Type = type,
             Amount = amount,
             BalanceAfter = next,
-            OccurredAt = occurredAt ?? DateTime.UtcNow,
+            OccurredAt = occurredAt ?? PhilippineTime.Now,
             LoanPayment = loanPayment,
             ScheduleItemId = scheduleItemId,
             Notes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim(),
             RecordedByUserId = recordedByUserId,
-            CreatedAt = DateTime.UtcNow,
+            CreatedAt = PhilippineTime.Now,
         });
 
         return next;
