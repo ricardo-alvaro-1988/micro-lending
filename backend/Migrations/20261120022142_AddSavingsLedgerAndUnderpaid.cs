@@ -68,13 +68,13 @@ namespace MicroLending.Api.Migrations
                         column: x => x.LoanPaymentId,
                         principalTable: "LoanPayments",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.SetNull);
+                        onDelete: ReferentialAction.NoAction);
                     table.ForeignKey(
                         name: "FK_SavingsTransactions_LoanScheduleItems_ScheduleItemId",
                         column: x => x.ScheduleItemId,
                         principalTable: "LoanScheduleItems",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.SetNull);
+                        onDelete: ReferentialAction.NoAction);
                     table.ForeignKey(
                         name: "FK_SavingsTransactions_Loans_LoanId",
                         column: x => x.LoanId,
