@@ -5,6 +5,7 @@ import { ApprovalCommentViewer } from './ApprovalCommentViewer'
 import { LoadingBlock } from './ListLoading'
 import { LoanProceedsBreakdown } from './LoanProceedsBreakdown'
 import { StageTag, StatusTag } from './StatusTag'
+import { dailyPaymentLines } from '../lib/loanFeeRules'
 import type { LoanDetailBundle } from '../types'
 import { useToast } from '../toast/ToastContext'
 
@@ -170,12 +171,13 @@ export function LoanDetailsPanel({ loanId, onClose, className = '', headerAction
                       raffle: loan.raffle,
                       totalDeductions: loan.totalDeductions,
                       netProceeds: loan.netProceeds,
-                      savingsPerPeriod: loan.savingsPerPeriod,
-                      insurancePerPeriod: loan.insurancePerPeriod,
-                      principalPerPeriod: loan.termCount > 0 ? loan.amount / loan.termCount : 0,
-                      interestPerPeriod:
-                        loan.termCount > 0 ? loan.interestAmount / loan.termCount : 0,
-                      installmentAmount: loan.installmentAmount,
+                      ...dailyPaymentLines({
+                        amount: loan.amount,
+                        termCount: loan.termCount,
+                        interestRatePercent: loan.interestRatePercent,
+                        savingsPerPeriod: loan.savingsPerPeriod,
+                        insurancePerPeriod: loan.insurancePerPeriod,
+                      }),
                     }}
                   />
                 </div>

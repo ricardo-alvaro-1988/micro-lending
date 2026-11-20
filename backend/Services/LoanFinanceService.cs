@@ -37,8 +37,8 @@ public class LoanFinanceService
 
         loan.InsuranceAmount = decimal.Round(charges.InsuranceAmount, 2);
         loan.InitialSavings = decimal.Round(charges.InitialSavings, 2);
-        loan.SavingsPerPeriod = decimal.Round(charges.SavingsPerPeriod, 2);
-        loan.InsurancePerPeriod = decimal.Round(charges.InsurancePerPeriod, 2);
+        loan.SavingsPerPeriod = LoanFeeRules.RoundToPeso(charges.SavingsPerPeriod);
+        loan.InsurancePerPeriod = LoanFeeRules.RoundToPeso(charges.InsurancePerPeriod);
         loan.MembershipFee = decimal.Round(charges.MembershipFee, 2);
         loan.ProcessingFee = decimal.Round(charges.ProcessingFee, 2);
         loan.LoanRedemptionFee = decimal.Round(charges.LoanRedemptionFee, 2);
@@ -96,9 +96,8 @@ public class LoanFinanceService
             loan.InsurancePerPeriod);
         loan.InterestAmount = portions.Sum(p => p.Interest);
         loan.TotalPayable = portions.Sum(p => p.AmountDue);
-        loan.InstallmentAmount = interestMethod == InterestMethod.DecliningBalance
-            ? (portions.Count > 0 ? portions[0].AmountDue : 0)
-            : decimal.Round(loan.TotalPayable / termCount, 2);
+        // Regular daily installment (last period may differ to absorb rounding).
+        loan.InstallmentAmount = portions.Count > 0 ? portions[0].AmountDue : 0;
         loan.UpdatedAt = DateTime.UtcNow;
     }
 
@@ -166,16 +165,16 @@ public class LoanFinanceService
             return ComputeDecliningPortions(principal, ratePercent, termCount, savingsPerPeriod, insurancePerPeriod);
 
         // Flat interest total rounded to tens (product policy).
+        // Daily lines (principal / interest / savings / insurance) are whole pesos.
         var interestTotal = LoanFeeRules.RoundToTens(principal * ratePercent / 100m);
-        var savingsEach = decimal.Round(savingsPerPeriod, 2);
-        var insuranceEach = decimal.Round(insurancePerPeriod, 2);
-        var savingsTotal = decimal.Round(savingsEach * termCount, 2);
-        var insuranceTotal = decimal.Round(insuranceEach * termCount, 2);
+        var savingsEach = LoanFeeRules.RoundToPeso(savingsPerPeriod);
+        var insuranceEach = LoanFeeRules.RoundToPeso(insurancePerPeriod);
+        var principalEach = LoanFeeRules.RoundToPeso(principal / termCount);
+        var interestEach = LoanFeeRules.RoundToPeso(interestTotal / termCount);
+        var savingsTotal = savingsEach * termCount;
+        var insuranceTotal = insuranceEach * termCount;
         var totalPayable = principal + interestTotal + savingsTotal + insuranceTotal;
-        var baseInstallment = decimal.Round((principal + interestTotal) / termCount, 2);
-        var installment = decimal.Round(baseInstallment + savingsEach + insuranceEach, 2);
-        var principalEach = decimal.Round(principal / termCount, 2);
-        var interestEach = decimal.Round(interestTotal / termCount, 2);
+        var installment = principalEach + interestEach + savingsEach + insuranceEach;
         var allocatedPrincipal = 0m;
         var allocatedInterest = 0m;
         var allocatedSavings = 0m;
@@ -213,29 +212,27 @@ public class LoanFinanceService
             decimal insurancePerPeriod)
     {
         var r = ratePercent / 100m;
-        var savingsEach = decimal.Round(savingsPerPeriod, 2);
-        var insuranceEach = decimal.Round(insurancePerPeriod, 2);
+        var savingsEach = LoanFeeRules.RoundToPeso(savingsPerPeriod);
+        var insuranceEach = LoanFeeRules.RoundToPeso(insurancePerPeriod);
         decimal regularInstallment;
         if (r == 0m)
         {
-            regularInstallment = decimal.Round(principal / termCount, 2, MidpointRounding.AwayFromZero);
+            regularInstallment = LoanFeeRules.RoundToPeso(principal / termCount);
         }
         else
         {
             var factor = Math.Pow((double)(1m + r), termCount);
             if (double.IsInfinity(factor) || double.IsNaN(factor) || factor <= 1)
                 throw new InvalidOperationException("Declining-balance rate and term produce an invalid amortization factor.");
-            regularInstallment = decimal.Round(
-                principal * r * (decimal)factor / ((decimal)factor - 1m),
-                2,
-                MidpointRounding.AwayFromZero);
+            regularInstallment = LoanFeeRules.RoundToPeso(
+                principal * r * (decimal)factor / ((decimal)factor - 1m));
         }
 
         var remaining = principal;
         var items = new List<(decimal Principal, decimal Interest, decimal Savings, decimal Insurance, decimal AmountDue)>(termCount);
         for (var i = 1; i <= termCount; i++)
         {
-            var interest = decimal.Round(remaining * r, 2, MidpointRounding.AwayFromZero);
+            var interest = LoanFeeRules.RoundToPeso(remaining * r);
             decimal principalPortion;
             decimal baseDue;
             if (i == termCount)
@@ -245,7 +242,7 @@ public class LoanFinanceService
             }
             else
             {
-                principalPortion = decimal.Round(regularInstallment - interest, 2, MidpointRounding.AwayFromZero);
+                principalPortion = LoanFeeRules.RoundToPeso(regularInstallment - interest);
                 if (principalPortion < 0) principalPortion = 0;
                 if (principalPortion > remaining) principalPortion = remaining;
                 baseDue = principalPortion + interest;

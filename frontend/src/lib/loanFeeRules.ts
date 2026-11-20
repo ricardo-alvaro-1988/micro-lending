@@ -14,8 +14,40 @@ export function roundToTens(value: number): number {
   return Math.round(value / 10) * 10
 }
 
+/** Whole-peso rounding for daily payment lines (214.29→214, 25.71→26). */
+export function roundToPeso(value: number): number {
+  if (!Number.isFinite(value)) return 0
+  return Math.round(value)
+}
+
 function round2(value: number): number {
   return Math.round(value * 100) / 100
+}
+
+/** Flat daily payment lines matching backend schedule rounding. */
+export function dailyPaymentLines(opts: {
+  amount: number
+  termCount: number
+  interestRatePercent?: number
+  savingsPerPeriod?: number
+  insurancePerPeriod?: number
+}) {
+  const terms = Math.max(0, Math.floor(opts.termCount))
+  if (!(opts.amount > 0) || terms <= 0) {
+    return { principalPerPeriod: 0, interestPerPeriod: 0, savingsPerPeriod: 0, insurancePerPeriod: 0, installmentAmount: 0 }
+  }
+  const interestTotal = roundToTens((opts.amount * (opts.interestRatePercent ?? DEFAULT_INTEREST_RATE_PERCENT)) / 100)
+  const principalPerPeriod = roundToPeso(opts.amount / terms)
+  const interestPerPeriod = roundToPeso(interestTotal / terms)
+  const savingsPerPeriod = roundToPeso(opts.savingsPerPeriod ?? 0)
+  const insurancePerPeriod = roundToPeso(opts.insurancePerPeriod ?? 0)
+  return {
+    principalPerPeriod,
+    interestPerPeriod,
+    savingsPerPeriod,
+    insurancePerPeriod,
+    installmentAmount: principalPerPeriod + interestPerPeriod + savingsPerPeriod + insurancePerPeriod,
+  }
 }
 
 /** 5000 = base, then +per1k on every additional 1k. */
@@ -75,7 +107,7 @@ export function computeLoanFees(
     interestRatePercent: DEFAULT_INTEREST_RATE_PERCENT,
     insuranceAmount: insuranceForPrincipal(principal),
     initialSavings: round2(principal * 0.02),
-    savingsPerPeriod: terms > 0 ? round2((principal * 0.1) / terms) : 0,
+    savingsPerPeriod: terms > 0 ? roundToPeso((principal * 0.1) / terms) : 0,
     insurancePerPeriod: 0,
     membershipFee: membershipFeeFor(cycle),
     processingFee: processingFeeFor(principal),

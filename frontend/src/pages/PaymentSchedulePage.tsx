@@ -11,7 +11,7 @@ import {
   emptyChargeStrings,
 } from '../components/LoanProceedsBreakdown'
 import { StageTag, StatusTag } from '../components/StatusTag'
-import { feeFieldsFromPrincipal } from '../lib/loanFeeRules'
+import { dailyPaymentLines, feeFieldsFromPrincipal } from '../lib/loanFeeRules'
 import { notifyPaymentSchedulesChanged } from '../notify'
 import type { LoanProduct } from '../types'
 import { useToast } from '../toast/ToastContext'
@@ -385,11 +385,13 @@ export function PaymentSchedulePage() {
                     termCount: Number(form.termCount),
                     paymentFrequency: form.paymentFrequency,
                     ...chargePayloadFrom(form),
-                    principalPerPeriod: Number(form.amount) / Number(form.termCount),
-                    interestPerPeriod:
-                      (Number(form.amount) * Number(form.interestRatePercent || 0)) /
-                      100 /
-                      Number(form.termCount),
+                    ...dailyPaymentLines({
+                      amount: Number(form.amount),
+                      termCount: Number(form.termCount),
+                      interestRatePercent: Number(form.interestRatePercent || 0),
+                      savingsPerPeriod: Number(form.savingsPerPeriod || 0),
+                      insurancePerPeriod: Number(form.insurancePerPeriod || 0),
+                    }),
                   }}
                 />
               )}

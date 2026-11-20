@@ -7,7 +7,8 @@ namespace MicroLending.Api.Services;
 /// notarial 5k=100 +5/1k; loan redemption 5k=70 +15/1k; processing 5k=100 +10/1k;
 /// savings = principal×10%/terms; initial savings 2%; insurance brackets;
 /// tax 1%; membership 125 on cycle 1 only (0 when cycle &gt; 1);
-/// interest 12% with principal/interest rounded to tens.
+/// interest 12% with principal/interest rounded to tens;
+/// daily principal / interest / savings / insurance rounded to whole pesos.
 /// </summary>
 public static class LoanFeeRules
 {
@@ -20,6 +21,10 @@ public static class LoanFeeRules
 
     public static decimal RoundToTens(decimal value) =>
         Math.Round(value / 10m, MidpointRounding.AwayFromZero) * 10m;
+
+    /// <summary>Whole-peso rounding for daily payment lines (214.29→214, 25.71→26).</summary>
+    public static decimal RoundToPeso(decimal value) =>
+        Math.Round(value, 0, MidpointRounding.AwayFromZero);
 
     public static decimal SteppedFrom5k(decimal principal, decimal baseAt5k, decimal per1k)
     {
@@ -52,7 +57,7 @@ public static class LoanFeeRules
         var principal = RoundToTens(principalInput);
         var terms = Math.Max(0, termCount);
         var savingsPerPeriod = terms > 0
-            ? decimal.Round(principal * 0.10m / terms, 2, MidpointRounding.AwayFromZero)
+            ? RoundToPeso(principal * 0.10m / terms)
             : 0m;
 
         return new LoanChargeInputs(
