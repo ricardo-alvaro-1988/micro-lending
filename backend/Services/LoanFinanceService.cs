@@ -70,7 +70,7 @@ public class LoanFinanceService
         if (interestRatePercent < 0) throw new InvalidOperationException("Interest rate cannot be negative.");
         if (termCount <= 0) throw new InvalidOperationException("Term count must be at least 1.");
 
-        loan.Amount = decimal.Round(principal, 2);
+        loan.Amount = LoanFeeRules.RoundToTens(principal);
         loan.InterestRatePercent = decimal.Round(interestRatePercent, 4);
         loan.TermCount = termCount;
         loan.PaymentFrequency = frequency;
@@ -160,7 +160,8 @@ public class LoanFinanceService
         if (method == InterestMethod.DecliningBalance)
             return ComputeDecliningPortions(principal, ratePercent, termCount, savingsPerPeriod, insurancePerPeriod);
 
-        var interestTotal = decimal.Round(principal * ratePercent / 100m, 2);
+        // Flat interest total rounded to tens (product policy).
+        var interestTotal = LoanFeeRules.RoundToTens(principal * ratePercent / 100m);
         var savingsEach = decimal.Round(savingsPerPeriod, 2);
         var insuranceEach = decimal.Round(insurancePerPeriod, 2);
         var savingsTotal = decimal.Round(savingsEach * termCount, 2);

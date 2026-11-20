@@ -13,6 +13,7 @@ import {
   emptyChargeStrings,
 } from '../LoanProceedsBreakdown'
 import { StageTag, StatusTag } from '../StatusTag'
+import { DEFAULT_INTEREST_RATE_PERCENT, feeFieldsFromPrincipal } from '../../lib/loanFeeRules'
 import {
   notifyApprovalsChanged,
   notifyLoansChanged,
@@ -62,7 +63,7 @@ export function LoanApplicationPanel({ customerId, onError, onMessage }: SharedP
     loanProductId: 0,
     flowId: 0,
     amount: '',
-    interestRatePercent: '0',
+    interestRatePercent: String(DEFAULT_INTEREST_RATE_PERCENT),
     termCount: '70',
     paymentFrequency: 'Daily',
     interestMethod: 'Flat',
@@ -246,15 +247,18 @@ export function LoanApplicationPanel({ customerId, onError, onMessage }: SharedP
                 setForm((prev) => ({ ...prev, loanProductId: 0 }))
                 return
               }
+              const fees = feeFieldsFromPrincipal(
+                product.amount,
+                product.termCount,
+                product.processingFeeSchedule,
+              )
               setForm((prev) => ({
                 ...prev,
                 loanProductId: product.id,
-                amount: String(product.amount),
-                interestRatePercent: String(product.interestRatePercent),
-                termCount: String(product.termCount),
                 paymentFrequency: product.paymentFrequency,
                 interestMethod: product.interestMethod,
-                ...chargeStringsFrom(product),
+                ...fees,
+                termCount: String(product.termCount),
               }))
             }}
           >
@@ -317,9 +321,23 @@ export function LoanApplicationPanel({ customerId, onError, onMessage }: SharedP
               placeholder="Amount applied *"
               type="number"
               min="0.01"
-              step="0.01"
+              step="10"
               value={form.amount}
-              onChange={(e) => setForm({ ...form, amount: e.target.value })}
+              onChange={(e) => {
+                const amount = e.target.value
+                const product = products.find((p) => p.id === form.loanProductId)
+                const n = Number(amount)
+                const terms = Number(form.termCount)
+                if (product && n > 0 && terms > 0) {
+                  setForm({
+                    ...form,
+                    ...feeFieldsFromPrincipal(n, terms, product.processingFeeSchedule),
+                    termCount: form.termCount,
+                  })
+                  return
+                }
+                setForm({ ...form, amount })
+              }}
               required
             />
             <input
@@ -345,7 +363,21 @@ export function LoanApplicationPanel({ customerId, onError, onMessage }: SharedP
               type="number"
               min="1"
               value={form.termCount}
-              onChange={(e) => setForm({ ...form, termCount: e.target.value })}
+              onChange={(e) => {
+                const termCount = e.target.value
+                const product = products.find((p) => p.id === form.loanProductId)
+                const n = Number(form.amount)
+                const terms = Number(termCount)
+                if (product && n > 0 && terms > 0) {
+                  setForm({
+                    ...form,
+                    ...feeFieldsFromPrincipal(n, terms, product.processingFeeSchedule),
+                    termCount,
+                  })
+                  return
+                }
+                setForm({ ...form, termCount })
+              }}
             />
             <input
               className="rounded-md border border-slate-300 px-3 py-2 text-sm"
@@ -816,15 +848,18 @@ export function PaymentTermsPanel({ customerId, onError, onMessage }: SharedProp
                     setForm((prev) => ({ ...prev, loanProductId: 0 }))
                     return
                   }
+                  const fees = feeFieldsFromPrincipal(
+                    product.amount,
+                    product.termCount,
+                    product.processingFeeSchedule,
+                  )
                   setForm((prev) => ({
                     ...prev,
                     loanProductId: product.id,
-                    amount: String(product.amount),
-                    interestRatePercent: String(product.interestRatePercent),
-                    termCount: String(product.termCount),
                     paymentFrequency: product.paymentFrequency,
                     interestMethod: product.interestMethod,
-                    ...chargeStringsFrom(product),
+                    ...fees,
+                    termCount: String(product.termCount),
                   }))
                 }}
                 disabled={!canManage || !readyForTerms}
@@ -846,9 +881,23 @@ export function PaymentTermsPanel({ customerId, onError, onMessage }: SharedProp
                 className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
                 type="number"
                 min="0.01"
-                step="0.01"
+                step="10"
                 value={form.amount}
-                onChange={(e) => setForm({ ...form, amount: e.target.value })}
+                onChange={(e) => {
+                  const amount = e.target.value
+                  const product = products.find((p) => p.id === form.loanProductId)
+                  const n = Number(amount)
+                  const terms = Number(form.termCount)
+                  if (product && n > 0 && terms > 0) {
+                    setForm({
+                      ...form,
+                      ...feeFieldsFromPrincipal(n, terms, product.processingFeeSchedule),
+                      termCount: form.termCount,
+                    })
+                    return
+                  }
+                  setForm({ ...form, amount })
+                }}
                 required
                 disabled={!canManage || !readyForTerms}
               />
@@ -873,7 +922,21 @@ export function PaymentTermsPanel({ customerId, onError, onMessage }: SharedProp
                 type="number"
                 min="1"
                 value={form.termCount}
-                onChange={(e) => setForm({ ...form, termCount: e.target.value })}
+                onChange={(e) => {
+                  const termCount = e.target.value
+                  const product = products.find((p) => p.id === form.loanProductId)
+                  const n = Number(form.amount)
+                  const terms = Number(termCount)
+                  if (product && n > 0 && terms > 0) {
+                    setForm({
+                      ...form,
+                      ...feeFieldsFromPrincipal(n, terms, product.processingFeeSchedule),
+                      termCount,
+                    })
+                    return
+                  }
+                  setForm({ ...form, termCount })
+                }}
                 required
                 disabled={!canManage || !readyForTerms}
               />

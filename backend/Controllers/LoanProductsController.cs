@@ -60,7 +60,7 @@ public class LoanProductsController : ControllerBase
     [Authorize(Policy = $"perm:{PermissionCodes.LoanProductsManage}")]
     public async Task<ActionResult<LoanProductDto>> Create([FromBody] UpsertLoanProductRequest request)
     {
-        if (!TryParseTerms(request, out var frequency, out var method, out var error))
+        if (!TryParseTerms(request, out var frequency, out var method, out var schedule, out var error))
             return BadRequest(new { message = error });
 
         var name = request.Name.Trim();
@@ -68,7 +68,7 @@ public class LoanProductsController : ControllerBase
             return BadRequest(new { message = "A loan product with this name already exists." });
 
         var product = new LoanProduct();
-        Apply(product, request, frequency, method);
+        Apply(product, request, frequency, method, schedule);
         product.CreatedAt = DateTime.UtcNow;
         _db.LoanProducts.Add(product);
         await _db.SaveChangesAsync();
@@ -87,7 +87,7 @@ public class LoanProductsController : ControllerBase
     [Authorize(Policy = $"perm:{PermissionCodes.LoanProductsManage}")]
     public async Task<ActionResult<LoanProductDto>> Update(int id, [FromBody] UpsertLoanProductRequest request)
     {
-        if (!TryParseTerms(request, out var frequency, out var method, out var error))
+        if (!TryParseTerms(request, out var frequency, out var method, out var schedule, out var error))
             return BadRequest(new { message = error });
 
         var product = await _db.LoanProducts.Include(p => p.Loans).FirstOrDefaultAsync(p => p.Id == id);
@@ -97,7 +97,7 @@ public class LoanProductsController : ControllerBase
         if (await _db.LoanProducts.AnyAsync(p => p.Name == name && p.Id != id))
             return BadRequest(new { message = "A loan product with this name already exists." });
 
-        Apply(product, request, frequency, method);
+        Apply(product, request, frequency, method, schedule);
         await _db.SaveChangesAsync();
 
         await _audit.LogAsync(
@@ -132,10 +132,12 @@ public class LoanProductsController : ControllerBase
         UpsertLoanProductRequest request,
         out PaymentFrequency frequency,
         out InterestMethod method,
+        out ProcessingFeeSchedule schedule,
         out string? error)
     {
-        frequency = PaymentFrequency.Monthly;
+        frequency = PaymentFrequency.Daily;
         method = InterestMethod.Flat;
+        schedule = ProcessingFeeSchedule.Base70Plus15;
         error = null;
 
         if (string.IsNullOrWhiteSpace(request.PaymentFrequency)
@@ -151,6 +153,13 @@ public class LoanProductsController : ControllerBase
             return false;
         }
 
+        if (!string.IsNullOrWhiteSpace(request.ProcessingFeeSchedule)
+            && !Enum.TryParse(request.ProcessingFeeSchedule.Replace("-", "").Replace(" ", ""), true, out schedule))
+        {
+            error = "Processing fee schedule must be Base70Plus15 or Base100Plus10.";
+            return false;
+        }
+
         return true;
     }
 
@@ -158,15 +167,26 @@ public class LoanProductsController : ControllerBase
         LoanProduct product,
         UpsertLoanProductRequest request,
         PaymentFrequency frequency,
-        InterestMethod method)
+        InterestMethod method,
+        ProcessingFeeSchedule schedule)
     {
         product.Name = request.Name.Trim();
         product.Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim();
-        product.Amount = decimal.Round(request.Amount, 2);
-        product.InterestRatePercent = decimal.Round(request.InterestRatePercent, 4);
-        product.TermCount = request.TermCount;
         product.PaymentFrequency = frequency;
         product.InterestMethod = method;
+        product.ProcessingFeeSchedule = schedule;
+        product.TermCount = request.TermCount;
+        product.IsActive = request.IsActive;
+        product.UpdatedAt = DateTime.UtcNow;
+
+        if (request.ApplyFeeRules)
+        {
+            LoanFeeRules.ApplyComputedFees(product, request.Amount, request.TermCount);
+            return;
+        }
+
+        product.Amount = LoanFeeRules.RoundToTens(request.Amount);
+        product.InterestRatePercent = decimal.Round(request.InterestRatePercent, 4);
         product.InsuranceAmount = decimal.Round(request.InsuranceAmount, 2);
         product.InitialSavings = decimal.Round(request.InitialSavings, 2);
         product.SavingsPerPeriod = decimal.Round(request.SavingsPerPeriod, 2);
@@ -177,8 +197,6 @@ public class LoanProductsController : ControllerBase
         product.Taxes = decimal.Round(request.Taxes, 2);
         product.NotarialFee = decimal.Round(request.NotarialFee, 2);
         product.Raffle = decimal.Round(request.Raffle, 2);
-        product.IsActive = request.IsActive;
-        product.UpdatedAt = DateTime.UtcNow;
     }
 
     private static LoanProductDto Map(LoanProduct p, int loanCount) =>
@@ -191,6 +209,7 @@ public class LoanProductsController : ControllerBase
             p.TermCount,
             p.PaymentFrequency.ToString(),
             p.InterestMethod.ToString(),
+            p.ProcessingFeeSchedule.ToString(),
             p.InsuranceAmount,
             p.InitialSavings,
             p.SavingsPerPeriod,

@@ -226,6 +226,7 @@ export type LoanProduct = {
   termCount: number
   paymentFrequency: string
   interestMethod: string
+  processingFeeSchedule?: string
   insuranceAmount?: number
   initialSavings?: number
   savingsPerPeriod?: number

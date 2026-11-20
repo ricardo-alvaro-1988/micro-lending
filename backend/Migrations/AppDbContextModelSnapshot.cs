@@ -1212,6 +1212,9 @@ namespace MicroLending.Api.Migrations
                     b.Property<decimal>("ProcessingFee")
                         .HasColumnType("decimal(18,2)");
 
+                    b.Property<int>("ProcessingFeeSchedule")
+                        .HasColumnType("int");
+
                     b.Property<decimal>("Raffle")
                         .HasColumnType("decimal(18,2)");
 
