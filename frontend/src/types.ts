@@ -308,6 +308,7 @@ export type LoanPayment = {
   notes?: string | null
   recordedBy: string
   createdAt: string
+  extraSavingsOffset?: number
 }
 
 export type LoanApprovalHistory = {

@@ -602,7 +602,8 @@ public record LoanPaymentDto(
     string? Reference,
     string? Notes,
     string RecordedBy,
-    DateTime CreatedAt);
+    DateTime CreatedAt,
+    decimal ExtraSavingsOffset);
 
 public class RecordLoanPaymentRequest
 {
@@ -1027,7 +1028,8 @@ public record ReportPaymentRegisterDto(
     int LoanId,
     string LoanNumber,
     int? BranchId,
-    string? BranchName);
+    string? BranchName,
+    decimal ExtraSavingsOffset);
 
 public record ReportPortfolioLoanDto(
     int LoanId,
