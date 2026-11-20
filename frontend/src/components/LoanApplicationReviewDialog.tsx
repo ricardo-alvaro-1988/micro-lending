@@ -469,7 +469,7 @@ function LoanTab({ loan }: { loan: Loan }) {
       <Field label="Flow" value={loan.flowName} />
       <Field label="Customer" value={loan.customerName} />
       <Field label="Created by" value={loan.createdBy} />
-      <Field label="Created" value={new Date(loan.createdAt).toLocaleString()} />
+      <Field label="Application date" value={new Date(loan.createdAt).toLocaleString()} />
       <Field label="Interest rate" value={`${loan.interestRatePercent}%`} />
       <Field label="Interest amount" value={money(loan.interestAmount)} />
       <Field label="Total payable" value={money(loan.totalPayable)} />

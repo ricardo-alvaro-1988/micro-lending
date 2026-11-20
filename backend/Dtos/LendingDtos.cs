@@ -487,6 +487,8 @@ public class CreateLoanRequest : LoanChargeRequest
     [Range(1, 1000)]
     public int? Cycle { get; set; }
     public decimal? ApprovedAmount { get; set; }
+    /// <summary>Application date/time; defaults to server now when omitted.</summary>
+    public DateTime? ApplicationDate { get; set; }
     public List<LoanCollateralInput>? Collaterals { get; set; }
     [MaxLength(1000)]
     public string? Notes { get; set; }

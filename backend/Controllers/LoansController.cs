@@ -373,9 +373,15 @@ public class LoansController : ControllerBase
             LoanChargeMapping.Resolve(request, product),
             request.Cycle);
 
+        var appliedAmount = decimal.Round(request.Amount, 2);
+        var approvedAmount = request.ApprovedAmount is decimal approved && approved > 0
+            ? decimal.Round(approved, 2)
+            : appliedAmount;
+        var applicationDate = request.ApplicationDate?.ToUniversalTime() ?? DateTime.UtcNow;
+
         var loan = new Loan
         {
-            LoanNumber = $"LN-{DateTime.UtcNow:yyyyMMddHHmmss}-{Random.Shared.Next(100, 999)}",
+            LoanNumber = $"LN-{applicationDate:yyyyMMddHHmmss}-{Random.Shared.Next(100, 999)}",
             CustomerId = customer.Id,
             FlowId = flow.Id,
             CurrentStageId = first.Id,
@@ -387,9 +393,9 @@ public class LoansController : ControllerBase
             LoanType = CustomerMapping.NormalizeLoanType(request.LoanType),
             ApplicationType = CustomerMapping.NormalizeApplicationType(request.ApplicationType),
             Cycle = request.Cycle,
-            ApprovedAmount = request.ApprovedAmount is decimal approved && approved > 0
-                ? decimal.Round(approved, 2)
-                : null,
+            ApprovedAmount = approvedAmount,
+            CreatedAt = applicationDate,
+            UpdatedAt = applicationDate,
         };
         CustomerMapping.ReplaceCollaterals(loan, request.Collaterals);
 

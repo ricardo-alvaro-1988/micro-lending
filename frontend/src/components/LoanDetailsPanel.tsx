@@ -148,7 +148,7 @@ export function LoanDetailsPanel({ loanId, onClose, className = '', headerAction
                 <DetailField label="Net proceeds" value={money(loan.netProceeds ?? 0)} />
                 <DetailField label="Product" value={loan.loanProductName || '—'} />
                 <DetailField label="Interest method" value={loan.interestMethod || '—'} />
-                <DetailField label="Created" value={new Date(loan.createdAt).toLocaleString()} />
+                <DetailField label="Application date" value={new Date(loan.createdAt).toLocaleString()} />
                 <DetailField label="Has terms" value={loan.hasTerms ? 'Yes' : 'No'} />
                 {loan.notes && (
                   <div className="sm:col-span-2">
