@@ -422,6 +422,46 @@ namespace MicroLending.Api.Migrations
                     b.ToTable("CashRemittances");
                 });
 
+            modelBuilder.Entity("MicroLending.Api.Models.CashflowFundInjection", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int?>("BranchId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("InjectionDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("RecordedByUserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BranchId");
+
+                    b.HasIndex("RecordedByUserId");
+
+                    b.HasIndex("InjectionDate", "BranchId");
+
+                    b.ToTable("CashflowFundInjections");
+                });
+
             modelBuilder.Entity("MicroLending.Api.Models.CashflowOpeningBalance", b =>
                 {
                     b.Property<int>("Id")
@@ -1827,6 +1867,24 @@ namespace MicroLending.Api.Migrations
                     b.Navigation("CreatedByUser");
 
                     b.Navigation("ReceivedByUser");
+                });
+
+            modelBuilder.Entity("MicroLending.Api.Models.CashflowFundInjection", b =>
+                {
+                    b.HasOne("MicroLending.Api.Models.Branch", "Branch")
+                        .WithMany()
+                        .HasForeignKey("BranchId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("MicroLending.Api.Models.ApplicationUser", "RecordedByUser")
+                        .WithMany()
+                        .HasForeignKey("RecordedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Branch");
+
+                    b.Navigation("RecordedByUser");
                 });
 
             modelBuilder.Entity("MicroLending.Api.Models.CashflowOpeningBalance", b =>

@@ -36,6 +36,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
     public DbSet<LoanLateFee> LoanLateFees => Set<LoanLateFee>();
     public DbSet<ExpenseEntry> ExpenseEntries => Set<ExpenseEntry>();
     public DbSet<CashflowOpeningBalance> CashflowOpeningBalances => Set<CashflowOpeningBalance>();
+    public DbSet<CashflowFundInjection> CashflowFundInjections => Set<CashflowFundInjection>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -383,6 +384,15 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
             e.HasIndex(x => new { x.AsOfDate, x.BranchId }).IsUnique();
             e.HasOne(x => x.Branch).WithMany().HasForeignKey(x => x.BranchId).OnDelete(DeleteBehavior.Cascade);
             e.HasOne(x => x.UpdatedByUser).WithMany().HasForeignKey(x => x.UpdatedByUserId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<CashflowFundInjection>(e =>
+        {
+            e.Property(x => x.Amount).HasPrecision(18, 2);
+            e.Property(x => x.Notes).HasMaxLength(500);
+            e.HasIndex(x => new { x.InjectionDate, x.BranchId });
+            e.HasOne(x => x.Branch).WithMany().HasForeignKey(x => x.BranchId).OnDelete(DeleteBehavior.SetNull);
+            e.HasOne(x => x.RecordedByUser).WithMany().HasForeignKey(x => x.RecordedByUserId).OnDelete(DeleteBehavior.Restrict);
         });
     }
 }

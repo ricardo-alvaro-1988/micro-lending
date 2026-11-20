@@ -1890,7 +1890,7 @@ public class ReportsController : ControllerBase
     }
 
     /// <summary>
-    /// Cashflow: Beginning + Remitted − Disbursement − Expenses = Cash on hand.
+    /// Cashflow: Beginning + Remitted + Injected − Disbursement − Expenses = Cash on hand.
     /// </summary>
     [HttpGet("cashflow")]
     public async Task<ActionResult<ReportCashflowDto>> Cashflow(
@@ -1934,6 +1934,18 @@ public class ReportsController : ControllerBase
             .Where(r => r.At >= start && r.At < endExclusive)
             .ToList();
         var remitted = remittanceRows.Sum(r => r.RemittedAmount);
+
+        var injectQuery = _db.CashflowFundInjections.AsNoTracking()
+            .Where(i => i.InjectionDate >= start && i.InjectionDate < endExclusive);
+        if (balanceBranchId is int injBid)
+            injectQuery = injectQuery.Where(i => i.BranchId == injBid);
+        else if (!scope.IsAdmin)
+            injectQuery = injectQuery.Where(_ => false);
+
+        var injectRows = await injectQuery
+            .Select(i => new { i.InjectionDate, i.Amount })
+            .ToListAsync();
+        var injected = injectRows.Sum(i => i.Amount);
 
         // Disbursement = net cash released (Approved-Final in period).
         var customers = BranchScopeService.Customers(_db.Customers.AsNoTracking(), scope);
@@ -1987,17 +1999,19 @@ public class ReportsController : ControllerBase
             .ToListAsync();
         var expenses = expenseRows.Sum(e => e.Amount);
 
-        var cashOnHand = beginning + remitted - disbursement - expenses;
+        var cashOnHand = beginning + remitted + injected - disbursement - expenses;
 
         var days = new List<ReportCashflowDayDto>();
         for (var d = start; d <= end; d = d.AddDays(1))
         {
             var dayEnd = d.AddDays(1);
             var dayRem = remittanceRows.Where(r => r.At >= d && r.At < dayEnd).Sum(r => r.RemittedAmount);
+            var dayInj = injectRows.Where(i => i.InjectionDate >= d && i.InjectionDate < dayEnd).Sum(i => i.Amount);
             var dayDisb = disbRows.Where(x => x.At >= d && x.At < dayEnd).Sum(x => x.Net);
             var dayExp = expenseRows.Where(e => e.ExpenseDate >= d && e.ExpenseDate < dayEnd).Sum(e => e.Amount);
-            if (dayRem == 0 && dayDisb == 0 && dayExp == 0 && start != end) continue;
-            days.Add(new ReportCashflowDayDto(d, dayRem, dayDisb, dayExp, dayRem - dayDisb - dayExp));
+            if (dayRem == 0 && dayInj == 0 && dayDisb == 0 && dayExp == 0 && start != end) continue;
+            days.Add(new ReportCashflowDayDto(
+                d, dayRem, dayInj, dayDisb, dayExp, dayRem + dayInj - dayDisb - dayExp));
         }
 
         string? branchName = null;
@@ -2016,6 +2030,8 @@ public class ReportsController : ControllerBase
             beginningSet,
             remitted,
             remittanceRows.Count,
+            injected,
+            injectRows.Count,
             disbursement,
             disbRows.Count,
             expenses,
@@ -2053,7 +2069,7 @@ public class ReportsController : ControllerBase
                 BranchId = balanceBranchId,
                 Amount = decimal.Round(request.Amount, 2, MidpointRounding.AwayFromZero),
                 UpdatedByUserId = userId,
-                UpdatedAt = DateTime.UtcNow,
+                UpdatedAt = PhilippineTime.Now,
             };
             _db.CashflowOpeningBalances.Add(row);
         }
@@ -2061,11 +2077,60 @@ public class ReportsController : ControllerBase
         {
             row.Amount = decimal.Round(request.Amount, 2, MidpointRounding.AwayFromZero);
             row.UpdatedByUserId = userId;
-            row.UpdatedAt = DateTime.UtcNow;
+            row.UpdatedAt = PhilippineTime.Now;
         }
 
         await _db.SaveChangesAsync();
         return Ok(new { asOfDate = asOf, branchId = balanceBranchId, amount = row.Amount });
+    }
+
+    [HttpPost("cashflow/inject-fund")]
+    [Authorize(Policy = $"perm:{PermissionCodes.ReportsView}")]
+    public async Task<ActionResult<CashflowFundInjectionDto>> InjectFund(
+        [FromBody] CreateCashflowFundInjectionRequest request,
+        [FromQuery] int? branchId = null)
+    {
+        var scope = await _branchScope.ResolveAsync(User, branchId ?? request.BranchId);
+        if (scope is null) return Unauthorized();
+        if (scope.IsFieldAgent) return Forbid();
+
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
+        if (string.IsNullOrWhiteSpace(userId)) return Unauthorized();
+
+        if (request.Amount <= 0)
+            return BadRequest(new { message = "Injected amount must be greater than zero." });
+
+        var date = (request.InjectionDate == default ? PhilippineTime.Today : request.InjectionDate).Date;
+        var balanceBranchId = scope.EffectiveBranchId;
+        if (!scope.IsAdmin)
+            balanceBranchId = BranchScopeService.EnforceWriteBranchId(scope, balanceBranchId);
+
+        var row = new CashflowFundInjection
+        {
+            InjectionDate = date,
+            BranchId = balanceBranchId,
+            Amount = decimal.Round(request.Amount, 2, MidpointRounding.AwayFromZero),
+            Notes = string.IsNullOrWhiteSpace(request.Notes) ? null : request.Notes.Trim(),
+            RecordedByUserId = userId,
+            CreatedAt = PhilippineTime.Now,
+        };
+        _db.CashflowFundInjections.Add(row);
+        await _db.SaveChangesAsync();
+
+        var saved = await _db.CashflowFundInjections.AsNoTracking()
+            .Include(i => i.Branch)
+            .Include(i => i.RecordedByUser)
+            .FirstAsync(i => i.Id == row.Id);
+
+        return Ok(new CashflowFundInjectionDto(
+            saved.Id,
+            saved.InjectionDate,
+            saved.Amount,
+            saved.Notes,
+            saved.BranchId,
+            saved.Branch?.Name,
+            saved.RecordedByUser.FullName,
+            saved.CreatedAt));
     }
 
     private static string AgingBucket(int daysPastDue) => daysPastDue switch
