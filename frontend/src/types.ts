@@ -243,6 +243,37 @@ export type LoanProduct = {
   createdAt: string
 }
 
+export type CustomerLoanSavings = {
+  loanId: number
+  loanNumber: string
+  status: string
+  primaryBalance: number
+  extraBalance: number
+}
+
+export type SavingsTransaction = {
+  id: number
+  customerId: number
+  customerName: string
+  loanId: number
+  loanNumber: string
+  kind: string
+  type: string
+  amount: number
+  balanceAfter: number
+  occurredAt: string
+  notes?: string | null
+  recordedBy?: string | null
+}
+
+export type CustomerSavingsSummary = {
+  primaryBalance: number
+  extraBalance: number
+  totalBalance: number
+  loans: CustomerLoanSavings[]
+  transactions: SavingsTransaction[]
+}
+
 export type LoanScheduleItem = {
   id: number
   installmentNumber: number

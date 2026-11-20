@@ -268,6 +268,60 @@ public class CustomerFinanceController : ControllerBase
         });
     }
 
+    [HttpGet("savings")]
+    [Authorize(Policy = $"perm:{PermissionCodes.CustomersView}")]
+    public async Task<ActionResult<CustomerSavingsSummaryDto>> GetSavingsSummary(
+        int customerId,
+        [FromQuery] string? kind = null,
+        [FromQuery] DateTime? from = null,
+        [FromQuery] DateTime? to = null)
+    {
+        if (await EnsureCustomerAccessAsync(customerId) is { } denied) return denied;
+
+        var loans = await _db.Loans.AsNoTracking()
+            .Where(l => l.CustomerId == customerId)
+            .OrderBy(l => l.Amount)
+            .ThenByDescending(l => l.CreatedAt)
+            .Select(l => new CustomerLoanSavingsDto(
+                l.Id,
+                l.LoanNumber,
+                l.Status.ToString(),
+                l.PrimarySavingsBalance,
+                l.ExtraSavingsBalance))
+            .ToListAsync();
+
+        var q = _db.SavingsTransactions.AsNoTracking()
+            .Include(t => t.Customer)
+            .Include(t => t.Loan)
+            .Include(t => t.RecordedByUser)
+            .Where(t => t.CustomerId == customerId);
+
+        if (!string.IsNullOrWhiteSpace(kind)
+            && Enum.TryParse<SavingsKind>(kind, true, out var kindEnum))
+            q = q.Where(t => t.Kind == kindEnum);
+        if (from is DateTime f) q = q.Where(t => t.OccurredAt >= f.Date);
+        if (to is DateTime tto) q = q.Where(t => t.OccurredAt < tto.Date.AddDays(1));
+
+        var rows = await q.OrderByDescending(t => t.OccurredAt).ThenByDescending(t => t.Id).ToListAsync();
+        var transactions = rows.Select(t => new SavingsTransactionDto(
+            t.Id,
+            t.CustomerId,
+            t.Customer.FullName,
+            t.LoanId,
+            t.Loan.LoanNumber,
+            t.Kind.ToString(),
+            t.Type.ToString(),
+            t.Amount,
+            t.BalanceAfter,
+            t.OccurredAt,
+            t.Notes,
+            t.RecordedByUser?.FullName)).ToList();
+
+        var primary = loans.Sum(l => l.PrimaryBalance);
+        var extra = loans.Sum(l => l.ExtraBalance);
+        return Ok(new CustomerSavingsSummaryDto(primary, extra, primary + extra, loans, transactions));
+    }
+
     [HttpGet("loans/{loanId:int}/savings-transactions")]
     [Authorize(Policy = $"perm:{PermissionCodes.CustomersView}")]
     public async Task<ActionResult<IEnumerable<SavingsTransactionDto>>> GetSavingsTransactions(
