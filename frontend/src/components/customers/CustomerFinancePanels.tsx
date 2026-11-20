@@ -1525,7 +1525,7 @@ export function StatementOfAccountPanel({ customerId, onError }: SharedProps) {
                 {statement.lines.length === 0 && (
                   <tr>
                     <td className="px-3 py-4 text-slate-500" colSpan={6}>
-                      No charges or payments in this range.
+                      No charges, payments, or savings records in this range.
                     </td>
                   </tr>
                 )}

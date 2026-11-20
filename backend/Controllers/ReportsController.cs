@@ -806,6 +806,25 @@ public class ReportsController : ControllerBase
             .ThenBy(p => p.Id)
             .ToListAsync();
         var paysByLoan = payments.GroupBy(p => p.LoanId).ToDictionary(g => g.Key, g => g.ToList());
+        var savingsByLoan = loanIds.Count == 0
+            ? new Dictionary<int, List<SavingsTransaction>>()
+            : (await _db.SavingsTransactions.AsNoTracking()
+                .Where(t => loanIds.Contains(t.LoanId))
+                .OrderBy(t => t.OccurredAt)
+                .ThenBy(t => t.Id)
+                .ToListAsync())
+              .GroupBy(t => t.LoanId)
+              .ToDictionary(g => g.Key, g => g.ToList());
+
+        static int ExportLineSort(string type) => type switch
+        {
+            "Charge" => 0,
+            "Payment" => 1,
+            "PrimarySavings" => 2,
+            "ExtraSavings" => 3,
+            _ => 4
+        };
+        static bool ExportAffectsBalance(string type) => type is "Charge" or "Payment";
 
         var export = new List<ReportStatementExportLineDto>();
         foreach (var row in loanRows.OrderBy(x => x.customer.FullName).ThenBy(x => x.loan.CreatedAt))
@@ -834,16 +853,41 @@ public class ReportsController : ControllerBase
                 }
             }
 
+            if (savingsByLoan.TryGetValue(row.loan.Id, out var savingsForLoan))
+            {
+                foreach (var t in savingsForLoan)
+                {
+                    var kindWord = t.Kind == SavingsKind.Primary ? "Primary savings" : "Extra savings";
+                    var typeLabel = t.Kind == SavingsKind.Primary ? "PrimarySavings" : "ExtraSavings";
+                    var reason = t.Type switch
+                    {
+                        SavingsTransactionType.InitialSavings => "Initial savings",
+                        SavingsTransactionType.DailySavings => "Daily savings",
+                        SavingsTransactionType.ExtraDeposit => "Extra deposit",
+                        SavingsTransactionType.UnderpayOffset => "Underpay offset",
+                        SavingsTransactionType.ManualAdjust => "Manual adjustment",
+                        _ => t.Type.ToString()
+                    };
+                    lines.Add((
+                        t.OccurredAt,
+                        typeLabel,
+                        $"{kindWord} · {reason} on {row.loan.LoanNumber} (bal {t.BalanceAfter:0.00})"
+                            + (string.IsNullOrWhiteSpace(t.Notes) ? "" : $" — {t.Notes}"),
+                        t.Amount < 0 ? Math.Abs(t.Amount) : 0m,
+                        t.Amount > 0 ? t.Amount : 0m));
+                }
+            }
+
             decimal opening = 0;
             decimal balance = 0;
             var started = false;
-            foreach (var line in lines.OrderBy(l => l.Date).ThenBy(l => l.Type == "Charge" ? 0 : 1))
+            foreach (var line in lines.OrderBy(l => l.Date).ThenBy(l => ExportLineSort(l.Type)))
             {
                 var inRange = (!start.HasValue || line.Date >= start.Value)
                               && (!endExclusive.HasValue || line.Date < endExclusive.Value);
                 if (!inRange)
                 {
-                    if (start.HasValue && line.Date < start.Value)
+                    if (start.HasValue && line.Date < start.Value && ExportAffectsBalance(line.Type))
                         opening += line.Debit - line.Credit;
                     continue;
                 }
@@ -854,7 +898,8 @@ public class ReportsController : ControllerBase
                     started = true;
                 }
 
-                balance += line.Debit - line.Credit;
+                if (ExportAffectsBalance(line.Type))
+                    balance += line.Debit - line.Credit;
                 export.Add(new ReportStatementExportLineDto(
                     row.customer.Id,
                     row.customer.FullName,

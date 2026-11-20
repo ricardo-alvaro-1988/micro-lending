@@ -506,25 +506,45 @@ public class CustomerFinanceController : ControllerBase
                 .Where(t => loanIds.Contains(t.LoanId))
                 .OrderBy(t => t.OccurredAt)
                 .ThenBy(t => t.Id)
-                .Select(t => new { t.LoanId, t.OccurredAt, t.Kind, t.Type, t.Amount, t.Notes })
+                .Select(t => new { t.LoanId, t.OccurredAt, t.Kind, t.Type, t.Amount, t.Notes, t.BalanceAfter })
                 .ToListAsync();
             var loanNumbers = loanRows.ToDictionary(l => l.Id, l => l.LoanNumber);
             foreach (var t in savingsTx)
             {
-                var kindLabel = t.Kind == SavingsKind.Primary ? "Primary" : "Extra";
-                var sign = t.Amount >= 0 ? "+" : "";
-                lines.Add(new StatementLineDto(
-                    t.OccurredAt,
-                    "Savings",
-                    $"{kindLabel} {t.Type} {sign}{t.Amount:0.00} on {loanNumbers.GetValueOrDefault(t.LoanId)}"
-                        + (string.IsNullOrWhiteSpace(t.Notes) ? "" : $" — {t.Notes}"),
-                    0,
-                    0,
-                    0));
+                var loanNo = loanNumbers.GetValueOrDefault(t.LoanId) ?? $"#{t.LoanId}";
+                var typeLabel = t.Kind == SavingsKind.Primary ? "PrimarySavings" : "ExtraSavings";
+                var kindWord = t.Kind == SavingsKind.Primary ? "Primary savings" : "Extra savings";
+                var reason = t.Type switch
+                {
+                    SavingsTransactionType.InitialSavings => "Initial savings",
+                    SavingsTransactionType.DailySavings => "Daily savings",
+                    SavingsTransactionType.ExtraDeposit => "Extra deposit",
+                    SavingsTransactionType.UnderpayOffset => "Underpay offset",
+                    SavingsTransactionType.ManualAdjust => "Manual adjustment",
+                    _ => t.Type.ToString()
+                };
+                var desc = $"{kindWord} · {reason} on {loanNo} (bal {t.BalanceAfter:0.00})"
+                    + (string.IsNullOrWhiteSpace(t.Notes) ? "" : $" — {t.Notes}");
+                // Display amount on statement; does not affect loan receivable balance.
+                var debit = t.Amount < 0 ? Math.Abs(t.Amount) : 0m;
+                var credit = t.Amount > 0 ? t.Amount : 0m;
+                lines.Add(new StatementLineDto(t.OccurredAt, typeLabel, desc, debit, credit, 0));
             }
         }
 
-        lines = lines.OrderBy(l => l.Date).ThenBy(l => l.Type == "Charge" ? 0 : l.Type == "Payment" ? 1 : 2).ToList();
+        static int LineSort(string type) => type switch
+        {
+            "Charge" => 0,
+            "Payment" => 1,
+            "PrimarySavings" => 2,
+            "ExtraSavings" => 3,
+            _ => 4
+        };
+
+        static bool AffectsLoanBalance(string type) =>
+            type is "Charge" or "Payment";
+
+        lines = lines.OrderBy(l => l.Date).ThenBy(l => LineSort(l.Type)).ToList();
         decimal balance = 0;
         decimal opening = 0;
         var ordered = new List<StatementLineDto>();
@@ -534,7 +554,7 @@ public class CustomerFinanceController : ControllerBase
                           && (!rangeEndExclusive.HasValue || line.Date < rangeEndExclusive.Value);
             if (!inRange)
             {
-                if (rangeStart.HasValue && line.Date < rangeStart.Value)
+                if (rangeStart.HasValue && line.Date < rangeStart.Value && AffectsLoanBalance(line.Type))
                     opening += line.Debit - line.Credit;
                 continue;
             }
@@ -542,7 +562,8 @@ public class CustomerFinanceController : ControllerBase
             if (ordered.Count == 0 && rangeStart.HasValue)
                 balance = opening;
 
-            balance += line.Debit - line.Credit;
+            if (AffectsLoanBalance(line.Type))
+                balance += line.Debit - line.Credit;
             ordered.Add(line with { Balance = balance });
         }
 
