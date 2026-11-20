@@ -40,6 +40,11 @@ const reports = [
         blurb: 'New loans approved-final / released in a period.',
       },
       {
+        to: '/reports/daily-disbursement',
+        title: 'Daily loan disbursement',
+        blurb: 'Printable disbursement sheet by date or date range (principal, deductions, net).',
+      },
+      {
         to: '/reports/expected-vs-actual',
         title: 'Expected vs actual',
         blurb: 'Daily schedule due compared with payments received.',

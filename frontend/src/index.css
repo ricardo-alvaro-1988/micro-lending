@@ -280,12 +280,15 @@ body {
   .statement-print-root,
   .statement-print-root *,
   .agreement-print-root,
-  .agreement-print-root * {
+  .agreement-print-root *,
+  .disbursement-print-root,
+  .disbursement-print-root * {
     visibility: visible;
   }
 
   .statement-print-root,
-  .agreement-print-root {
+  .agreement-print-root,
+  .disbursement-print-root {
     position: absolute;
     left: 0;
     top: 0;
@@ -299,7 +302,8 @@ body {
   }
 
   .statement-print-root table,
-  .agreement-print-root table {
+  .agreement-print-root table,
+  .disbursement-print-root table {
     width: 100%;
     border-collapse: collapse;
   }
