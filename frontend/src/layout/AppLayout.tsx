@@ -159,7 +159,7 @@ const nav: NavItem[] = [
       { label: 'Expected vs actual', to: '/reports/expected-vs-actual', permission: 'reports.view', icon: <IconSchedule /> },
       { label: 'PAR', to: '/reports/par', permission: 'reports.view', icon: <IconSchedule /> },
       { label: 'Closed loans', to: '/reports/closed-loans', permission: 'reports.view', icon: <IconSchedule /> },
-      { label: 'Group sheet', to: '/reports/group-collection-sheet', permission: 'reports.view', icon: <IconSchedule /> },
+      { label: 'Group printable', to: '/reports/group-collection-sheet', permission: 'reports.view', icon: <IconSchedule /> },
       { label: 'Statements export', to: '/reports/statements', permission: 'reports.view', icon: <IconSchedule /> },
       { label: 'Interest income', to: '/reports/interest-income', permission: 'reports.view', icon: <IconSchedule /> },
       { label: 'Approval TAT', to: '/reports/approval-tat', permission: 'reports.view', icon: <IconSchedule /> },
