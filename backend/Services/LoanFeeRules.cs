@@ -1,0 +1,90 @@
+using MicroLending.Api.Models;
+
+namespace MicroLending.Api.Services;
+
+/// <summary>
+/// Loan product fee formulas (update-nov-19-2026):
+/// notarial 5k=100 +5/1k; processing A 5k=70 +15/1k or B 5k=100 +10/1k;
+/// savings = principal×10%/terms; initial savings 2%; insurance brackets;
+/// tax 1%; interest 12% with principal/interest rounded to tens.
+/// </summary>
+public static class LoanFeeRules
+{
+    public const decimal DefaultInterestRatePercent = 12m;
+
+    public static decimal RoundToTens(decimal value) =>
+        Math.Round(value / 10m, MidpointRounding.AwayFromZero) * 10m;
+
+    public static decimal SteppedFrom5k(decimal principal, decimal baseAt5k, decimal per1k)
+    {
+        if (principal <= 0) return 0;
+        var steps = Math.Floor((principal - 5000m) / 1000m);
+        var fee = baseAt5k + steps * per1k;
+        return fee < 0 ? 0 : decimal.Round(fee, 2, MidpointRounding.AwayFromZero);
+    }
+
+    public static decimal InsuranceForPrincipal(decimal principal)
+    {
+        if (principal < 5000m) return 0;
+        if (principal <= 10000m) return 200;
+        if (principal <= 15000m) return 250;
+        if (principal <= 20000m) return 300;
+        return 300;
+    }
+
+    public static decimal ProcessingFeeFor(decimal principal, ProcessingFeeSchedule schedule) =>
+        schedule == ProcessingFeeSchedule.Base100Plus10
+            ? SteppedFrom5k(principal, 100m, 10m)
+            : SteppedFrom5k(principal, 70m, 15m);
+
+    public static decimal NotarialFeeFor(decimal principal) =>
+        SteppedFrom5k(principal, 100m, 5m);
+
+    public static LoanChargeInputs ComputeCharges(
+        decimal principalInput,
+        int termCount,
+        ProcessingFeeSchedule schedule = ProcessingFeeSchedule.Base70Plus15)
+    {
+        var principal = RoundToTens(principalInput);
+        var terms = Math.Max(0, termCount);
+        var savingsPerPeriod = terms > 0
+            ? decimal.Round(principal * 0.10m / terms, 2, MidpointRounding.AwayFromZero)
+            : 0m;
+
+        return new LoanChargeInputs(
+            InsuranceAmount: InsuranceForPrincipal(principal),
+            InitialSavings: decimal.Round(principal * 0.02m, 2, MidpointRounding.AwayFromZero),
+            SavingsPerPeriod: savingsPerPeriod,
+            InsurancePerPeriod: 0,
+            MembershipFee: 0,
+            ProcessingFee: ProcessingFeeFor(principal, schedule),
+            LoanRedemptionFee: 0,
+            Taxes: decimal.Round(principal * 0.01m, 2, MidpointRounding.AwayFromZero),
+            NotarialFee: NotarialFeeFor(principal),
+            Raffle: 0);
+    }
+
+    public static void ApplyComputedFees(
+        LoanProduct product,
+        decimal? principalInput = null,
+        int? termCount = null)
+    {
+        var principal = RoundToTens(principalInput ?? product.Amount);
+        var terms = termCount ?? product.TermCount;
+        var charges = ComputeCharges(principal, terms, product.ProcessingFeeSchedule);
+
+        product.Amount = principal;
+        product.InterestRatePercent = DefaultInterestRatePercent;
+        product.TermCount = Math.Max(1, terms);
+        product.InsuranceAmount = charges.InsuranceAmount;
+        product.InitialSavings = charges.InitialSavings;
+        product.SavingsPerPeriod = charges.SavingsPerPeriod;
+        product.InsurancePerPeriod = charges.InsurancePerPeriod;
+        product.MembershipFee = charges.MembershipFee;
+        product.ProcessingFee = charges.ProcessingFee;
+        product.LoanRedemptionFee = charges.LoanRedemptionFee;
+        product.Taxes = charges.Taxes;
+        product.NotarialFee = charges.NotarialFee;
+        product.Raffle = charges.Raffle;
+    }
+}

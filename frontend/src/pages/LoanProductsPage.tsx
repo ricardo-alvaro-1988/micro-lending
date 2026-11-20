@@ -8,30 +8,55 @@ import {
   LoanProceedsBreakdown,
   chargePayloadFrom,
   chargeStringsFrom,
-  emptyChargeStrings,
 } from '../components/LoanProceedsBreakdown'
 import { ActiveTag } from '../components/StatusTag'
+import {
+  computeLoanFees,
+  feeRuleStrings,
+  type ProcessingFeeSchedule,
+} from '../lib/loanFeeRules'
 import type { LoanProduct } from '../types'
 import { useToast } from '../toast/ToastContext'
 
-const emptyForm = () => ({
-  name: '',
-  description: '',
-  amount: '',
-  interestRatePercent: '0',
-  termCount: '12',
-  paymentFrequency: 'Monthly',
-  interestMethod: 'Flat',
-  isActive: true,
-  ...emptyChargeStrings,
-})
+const emptyForm = () => {
+  const fees = feeRuleStrings(computeLoanFees(10000, 70, 'Base70Plus15'))
+  return {
+    name: '',
+    description: '',
+    termCount: '70',
+    paymentFrequency: 'Daily',
+    interestMethod: 'Flat',
+    processingFeeSchedule: 'Base70Plus15' as ProcessingFeeSchedule,
+    applyFeeRules: true,
+    isActive: true,
+    ...fees,
+  }
+}
+
+function applyRulesToForm(
+  prev: ReturnType<typeof emptyForm>,
+  overrides?: Partial<Pick<ReturnType<typeof emptyForm>, 'amount' | 'termCount' | 'processingFeeSchedule'>>,
+) {
+  const amount = Number(overrides?.amount ?? prev.amount)
+  const termCount = Number(overrides?.termCount ?? prev.termCount)
+  const schedule = (overrides?.processingFeeSchedule ?? prev.processingFeeSchedule) as ProcessingFeeSchedule
+  if (!(amount > 0) || !(termCount > 0)) return { ...prev, ...overrides }
+  const fees = computeLoanFees(amount, termCount, schedule)
+  return {
+    ...prev,
+    ...overrides,
+    ...feeRuleStrings(fees),
+    processingFeeSchedule: schedule,
+    applyFeeRules: true,
+  }
+}
 
 export function LoanProductsPage() {
   const { can } = useAuth()
   const canManage = can('loanProducts.manage')
   const [products, setProducts] = useState<LoanProduct[]>([])
   const [selectedId, setSelectedId] = useState<number | null>(null)
-  const [form, setForm] = useState(emptyForm())
+  const [form, setForm] = useState(emptyForm)
   const toast = useToast()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -67,6 +92,10 @@ export function LoanProductsPage() {
       termCount: String(product.termCount),
       paymentFrequency: product.paymentFrequency,
       interestMethod: product.interestMethod,
+      processingFeeSchedule: (product.processingFeeSchedule === 'Base100Plus10'
+        ? 'Base100Plus10'
+        : 'Base70Plus15') as ProcessingFeeSchedule,
+      applyFeeRules: true,
       isActive: product.isActive,
       ...chargeStringsFrom(product),
     })
@@ -84,6 +113,8 @@ export function LoanProductsPage() {
         termCount: Number(form.termCount),
         paymentFrequency: form.paymentFrequency,
         interestMethod: form.interestMethod,
+        processingFeeSchedule: form.processingFeeSchedule,
+        applyFeeRules: form.applyFeeRules,
         isActive: form.isActive,
         ...chargePayloadFrom(form),
       }
@@ -126,13 +157,18 @@ export function LoanProductsPage() {
     }
   }
 
+  const interestTotal =
+    Number(form.amount) > 0
+      ? Math.round((Number(form.amount) * Number(form.interestRatePercent || 0)) / 100 / 10) * 10
+      : 0
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-xl font-semibold">Loan Products</h2>
           <p className="text-sm text-slate-500">
-            Reusable templates for amount, rate, term, frequency, and interest method.
+            Templates with fee rules: notarial, processing, savings, insurance, tax, 12% interest (round to tens).
           </p>
         </div>
         {canManage && (
@@ -197,7 +233,7 @@ export function LoanProductsPage() {
                 onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
                 required
                 disabled={!canManage}
-                placeholder="e.g. Weekly 10,000 flat"
+                placeholder="e.g. Daily 10,000"
               />
             </div>
             <div>
@@ -231,12 +267,18 @@ export function LoanProductsPage() {
                 className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
                 type="number"
                 min="0.01"
-                step="0.01"
+                step="10"
                 value={form.amount}
-                onChange={(e) => setForm((prev) => ({ ...prev, amount: e.target.value }))}
+                onChange={(e) => {
+                  const amount = e.target.value
+                  setForm((prev) =>
+                    prev.applyFeeRules ? applyRulesToForm(prev, { amount }) : { ...prev, amount },
+                  )
+                }}
                 required
                 disabled={!canManage}
               />
+              <p className="mt-1 text-xs text-slate-500">Rounded to nearest 10 when fee rules apply.</p>
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-600">Interest % *</label>
@@ -248,7 +290,7 @@ export function LoanProductsPage() {
                 value={form.interestRatePercent}
                 onChange={(e) => setForm((prev) => ({ ...prev, interestRatePercent: e.target.value }))}
                 required
-                disabled={!canManage}
+                disabled={!canManage || form.applyFeeRules}
               />
             </div>
             <div>
@@ -258,7 +300,12 @@ export function LoanProductsPage() {
                 type="number"
                 min="1"
                 value={form.termCount}
-                onChange={(e) => setForm((prev) => ({ ...prev, termCount: e.target.value }))}
+                onChange={(e) => {
+                  const termCount = e.target.value
+                  setForm((prev) =>
+                    prev.applyFeeRules ? applyRulesToForm(prev, { termCount }) : { ...prev, termCount },
+                  )
+                }}
                 required
                 disabled={!canManage}
               />
@@ -277,11 +324,58 @@ export function LoanProductsPage() {
                 <option value="Monthly">Monthly</option>
               </select>
             </div>
+            <div className="md:col-span-2">
+              <label className="mb-1 block text-sm font-medium text-slate-600">Processing fee schedule *</label>
+              <select
+                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                value={form.processingFeeSchedule}
+                onChange={(e) => {
+                  const processingFeeSchedule = e.target.value as ProcessingFeeSchedule
+                  setForm((prev) =>
+                    prev.applyFeeRules
+                      ? applyRulesToForm(prev, { processingFeeSchedule })
+                      : { ...prev, processingFeeSchedule },
+                  )
+                }}
+                disabled={!canManage}
+              >
+                <option value="Base70Plus15">5,000 = 70, then +15 every 1,000</option>
+                <option value="Base100Plus10">5,000 = 100, then +10 every 1,000</option>
+              </select>
+            </div>
           </div>
 
+          <label className="flex items-center gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              checked={form.applyFeeRules}
+              onChange={(e) => {
+                const applyFeeRules = e.target.checked
+                setForm((prev) => (applyFeeRules ? applyRulesToForm({ ...prev, applyFeeRules }) : { ...prev, applyFeeRules }))
+              }}
+              disabled={!canManage}
+            />
+            Auto-calculate fees from principal (notarial, processing, savings, insurance, tax, 12%)
+          </label>
+
           <div>
-            <h3 className="mb-2 text-sm font-semibold text-slate-800">Fees, savings & insurance</h3>
-            <LoanChargeFields form={form} setForm={setForm} disabled={!canManage} />
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+              <h3 className="text-sm font-semibold text-slate-800">Fees, savings & insurance</h3>
+              {canManage && form.applyFeeRules && (
+                <button
+                  type="button"
+                  className="text-xs font-medium text-sky-700 hover:underline"
+                  onClick={() => setForm((prev) => applyRulesToForm(prev))}
+                >
+                  Recalculate now
+                </button>
+              )}
+            </div>
+            <LoanChargeFields
+              form={form}
+              setForm={setForm}
+              disabled={!canManage || form.applyFeeRules}
+            />
           </div>
 
           {Number(form.amount) > 0 && Number(form.termCount) > 0 && (
@@ -292,8 +386,7 @@ export function LoanProductsPage() {
                 paymentFrequency: form.paymentFrequency,
                 ...chargePayloadFrom(form),
                 principalPerPeriod: Number(form.amount) / Number(form.termCount),
-                interestPerPeriod:
-                  (Number(form.amount) * Number(form.interestRatePercent || 0)) / 100 / Number(form.termCount),
+                interestPerPeriod: interestTotal / Number(form.termCount),
               }}
             />
           )}

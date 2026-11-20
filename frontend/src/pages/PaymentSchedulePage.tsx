@@ -8,10 +8,10 @@ import {
   LoanChargeFields,
   LoanProceedsBreakdown,
   chargePayloadFrom,
-  chargeStringsFrom,
   emptyChargeStrings,
 } from '../components/LoanProceedsBreakdown'
 import { StageTag, StatusTag } from '../components/StatusTag'
+import { feeFieldsFromPrincipal } from '../lib/loanFeeRules'
 import { notifyPaymentSchedulesChanged } from '../notify'
 import type { LoanProduct } from '../types'
 import { useToast } from '../toast/ToastContext'
@@ -253,15 +253,18 @@ export function PaymentSchedulePage() {
                         setForm((prev) => ({ ...prev, loanProductId: 0 }))
                         return
                       }
+                      const fees = feeFieldsFromPrincipal(
+                        product.amount,
+                        product.termCount,
+                        product.processingFeeSchedule,
+                      )
                       setForm((prev) => ({
                         ...prev,
                         loanProductId: product.id,
-                        amount: String(product.amount),
-                        interestRatePercent: String(product.interestRatePercent),
-                        termCount: String(product.termCount),
                         paymentFrequency: product.paymentFrequency,
                         interestMethod: product.interestMethod,
-                        ...chargeStringsFrom(product),
+                        ...fees,
+                        termCount: String(product.termCount),
                       }))
                     }}
                     disabled={!canManage}
@@ -280,9 +283,23 @@ export function PaymentSchedulePage() {
                     className="w-full rounded-md border border-slate-300 px-3 py-2"
                     type="number"
                     min="0.01"
-                    step="0.01"
+                    step="10"
                     value={form.amount}
-                    onChange={(e) => setForm({ ...form, amount: e.target.value })}
+                    onChange={(e) => {
+                      const amount = e.target.value
+                      const product = products.find((p) => p.id === form.loanProductId)
+                      const n = Number(amount)
+                      const terms = Number(form.termCount)
+                      if (product && n > 0 && terms > 0) {
+                        setForm({
+                          ...form,
+                          ...feeFieldsFromPrincipal(n, terms, product.processingFeeSchedule),
+                          termCount: form.termCount,
+                        })
+                        return
+                      }
+                      setForm({ ...form, amount })
+                    }}
                     required
                     disabled={!canManage}
                   />

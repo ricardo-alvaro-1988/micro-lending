@@ -1,0 +1,67 @@
+
+===
+Notarial fee
+5000 = 100, then +5 on every 1k
+==
+processing fee
+5000 = 70, then +15 on every 1k
+====
+processing fee
+5000 = 100, then +10 on every 1k
+====
+savings = principal * 10% / terms
+saving = 1500 * 10% / 70
+=====
+initial saving
+2% of the principal
+====
+insurance
+5k-10 = 200
+11k - 15k = 250
+16-20 - 300
+
+===
+tax = principal * 1%
+====
+12% as interest rate round of tens
+the principal should be round off as well
+====
+group will be associatiated with group, 1 cluster = 1 field agent
+=====
+regular payment = achive
+partial = if the payment is not equal to the the existing amount it should mark as underpaid
+payment can be retrieve directly on the extra savings records and will be deducted, 
+====
+Add record for extra savings  . . . 
+extra recording of extra saving . . .
+====
+on payment record , select cluster group then check if paid or not
+====
+on statement create additional record for extra savings
+====
+create a record to show saving for the loan and extra savings for the additional payment
+====
+per cluster printable version, payment schedule, amount of total per day, balance, savings
+====
+late fees will be indicated under statement and manually inputted by the administrator
+====
+printable version of loan application and agreement , include the loan terms 
+===
+daily loan disbursement , this page will be printable
+====
+collected vs remitted make sure that this is separated
+balancing report
+====
+beginning balance => cashflow
+
+beginning +
+remitted +
+disbursement -
+expenses -
+= coh 
+===
+receivables
+===
+over all loan granted
+===
+overall portfolio
