@@ -5,6 +5,7 @@ import { useBranchScope, withBranchQuery } from '../branch/BranchContext'
 import { ActionButton } from '../components/ActionButton'
 import { CustomerAvatar } from '../components/CustomerAvatar'
 import {
+  CustomerSavingsPanel,
   LoanApplicationPanel,
   PaymentSummaryPanel,
   PaymentTermsPanel,
@@ -15,7 +16,7 @@ import { LoadingBlock } from '../components/ListLoading'
 import type { AgentOption, Branch, CustomerDetail, CustomerGroup, CustomerListItem } from '../types'
 import { useToast } from '../toast/ToastContext'
 
-type CustomerTab = 'profile' | 'application' | 'terms' | 'summary' | 'payment' | 'statement'
+type CustomerTab = 'profile' | 'application' | 'terms' | 'summary' | 'payment' | 'statement' | 'savings'
 
 type CustomerForm = {
   firstName: string
@@ -481,6 +482,7 @@ export function CustomersPage() {
     ['terms', 'Payment Terms'],
     ['summary', 'Payment Summary'],
     ['payment', 'Record Payment'],
+    ['savings', 'Savings'],
     ['statement', 'Statement'],
   ] as const
 
@@ -666,6 +668,9 @@ export function CustomersPage() {
             )}
             {selectedId != null && tab === 'statement' && (
               <StatementOfAccountPanel customerId={selectedId} onError={toast.error} onMessage={toast.success} />
+            )}
+            {selectedId != null && tab === 'savings' && (
+              <CustomerSavingsPanel customerId={selectedId} onError={toast.error} onMessage={toast.success} />
             )}
 
             {(selectedId == null || tab === 'profile') && (

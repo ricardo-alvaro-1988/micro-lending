@@ -27,6 +27,7 @@ import {
 } from '../../notify'
 import type {
   CustomerPaymentSummary,
+  CustomerSavingsSummary,
   Loan,
   LoanApprovalHistory,
   LoanCollateral,
@@ -1665,6 +1666,217 @@ export function StatementOfAccountPanel({ customerId, onError, onMessage }: Shar
           <div className="text-right text-sm font-semibold">Closing balance: {money(statement.closingBalance)}</div>
         </div>
       )}
+    </div>
+  )
+}
+
+export function CustomerSavingsPanel({ customerId, onError, onMessage }: SharedProps) {
+  const { can } = useAuth()
+  const canManage = can('loans.manage') || can('field.collect')
+  const [summary, setSummary] = useState<CustomerSavingsSummary | null>(null)
+  const [kind, setKind] = useState<'All' | 'Primary' | 'Extra'>('All')
+  const [loading, setLoading] = useState(true)
+  const [depositLoanId, setDepositLoanId] = useState<number | ''>('')
+  const [depositAmount, setDepositAmount] = useState('')
+  const [depositNotes, setDepositNotes] = useState('')
+  const [depositBusy, setDepositBusy] = useState(false)
+
+  const load = async () => {
+    setLoading(true)
+    try {
+      const qs = kind === 'All' ? '' : `?kind=${kind}`
+      setSummary(await api<CustomerSavingsSummary>(`/api/customers/${customerId}/savings${qs}`))
+    } catch (err) {
+      onError(err instanceof Error ? err.message : 'Failed to load savings')
+      setSummary(null)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    void load()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [customerId, kind])
+
+  const onDeposit = async (e: FormEvent) => {
+    e.preventDefault()
+    if (depositLoanId === '') {
+      onError('Select a loan for the extra savings deposit.')
+      return
+    }
+    const amount = Number(depositAmount)
+    if (!Number.isFinite(amount) || amount <= 0) {
+      onError('Enter an amount greater than zero.')
+      return
+    }
+    setDepositBusy(true)
+    try {
+      await api(`/api/customers/${customerId}/loans/${depositLoanId}/extra-savings`, {
+        method: 'POST',
+        body: JSON.stringify({ amount, notes: depositNotes || null }),
+      })
+      setDepositAmount('')
+      setDepositNotes('')
+      onMessage('Extra savings deposited.')
+      await load()
+    } catch (err) {
+      onError(err instanceof Error ? err.message : 'Deposit failed')
+    } finally {
+      setDepositBusy(false)
+    }
+  }
+
+  if (loading && !summary) return <PageLoading label="Loading savings..." compact />
+  if (!summary) return <p className="text-sm text-slate-500">No savings data.</p>
+
+  return (
+    <div className="space-y-5">
+      <div className="grid gap-3 sm:grid-cols-3">
+        <SummaryCard label="Primary savings balance" value={money(summary.primaryBalance)} />
+        <SummaryCard label="Extra savings balance" value={money(summary.extraBalance)} />
+        <SummaryCard label="Total savings" value={money(summary.totalBalance)} />
+      </div>
+
+      <div>
+        <h4 className="mb-2 text-sm font-semibold text-slate-800">Balances by loan</h4>
+        <div className="overflow-auto rounded-lg border border-slate-200">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-slate-50 text-slate-600">
+              <tr>
+                <th className="px-3 py-2 font-medium">Loan</th>
+                <th className="px-3 py-2 font-medium">Status</th>
+                <th className="px-3 py-2 font-medium text-right">Primary</th>
+                <th className="px-3 py-2 font-medium text-right">Extra</th>
+                <th className="px-3 py-2 font-medium text-right">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {summary.loans.length === 0 ? (
+                <tr>
+                  <td className="px-3 py-4 text-slate-500" colSpan={5}>
+                    No loans yet.
+                  </td>
+                </tr>
+              ) : (
+                summary.loans.map((l) => (
+                  <tr key={l.loanId} className="border-t border-slate-100">
+                    <td className="px-3 py-2 font-medium">{l.loanNumber}</td>
+                    <td className="px-3 py-2">
+                      <StatusTag status={l.status} />
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums">{money(l.primaryBalance)}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{money(l.extraBalance)}</td>
+                    <td className="px-3 py-2 text-right tabular-nums font-medium">
+                      {money(l.primaryBalance + l.extraBalance)}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {canManage && summary.loans.length > 0 && (
+        <form
+          onSubmit={onDeposit}
+          className="grid gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4 sm:grid-cols-4"
+        >
+          <div className="sm:col-span-4 text-sm font-semibold text-slate-800">Add extra savings</div>
+          <select
+            className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+            value={depositLoanId === '' ? '' : String(depositLoanId)}
+            onChange={(e) => setDepositLoanId(e.target.value ? Number(e.target.value) : '')}
+            required
+          >
+            <option value="">Select loan</option>
+            {summary.loans.map((l) => (
+              <option key={l.loanId} value={l.loanId}>
+                {l.loanNumber}
+              </option>
+            ))}
+          </select>
+          <input
+            className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+            type="number"
+            min="0.01"
+            step="0.01"
+            placeholder="Amount *"
+            value={depositAmount}
+            onChange={(e) => setDepositAmount(e.target.value)}
+            required
+          />
+          <input
+            className="rounded-md border border-slate-300 px-3 py-2 text-sm sm:col-span-2"
+            placeholder="Notes (optional)"
+            value={depositNotes}
+            onChange={(e) => setDepositNotes(e.target.value)}
+          />
+          <ActionButton type="submit" loading={depositBusy} loadingText="Saving…">
+            Deposit extra savings
+          </ActionButton>
+        </form>
+      )}
+
+      <div>
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <h4 className="text-sm font-semibold text-slate-800">Savings history</h4>
+          <select
+            className="rounded-md border border-slate-300 px-3 py-1.5 text-sm"
+            value={kind}
+            onChange={(e) => setKind(e.target.value as 'All' | 'Primary' | 'Extra')}
+          >
+            <option value="All">All (primary + extra)</option>
+            <option value="Primary">Primary only</option>
+            <option value="Extra">Extra only</option>
+          </select>
+        </div>
+        <div className="overflow-auto rounded-lg border border-slate-200">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-slate-50 text-slate-600">
+              <tr>
+                <th className="px-3 py-2 font-medium">Date</th>
+                <th className="px-3 py-2 font-medium">Loan</th>
+                <th className="px-3 py-2 font-medium">Kind</th>
+                <th className="px-3 py-2 font-medium">Type</th>
+                <th className="px-3 py-2 font-medium text-right">Amount</th>
+                <th className="px-3 py-2 font-medium text-right">Balance after</th>
+                <th className="px-3 py-2 font-medium">Notes</th>
+                <th className="px-3 py-2 font-medium">By</th>
+              </tr>
+            </thead>
+            <tbody>
+              {summary.transactions.length === 0 ? (
+                <tr>
+                  <td className="px-3 py-4 text-slate-500" colSpan={8}>
+                    No savings transactions yet.
+                  </td>
+                </tr>
+              ) : (
+                summary.transactions.map((t) => (
+                  <tr key={t.id} className="border-t border-slate-100">
+                    <td className="px-3 py-2 whitespace-nowrap">{new Date(t.occurredAt).toLocaleString()}</td>
+                    <td className="px-3 py-2">{t.loanNumber}</td>
+                    <td className="px-3 py-2">{t.kind}</td>
+                    <td className="px-3 py-2">{t.type}</td>
+                    <td
+                      className={`px-3 py-2 text-right tabular-nums ${
+                        t.amount < 0 ? 'text-rose-700' : 'text-emerald-700'
+                      }`}
+                    >
+                      {money(t.amount)}
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums">{money(t.balanceAfter)}</td>
+                    <td className="px-3 py-2 text-slate-600">{t.notes || '—'}</td>
+                    <td className="px-3 py-2 text-slate-600">{t.recordedBy || '—'}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   )
 }

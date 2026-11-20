@@ -670,6 +670,20 @@ public record SavingsTransactionDto(
     string? Notes,
     string? RecordedBy);
 
+public record CustomerLoanSavingsDto(
+    int LoanId,
+    string LoanNumber,
+    string Status,
+    decimal PrimaryBalance,
+    decimal ExtraBalance);
+
+public record CustomerSavingsSummaryDto(
+    decimal PrimaryBalance,
+    decimal ExtraBalance,
+    decimal TotalBalance,
+    IReadOnlyList<CustomerLoanSavingsDto> Loans,
+    IReadOnlyList<SavingsTransactionDto> Transactions);
+
 public class ExtraSavingsDepositRequest
 {
     [Range(0.01, double.MaxValue)]
