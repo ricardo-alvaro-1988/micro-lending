@@ -85,7 +85,6 @@ export function LoanApplicationPanel({ customerId, onError, onMessage }: SharedP
     cycle: '1',
     approvedAmount: '',
     applicationDate: localDateTimeInputValue(),
-    firstDueDate: '',
     notes: '',
     ...emptyChargeStrings,
     membershipFee: String(membershipFeeFor(1)),
@@ -160,7 +159,8 @@ export function LoanApplicationPanel({ customerId, onError, onMessage }: SharedP
           loanProductId: form.loanProductId || null,
           amount: Number(form.amount),
           interestRatePercent: Number(form.interestRatePercent || 0),
-          termCount: form.firstDueDate ? Number(form.termCount || 0) : 0,
+          // Application only — schedule / first payment day are set later on Payment Terms after approval.
+          termCount: Number(form.termCount || 0),
           paymentFrequency: form.paymentFrequency,
           interestMethod: form.interestMethod,
           loanType: form.loanType || null,
@@ -173,7 +173,7 @@ export function LoanApplicationPanel({ customerId, onError, onMessage }: SharedP
             const parsed = new Date(raw)
             return Number.isNaN(parsed.getTime()) ? new Date().toISOString() : parsed.toISOString()
           })(),
-          firstDueDate: form.firstDueDate || null,
+          firstDueDate: null,
           notes: form.notes || null,
           collaterals: collaterals
             .filter((c) => c.descriptionOrKind.trim() || Number(c.estimatedMarketValue) > 0)
@@ -469,20 +469,6 @@ export function LoanApplicationPanel({ customerId, onError, onMessage }: SharedP
               <option value="Flat">Flat interest</option>
               <option value="DecliningBalance">Declining balance</option>
             </select>
-            <label className="text-sm">
-              <span className="mb-1 block text-xs font-medium text-slate-600">
-                First day of payment
-              </span>
-              <input
-                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-                type="date"
-                value={form.firstDueDate}
-                onChange={(e) => setForm({ ...form, firstDueDate: e.target.value })}
-              />
-              <span className="mt-0.5 block text-[11px] text-slate-500">
-                Date of the first installment (optional when creating)
-              </span>
-            </label>
             <input
               className="rounded-md border border-slate-300 px-3 py-2 text-sm sm:col-span-2"
               placeholder="Notes"
