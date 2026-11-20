@@ -20,7 +20,7 @@ function toneFor(raw: string): Tone {
   const key = raw.replace(/[\s_-]/g, '').toLowerCase()
   if (['active', 'approved', 'approvedfinal', 'paid', 'closed', 'restored', 'received', 'created', 'submitted'].includes(key)) return 'success'
   if (['inactive', 'deleted', 'ended', 'draft'].includes(key)) return 'neutral'
-  if (['pending', 'pendingapproval', 'partial', 'inprogress', 'waiting', 'updated'].includes(key)) return 'warning'
+  if (['pending', 'pendingapproval', 'partial', 'underpaid', 'inprogress', 'waiting', 'updated'].includes(key)) return 'warning'
   if (['rejected', 'overdue', 'declined', 'failed', 'discrepancy'].includes(key)) return 'danger'
   if (['charge', 'debit'].includes(key)) return 'info'
   if (['payment', 'credit'].includes(key)) return 'purple'

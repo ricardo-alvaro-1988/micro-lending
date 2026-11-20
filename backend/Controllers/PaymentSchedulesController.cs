@@ -19,17 +19,20 @@ public class PaymentSchedulesController : ControllerBase
     private readonly AppDbContext _db;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly LoanFinanceService _finance;
+    private readonly SavingsLedgerService _savings;
     private readonly BranchScopeService _branchScope;
 
     public PaymentSchedulesController(
         AppDbContext db,
         UserManager<ApplicationUser> userManager,
         LoanFinanceService finance,
+        SavingsLedgerService savings,
         BranchScopeService branchScope)
     {
         _db = db;
         _userManager = userManager;
         _finance = finance;
+        _savings = savings;
         _branchScope = branchScope;
     }
 
@@ -180,6 +183,8 @@ public class PaymentSchedulesController : ControllerBase
                 charges);
             loan.Notes = string.IsNullOrWhiteSpace(request.Notes) ? loan.Notes : request.Notes.Trim();
             _finance.RebuildSchedule(loan);
+            var actor = await _userManager.GetUserAsync(User);
+            await _savings.EnsurePrimaryFromInitialAsync(loan, actor?.Id);
             await _db.SaveChangesAsync();
         }
         catch (InvalidOperationException ex)

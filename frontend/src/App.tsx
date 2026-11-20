@@ -48,6 +48,7 @@ import { RejectedApplicationsReportPage } from './pages/reports/RejectedApplicat
 import { CustomerAssignmentsReportPage } from './pages/reports/CustomerAssignmentsReportPage'
 import { FieldNotesLogReportPage } from './pages/reports/FieldNotesLogReportPage'
 import { PaymentMethodsReportPage } from './pages/reports/PaymentMethodsReportPage'
+import { ExtraSavingsReportPage, PrimarySavingsReportPage } from './pages/reports/SavingsReportPage'
 
 function OfficeOnly({ children }: { children: React.ReactNode }) {
   const { user } = useAuth()
@@ -163,6 +164,8 @@ export default function App() {
             <Route path="/reports/customer-assignments" element={<CustomerAssignmentsReportPage />} />
             <Route path="/reports/field-notes-log" element={<FieldNotesLogReportPage />} />
             <Route path="/reports/payment-methods" element={<PaymentMethodsReportPage />} />
+            <Route path="/reports/primary-savings" element={<PrimarySavingsReportPage />} />
+            <Route path="/reports/extra-savings" element={<ExtraSavingsReportPage />} />
           </Route>
           <Route element={<RequireAuth permission="groups.view" />}>
             <Route path="/settings/groups" element={<GroupsPage />} />

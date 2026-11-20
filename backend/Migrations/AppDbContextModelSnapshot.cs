@@ -808,6 +808,10 @@ namespace MicroLending.Api.Migrations
                     b.Property<int?>("Cycle")
                         .HasColumnType("int");
 
+                    b.Property<decimal>("ExtraSavingsBalance")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<DateTime?>("FirstDueDate")
                         .HasColumnType("datetime2");
 
@@ -868,6 +872,10 @@ namespace MicroLending.Api.Migrations
 
                     b.Property<int>("PaymentFrequency")
                         .HasColumnType("int");
+
+                    b.Property<decimal>("PrimarySavingsBalance")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<decimal>("ProcessingFee")
                         .HasColumnType("decimal(18,2)");
@@ -1471,6 +1479,68 @@ namespace MicroLending.Api.Migrations
                     b.ToTable("RolePermissions");
                 });
 
+            modelBuilder.Entity("MicroLending.Api.Models.SavingsTransaction", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("BalanceAfter")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("CustomerId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("int");
+
+                    b.Property<int>("LoanId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("LoanPaymentId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime>("OccurredAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("RecordedByUserId")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<int?>("ScheduleItemId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LoanPaymentId");
+
+                    b.HasIndex("RecordedByUserId");
+
+                    b.HasIndex("ScheduleItemId");
+
+                    b.HasIndex("CustomerId", "Kind", "OccurredAt");
+
+                    b.HasIndex("LoanId", "Kind", "OccurredAt");
+
+                    b.ToTable("SavingsTransactions");
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
                 {
                     b.Property<int>("Id")
@@ -1951,6 +2021,46 @@ namespace MicroLending.Api.Migrations
                     b.Navigation("Role");
                 });
 
+            modelBuilder.Entity("MicroLending.Api.Models.SavingsTransaction", b =>
+                {
+                    b.HasOne("MicroLending.Api.Models.Customer", "Customer")
+                        .WithMany()
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MicroLending.Api.Models.Loan", "Loan")
+                        .WithMany("SavingsTransactions")
+                        .HasForeignKey("LoanId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("MicroLending.Api.Models.LoanPayment", "LoanPayment")
+                        .WithMany()
+                        .HasForeignKey("LoanPaymentId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("MicroLending.Api.Models.ApplicationUser", "RecordedByUser")
+                        .WithMany()
+                        .HasForeignKey("RecordedByUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("MicroLending.Api.Models.LoanScheduleItem", "ScheduleItem")
+                        .WithMany()
+                        .HasForeignKey("ScheduleItemId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Customer");
+
+                    b.Navigation("Loan");
+
+                    b.Navigation("LoanPayment");
+
+                    b.Navigation("RecordedByUser");
+
+                    b.Navigation("ScheduleItem");
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
                 {
                     b.HasOne("MicroLending.Api.Models.ApplicationRole", null)
@@ -2037,6 +2147,8 @@ namespace MicroLending.Api.Migrations
                     b.Navigation("FieldNotes");
 
                     b.Navigation("Payments");
+
+                    b.Navigation("SavingsTransactions");
 
                     b.Navigation("ScheduleItems");
                 });

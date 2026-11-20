@@ -377,7 +377,9 @@ public record LoanDto(
     string? ApplicationType,
     int? Cycle,
     decimal? ApprovedAmount,
-    IReadOnlyList<LoanCollateralDto> Collaterals);
+    IReadOnlyList<LoanCollateralDto> Collaterals,
+    decimal PrimarySavingsBalance = 0,
+    decimal ExtraSavingsBalance = 0);
 
 public record LoanCollateralDto(
     int Id,
@@ -601,7 +603,7 @@ public record LoanPaymentDto(
 
 public class RecordLoanPaymentRequest
 {
-    [Range(0.01, double.MaxValue)]
+    [Range(0, double.MaxValue)]
     public decimal Amount { get; set; }
     public DateTime? PaidAt { get; set; }
     [MaxLength(100)]
@@ -610,7 +612,85 @@ public class RecordLoanPaymentRequest
     public string? Reference { get; set; }
     [MaxLength(500)]
     public string? Notes { get; set; }
+    /// <summary>When true, cover cash shortfall from extra (daily) savings.</summary>
+    public bool UseExtraSavings { get; set; }
 }
+
+public record GroupDayPaymentRowDto(
+    int ScheduleItemId,
+    int CustomerId,
+    string CustomerName,
+    string? CustomerMobile,
+    int LoanId,
+    string LoanNumber,
+    int InstallmentNumber,
+    DateTime DueDate,
+    decimal AmountDue,
+    decimal PenaltyAmount,
+    decimal PaidAmount,
+    decimal Remaining,
+    string Status,
+    bool IsOverdue,
+    decimal PrimarySavingsBalance,
+    decimal ExtraSavingsBalance,
+    bool AlreadyPaidForDay);
+
+public class GroupDayPaymentItemRequest
+{
+    public int CustomerId { get; set; }
+    public int LoanId { get; set; }
+    public int? ScheduleItemId { get; set; }
+    [Range(0, double.MaxValue)]
+    public decimal Amount { get; set; }
+    public bool UseExtraSavings { get; set; }
+}
+
+public class GroupDayPaymentBatchRequest
+{
+    public int GroupId { get; set; }
+    public DateTime? PaidAt { get; set; }
+    [MaxLength(100)]
+    public string? Method { get; set; }
+    public List<GroupDayPaymentItemRequest> Items { get; set; } = new();
+}
+
+public record SavingsTransactionDto(
+    int Id,
+    int CustomerId,
+    string CustomerName,
+    int LoanId,
+    string LoanNumber,
+    string Kind,
+    string Type,
+    decimal Amount,
+    decimal BalanceAfter,
+    DateTime OccurredAt,
+    string? Notes,
+    string? RecordedBy);
+
+public class ExtraSavingsDepositRequest
+{
+    [Range(0.01, double.MaxValue)]
+    public decimal Amount { get; set; }
+    public DateTime? OccurredAt { get; set; }
+    [MaxLength(500)]
+    public string? Notes { get; set; }
+}
+
+public record ReportSavingsRowDto(
+    int TransactionId,
+    DateTime OccurredAt,
+    int CustomerId,
+    string CustomerName,
+    string? GroupName,
+    int LoanId,
+    string LoanNumber,
+    string Kind,
+    string Type,
+    decimal Amount,
+    decimal BalanceAfter,
+    string? Notes,
+    string? RecordedBy);
 
 public record LoanApprovalHistoryDto(
     int Id,

@@ -111,6 +111,8 @@ public static class DbSeeder
             ("reports-assignments", "Customer Assignments", "/reports/customer-assignments", "Reports", 32, "reports.view"),
             ("reports-field-notes", "Field Notes Log", "/reports/field-notes-log", "Reports", 33, "reports.view"),
             ("reports-methods", "Payment Methods", "/reports/payment-methods", "Reports", 34, "reports.view"),
+            ("reports-primary-savings", "Primary Savings", "/reports/primary-savings", "Reports", 38, "reports.view"),
+            ("reports-extra-savings", "Extra Savings", "/reports/extra-savings", "Reports", 39, "reports.view"),
             ("late-fees", "Late Fees", "/settings/late-fees", "Settings", 35, "lateFees.settings"),
             ("audit-log", "Audit Log", "/settings/audit-log", "Settings", 36, "audit.view"),
             ("remittances", "Cash Remittances", "/transaction/remittances", "Transaction", 37, "remittance.view"),

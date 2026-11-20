@@ -32,6 +32,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
     public DbSet<LateFeeSettings> LateFeeSettings => Set<LateFeeSettings>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<CashRemittance> CashRemittances => Set<CashRemittance>();
+    public DbSet<SavingsTransaction> SavingsTransactions => Set<SavingsTransaction>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -221,6 +222,8 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
             e.Property(x => x.TotalPayable).HasPrecision(18, 2);
             e.Property(x => x.InstallmentAmount).HasPrecision(18, 2);
             e.Property(x => x.ApprovedAmount).HasPrecision(18, 2);
+            e.Property(x => x.PrimarySavingsBalance).HasPrecision(18, 2);
+            e.Property(x => x.ExtraSavingsBalance).HasPrecision(18, 2);
             e.Property(x => x.LoanType).HasMaxLength(40);
             e.Property(x => x.ApplicationType).HasMaxLength(40);
             e.Property(x => x.Notes).HasMaxLength(1000);
@@ -333,6 +336,20 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
             e.HasOne(x => x.Branch).WithMany().HasForeignKey(x => x.BranchId).OnDelete(DeleteBehavior.SetNull);
             e.HasOne(x => x.CreatedByUser).WithMany().HasForeignKey(x => x.CreatedByUserId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(x => x.ReceivedByUser).WithMany().HasForeignKey(x => x.ReceivedByUserId).OnDelete(DeleteBehavior.SetNull);
+        });
+
+        builder.Entity<SavingsTransaction>(e =>
+        {
+            e.Property(x => x.Amount).HasPrecision(18, 2);
+            e.Property(x => x.BalanceAfter).HasPrecision(18, 2);
+            e.Property(x => x.Notes).HasMaxLength(500);
+            e.HasIndex(x => new { x.LoanId, x.Kind, x.OccurredAt });
+            e.HasIndex(x => new { x.CustomerId, x.Kind, x.OccurredAt });
+            e.HasOne(x => x.Customer).WithMany().HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.Loan).WithMany(l => l.SavingsTransactions).HasForeignKey(x => x.LoanId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.LoanPayment).WithMany().HasForeignKey(x => x.LoanPaymentId).OnDelete(DeleteBehavior.SetNull);
+            e.HasOne(x => x.ScheduleItem).WithMany().HasForeignKey(x => x.ScheduleItemId).OnDelete(DeleteBehavior.SetNull);
+            e.HasOne(x => x.RecordedByUser).WithMany().HasForeignKey(x => x.RecordedByUserId).OnDelete(DeleteBehavior.SetNull);
         });
     }
 }

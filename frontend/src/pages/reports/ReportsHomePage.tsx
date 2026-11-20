@@ -64,6 +64,16 @@ const reports = [
         title: 'Statements export',
         blurb: 'Bulk statement lines across customers for CSV export.',
       },
+      {
+        to: '/reports/primary-savings',
+        title: 'Primary savings',
+        blurb: 'Initial savings ledger history by customer/loan.',
+      },
+      {
+        to: '/reports/extra-savings',
+        title: 'Extra savings',
+        blurb: 'Daily savings credits and underpay offsets.',
+      },
     ],
   },
   {

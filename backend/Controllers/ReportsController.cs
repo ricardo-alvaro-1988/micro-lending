@@ -1237,6 +1237,64 @@ public class ReportsController : ControllerBase
         return customers;
     }
 
+    /// <summary>Primary or extra savings ledger report.</summary>
+    [HttpGet("savings")]
+    public async Task<ActionResult<IEnumerable<ReportSavingsRowDto>>> SavingsReport(
+        [FromQuery] string kind = "Primary",
+        [FromQuery] DateTime? from = null,
+        [FromQuery] DateTime? to = null,
+        [FromQuery] int? branchId = null,
+        [FromQuery] int? groupId = null,
+        [FromQuery] int? customerId = null,
+        [FromQuery] int? loanId = null)
+    {
+        var scope = await _branchScope.ResolveAsync(User, branchId);
+        if (scope is null) return Unauthorized();
+        if (scope.IsFieldAgent) return Forbid();
+
+        if (!Enum.TryParse<SavingsKind>(kind, true, out var kindEnum))
+            return BadRequest(new { message = "kind must be Primary or Extra." });
+
+        var start = (from ?? DateTime.UtcNow.Date.AddMonths(-1)).Date;
+        var endExclusive = (to ?? DateTime.UtcNow.Date).Date.AddDays(1);
+
+        var customers = BranchScopeService.Customers(_db.Customers.AsNoTracking(), scope);
+        if (groupId is int gid) customers = customers.Where(c => c.GroupId == gid);
+        if (customerId is int cid) customers = customers.Where(c => c.Id == cid);
+
+        var q =
+            from t in _db.SavingsTransactions.AsNoTracking()
+            join customer in customers on t.CustomerId equals customer.Id
+            join loan in _db.Loans.AsNoTracking() on t.LoanId equals loan.Id
+            where t.Kind == kindEnum
+                  && t.OccurredAt >= start
+                  && t.OccurredAt < endExclusive
+            select new { t, customer, loan };
+
+        if (loanId is int lid) q = q.Where(x => x.loan.Id == lid);
+
+        var rows = await q
+            .OrderBy(x => x.t.OccurredAt)
+            .ThenBy(x => x.t.Id)
+            .Select(x => new ReportSavingsRowDto(
+                x.t.Id,
+                x.t.OccurredAt,
+                x.customer.Id,
+                x.customer.FullName,
+                x.customer.Group != null ? x.customer.Group.Name : null,
+                x.loan.Id,
+                x.loan.LoanNumber,
+                x.t.Kind.ToString(),
+                x.t.Type.ToString(),
+                x.t.Amount,
+                x.t.BalanceAfter,
+                x.t.Notes,
+                x.t.RecordedByUser != null ? x.t.RecordedByUser.FullName : null))
+            .ToListAsync();
+
+        return Ok(rows);
+    }
+
     private static string AgingBucket(int daysPastDue) => daysPastDue switch
     {
         <= 7 => "1-7",
