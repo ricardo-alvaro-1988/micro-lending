@@ -377,7 +377,11 @@ public class LoansController : ControllerBase
         var approvedAmount = request.ApprovedAmount is decimal approved && approved > 0
             ? decimal.Round(approved, 2)
             : appliedAmount;
-        var applicationDate = request.ApplicationDate?.ToUniversalTime() ?? DateTime.UtcNow;
+        var applicationDate = request.ApplicationDate is DateTime appDate && appDate > DateTime.MinValue.AddYears(1)
+            ? (appDate.Kind == DateTimeKind.Unspecified
+                ? DateTime.SpecifyKind(appDate, DateTimeKind.Local).ToUniversalTime()
+                : appDate.ToUniversalTime())
+            : DateTime.UtcNow;
 
         var loan = new Loan
         {

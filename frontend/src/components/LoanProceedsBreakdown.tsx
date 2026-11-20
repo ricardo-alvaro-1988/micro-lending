@@ -125,7 +125,7 @@ export const emptyLoanCharges = {
   loanRedemptionFee: 0,
   taxes: 0,
   notarialFee: 0,
-  raffle: 0,
+  raffle: 70,
 }
 
 export function chargesFromProduct(p: {
