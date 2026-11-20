@@ -348,6 +348,49 @@ public class CustomerFinanceController : ControllerBase
         });
     }
 
+    [HttpPost("loans/{loanId:int}/late-fees")]
+    [Authorize(Policy = $"perm:{PermissionCodes.LoansManage}")]
+    public async Task<ActionResult<LoanLateFeeDto>> PostLateFee(
+        int customerId,
+        int loanId,
+        [FromBody] ManualLateFeeRequest request)
+    {
+        var user = await _userManager.GetUserAsync(User);
+        if (user is null) return Unauthorized();
+        if (await EnsureCustomerAccessAsync(customerId) is { } denied) return denied;
+
+        var loan = await _db.Loans.FirstOrDefaultAsync(l => l.Id == loanId && l.CustomerId == customerId);
+        if (loan is null) return NotFound();
+        if (loan.Status is not (LoanStatus.ApprovedFinal or LoanStatus.Closed))
+            return BadRequest(new { message = "Late fees can only be added on approved or closed loans." });
+        if (request.Amount <= 0)
+            return BadRequest(new { message = "Late fee amount must be greater than zero." });
+
+        var occurredAt = request.OccurredAt?.ToUniversalTime() ?? DateTime.UtcNow;
+        var fee = new LoanLateFee
+        {
+            LoanId = loan.Id,
+            Amount = decimal.Round(request.Amount, 2, MidpointRounding.AwayFromZero),
+            OccurredAt = occurredAt,
+            Notes = string.IsNullOrWhiteSpace(request.Notes) ? null : request.Notes.Trim(),
+            RecordedByUserId = user.Id,
+            CreatedAt = DateTime.UtcNow,
+        };
+        _db.LoanLateFees.Add(fee);
+        loan.TotalPayable += fee.Amount;
+        loan.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        return Ok(new LoanLateFeeDto(
+            fee.Id,
+            loan.Id,
+            loan.LoanNumber,
+            fee.Amount,
+            fee.OccurredAt,
+            fee.Notes,
+            user.FullName));
+    }
+
     [HttpGet("payment-summary")]
     [Authorize(Policy = $"perm:{PermissionCodes.CustomersView}")]
     public async Task<ActionResult<CustomerPaymentSummaryDto>> PaymentSummary(int customerId)
@@ -469,6 +512,19 @@ public class CustomerFinanceController : ControllerBase
               .ToList();
         var paymentsByLoan = payments.GroupBy(p => p.LoanId).ToDictionary(g => g.Key, g => g.ToList());
 
+        var lateFees = loanIds.Count == 0
+            ? new List<(int LoanId, DateTime OccurredAt, decimal Amount, string? Notes)>()
+            : (await _db.LoanLateFees.AsNoTracking()
+                .Where(f => loanIds.Contains(f.LoanId))
+                .OrderBy(f => f.OccurredAt)
+                .ThenBy(f => f.Id)
+                .Select(f => new { f.LoanId, f.OccurredAt, f.Amount, f.Notes })
+                .ToListAsync())
+              .Select(f => (f.LoanId, f.OccurredAt, f.Amount, f.Notes))
+              .ToList();
+        var lateFeesByLoan = lateFees.GroupBy(f => f.LoanId).ToDictionary(g => g.Key, g => g.ToList());
+        var lateFeeTotals = lateFeesByLoan.ToDictionary(kv => kv.Key, kv => kv.Value.Sum(f => f.Amount));
+
         DateTime? rangeStart = from?.Date;
         DateTime? rangeEndExclusive = to?.Date.AddDays(1);
 
@@ -479,13 +535,31 @@ public class CustomerFinanceController : ControllerBase
                 ? approvedAt
                 : loan.UpdatedAt;
 
+            // TotalPayable includes manual late fees; keep principal+interest as Charge and list LateFee lines separately.
+            var lateFeeTotal = lateFeeTotals.GetValueOrDefault(loan.Id);
+            var principalCharge = Math.Max(0, loan.TotalPayable - lateFeeTotal);
             lines.Add(new StatementLineDto(
                 chargeAt,
                 "Charge",
                 $"Loan {loan.LoanNumber} principal + interest",
-                loan.TotalPayable,
+                principalCharge,
                 0,
                 0));
+
+            if (lateFeesByLoan.TryGetValue(loan.Id, out var feesForLoan))
+            {
+                foreach (var fee in feesForLoan)
+                {
+                    lines.Add(new StatementLineDto(
+                        fee.OccurredAt,
+                        "LateFee",
+                        $"Late fee on {loan.LoanNumber}"
+                            + (string.IsNullOrWhiteSpace(fee.Notes) ? "" : $" — {fee.Notes}"),
+                        fee.Amount,
+                        0,
+                        0));
+                }
+            }
 
             if (!paymentsByLoan.TryGetValue(loan.Id, out var loanPayments)) continue;
             foreach (var payment in loanPayments)
@@ -535,14 +609,15 @@ public class CustomerFinanceController : ControllerBase
         static int LineSort(string type) => type switch
         {
             "Charge" => 0,
-            "Payment" => 1,
-            "PrimarySavings" => 2,
-            "ExtraSavings" => 3,
-            _ => 4
+            "LateFee" => 1,
+            "Payment" => 2,
+            "PrimarySavings" => 3,
+            "ExtraSavings" => 4,
+            _ => 5
         };
 
         static bool AffectsLoanBalance(string type) =>
-            type is "Charge" or "Payment";
+            type is "Charge" or "LateFee" or "Payment";
 
         lines = lines.OrderBy(l => l.Date).ThenBy(l => LineSort(l.Type)).ToList();
         decimal balance = 0;

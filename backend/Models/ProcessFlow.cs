@@ -314,6 +314,21 @@ public class Loan
     public ICollection<LoanFieldNote> FieldNotes { get; set; } = new List<LoanFieldNote>();
     public ICollection<LoanCollateral> Collaterals { get; set; } = new List<LoanCollateral>();
     public ICollection<SavingsTransaction> SavingsTransactions { get; set; } = new List<SavingsTransaction>();
+    public ICollection<LoanLateFee> LateFees { get; set; } = new List<LoanLateFee>();
+}
+
+/// <summary>Administrator-entered late fee shown on the statement of account.</summary>
+public class LoanLateFee
+{
+    public int Id { get; set; }
+    public int LoanId { get; set; }
+    public Loan Loan { get; set; } = null!;
+    public decimal Amount { get; set; }
+    public DateTime OccurredAt { get; set; } = DateTime.UtcNow;
+    public string? Notes { get; set; }
+    public string RecordedByUserId { get; set; } = string.Empty;
+    public ApplicationUser RecordedByUser { get; set; } = null!;
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }
 
 /// <summary>Assets / properties pledged on a loan application.</summary>

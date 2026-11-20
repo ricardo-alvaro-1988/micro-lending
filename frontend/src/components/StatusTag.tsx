@@ -23,6 +23,7 @@ function toneFor(raw: string): Tone {
   if (['pending', 'pendingapproval', 'partial', 'underpaid', 'inprogress', 'waiting', 'updated'].includes(key)) return 'warning'
   if (['rejected', 'overdue', 'declined', 'failed', 'discrepancy'].includes(key)) return 'danger'
   if (['charge', 'debit'].includes(key)) return 'info'
+  if (['latefee', 'latefees', 'penalty'].includes(key)) return 'danger'
   if (['payment', 'credit'].includes(key)) return 'purple'
   if (['primarysavings', 'extrasavings', 'savings'].includes(key)) return 'info'
   return 'info'
@@ -40,6 +41,7 @@ function displayLabel(raw: string) {
   if (key === 'closed') return 'Matured / Closed'
   if (key === 'primarysavings') return 'Primary savings'
   if (key === 'extrasavings') return 'Extra savings'
+  if (key === 'latefee' || key === 'latefees') return 'Late fee'
   return humanize(raw)
 }
 

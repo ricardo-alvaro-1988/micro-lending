@@ -903,29 +903,57 @@ public class ReportsController : ControllerBase
                 .ToListAsync())
               .GroupBy(t => t.LoanId)
               .ToDictionary(g => g.Key, g => g.ToList());
+        var lateFeesByLoan = loanIds.Count == 0
+            ? new Dictionary<int, List<LoanLateFee>>()
+            : (await _db.LoanLateFees.AsNoTracking()
+                .Where(f => loanIds.Contains(f.LoanId))
+                .OrderBy(f => f.OccurredAt)
+                .ThenBy(f => f.Id)
+                .ToListAsync())
+              .GroupBy(f => f.LoanId)
+              .ToDictionary(g => g.Key, g => g.ToList());
 
         static int ExportLineSort(string type) => type switch
         {
             "Charge" => 0,
-            "Payment" => 1,
-            "PrimarySavings" => 2,
-            "ExtraSavings" => 3,
-            _ => 4
+            "LateFee" => 1,
+            "Payment" => 2,
+            "PrimarySavings" => 3,
+            "ExtraSavings" => 4,
+            _ => 5
         };
-        static bool ExportAffectsBalance(string type) => type is "Charge" or "Payment";
+        static bool ExportAffectsBalance(string type) => type is "Charge" or "LateFee" or "Payment";
 
         var export = new List<ReportStatementExportLineDto>();
         foreach (var row in loanRows.OrderBy(x => x.customer.FullName).ThenBy(x => x.loan.CreatedAt))
         {
             var lines = new List<(DateTime Date, string Type, string Description, decimal Debit, decimal Credit)>();
-            if (row.loan.TotalPayable > 0)
+            var lateFeeTotal = lateFeesByLoan.TryGetValue(row.loan.Id, out var feesForExport)
+                ? feesForExport.Sum(f => f.Amount)
+                : 0m;
+            var principalCharge = Math.Max(0, row.loan.TotalPayable - lateFeeTotal);
+            if (principalCharge > 0)
             {
                 lines.Add((
                     row.loan.CreatedAt,
                     "Charge",
                     $"Loan {row.loan.LoanNumber} principal + interest",
-                    row.loan.TotalPayable,
+                    principalCharge,
                     0));
+            }
+
+            if (feesForExport is not null)
+            {
+                foreach (var fee in feesForExport)
+                {
+                    lines.Add((
+                        fee.OccurredAt,
+                        "LateFee",
+                        $"Late fee on {row.loan.LoanNumber}"
+                            + (string.IsNullOrWhiteSpace(fee.Notes) ? "" : $" — {fee.Notes}"),
+                        fee.Amount,
+                        0));
+                }
             }
 
             if (paysByLoan.TryGetValue(row.loan.Id, out var pays))
