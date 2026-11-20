@@ -459,7 +459,12 @@ public class ReportsController : ControllerBase
                 act.OccurredAt,
                 loan.Amount,
                 loan.TotalPayable,
-                loan.Status.ToString())
+                loan.Status.ToString(),
+                loan.TotalDeductions,
+                loan.NetProceeds,
+                loan.InterestAmount,
+                loan.TermCount,
+                loan.PaymentFrequency.ToString())
         ).ToListAsync();
 
         if (activityReleases.Count > 0)
@@ -484,7 +489,12 @@ public class ReportsController : ControllerBase
                 loan.UpdatedAt,
                 loan.Amount,
                 loan.TotalPayable,
-                loan.Status.ToString())
+                loan.Status.ToString(),
+                loan.TotalDeductions,
+                loan.NetProceeds,
+                loan.InterestAmount,
+                loan.TermCount,
+                loan.PaymentFrequency.ToString())
         ).OrderBy(x => x.ReleasedAt).ThenBy(x => x.CustomerName).ToListAsync();
 
         return Ok(fallback);

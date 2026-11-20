@@ -1027,7 +1027,12 @@ public record ReportLoanReleaseDto(
     DateTime ReleasedAt,
     decimal Amount,
     decimal TotalPayable,
-    string Status);
+    string Status,
+    decimal TotalDeductions = 0,
+    decimal NetProceeds = 0,
+    decimal InterestAmount = 0,
+    int TermCount = 0,
+    string PaymentFrequency = "");
 
 public record ReportExpectedActualDayDto(
     DateTime Date,
