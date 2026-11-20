@@ -240,9 +240,10 @@ public class CustomerFinanceController : ControllerBase
             var method = string.IsNullOrWhiteSpace(request.Method)
                 ? (canField && !canOffice ? "Cash" : null)
                 : request.Method.Trim();
+            var cash = decimal.Round(request.Amount, 2);
             var payment = new LoanPayment
             {
-                Amount = decimal.Round(request.Amount, 2),
+                Amount = cash, // raised to cash + extra offset inside ApplyPaymentAsync when used
                 PaidAt = (request.PaidAt ?? DateTime.UtcNow).ToUniversalTime(),
                 Method = method,
                 Reference = string.IsNullOrWhiteSpace(request.Reference) ? null : request.Reference.Trim(),
@@ -252,16 +253,32 @@ public class CustomerFinanceController : ControllerBase
             };
             loan.Payments.Add(payment);
 
+            // When covering shortfall from extra savings, apply toward the next open installment(s)
+            // up to cash + available extra — not the entire remaining loan unless cash alone does.
+            decimal? coverTarget = null;
+            if (request.UseExtraSavings)
+            {
+                var nextOpen = loan.ScheduleItems
+                    .OrderBy(s => s.InstallmentNumber)
+                    .FirstOrDefault(s => LoanFinanceService.ItemBalance(s) > 0);
+                if (nextOpen is not null)
+                {
+                    var nextBal = LoanFinanceService.ItemBalance(nextOpen);
+                    coverTarget = cash >= nextBal ? cash : nextBal;
+                }
+            }
+
             var (_, extraOffset, _) = await _finance.ApplyPaymentAsync(
                 loan,
-                request.Amount,
+                cash,
                 request.UseExtraSavings,
                 user.Id,
-                payment);
+                payment,
+                coverTarget);
 
             if (extraOffset > 0)
             {
-                var note = $"Extra savings offset {extraOffset:0.00}";
+                var note = $"Extra savings offset {extraOffset:0.00}; full applied {payment.Amount:0.00}";
                 payment.Notes = string.IsNullOrWhiteSpace(payment.Notes) ? note : $"{payment.Notes}; {note}";
             }
 

@@ -201,7 +201,8 @@ public class GroupPaymentsController : ControllerBase
                     coverTarget);
 
                 if (extraOffset > 0)
-                    payment.Notes = $"Group day collection; Extra savings offset {extraOffset:0.00}";
+                    payment.Notes =
+                        $"Group day collection; Extra savings offset {extraOffset:0.00}; full applied {payment.Amount:0.00}";
 
                 loan.UpdatedAt = DateTime.UtcNow;
                 _finance.TryMatureIfFullyPaid(loan, user);
