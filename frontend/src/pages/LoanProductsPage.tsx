@@ -10,7 +10,7 @@ import {
   chargeStringsFrom,
 } from '../components/LoanProceedsBreakdown'
 import { ActiveTag } from '../components/StatusTag'
-import { computeLoanFees, feeChargesFromPrincipal, feeRuleStrings, roundToTens } from '../lib/loanFeeRules'
+import { computeLoanFees, feeRuleStrings } from '../lib/loanFeeRules'
 import type { LoanProduct } from '../types'
 import { useToast } from '../toast/ToastContext'
 
@@ -19,44 +19,42 @@ const emptyForm = () => {
   return {
     name: '',
     description: '',
+    amount: '10000',
     termCount: '70',
     paymentFrequency: 'Daily',
     interestMethod: 'Flat',
     applyFeeRules: true,
     isActive: true,
     ...fees,
-    amount: '10000',
   }
 }
 
-/** Recalculate fees from loan amount. Optionally round principal (on blur / save). */
 function applyRulesToForm(
   prev: ReturnType<typeof emptyForm>,
   overrides?: Partial<Pick<ReturnType<typeof emptyForm>, 'amount' | 'termCount'>>,
-  options?: { roundAmount?: boolean },
 ) {
-  const amountRaw = overrides?.amount ?? prev.amount
-  const termCount = Number(overrides?.termCount ?? prev.termCount)
-  const amountNum = Number(amountRaw)
-  if (!(amountNum > 0) || !(termCount > 0)) return { ...prev, ...overrides }
-
-  if (options?.roundAmount) {
-    const fees = feeRuleStrings(computeLoanFees(amountNum, termCount))
-    return {
-      ...prev,
-      ...overrides,
-      ...fees,
-      applyFeeRules: true,
-    }
+  const next = { ...prev, ...overrides }
+  const amount = Number(next.amount)
+  const termCount = Number(next.termCount)
+  // Keep the typed loan amount; only recalculate dependent fee fields.
+  if (!(amount > 0) || !(termCount > 0)) return next
+  const fees = computeLoanFees(amount, termCount)
+  return {
+    ...next,
+    ...feeRuleStrings(fees),
+    applyFeeRules: true,
   }
+}
 
-  // While typing: update fee fields only — keep the typed loan amount string.
+function roundAmountOnBlur(prev: ReturnType<typeof emptyForm>) {
+  if (!prev.applyFeeRules) return prev
+  const n = Number(prev.amount)
+  if (!(n > 0)) return prev
+  const fees = computeLoanFees(n, Number(prev.termCount) || 70)
   return {
     ...prev,
-    ...overrides,
-    amount: amountRaw,
-    ...feeChargesFromPrincipal(amountNum, termCount),
-    applyFeeRules: true,
+    amount: String(fees.amount),
+    ...feeRuleStrings(fees),
   }
 }
 
@@ -111,17 +109,14 @@ export function LoanProductsPage() {
     e.preventDefault()
     setSaving(true)
     try {
-      const principal = form.applyFeeRules
-        ? roundToTens(Number(form.amount))
-        : Number(form.amount)
       const payload = {
         name: form.name.trim(),
         description: form.description.trim() || null,
-        amount: principal,
+        amount: Number(form.amount),
         interestRatePercent: Number(form.interestRatePercent || 0),
         termCount: Number(form.termCount),
         paymentFrequency: form.paymentFrequency,
-        interestMethod: 'Flat',
+        interestMethod: form.interestMethod,
         applyFeeRules: form.applyFeeRules,
         isActive: form.isActive,
         ...chargePayloadFrom(form),
@@ -246,12 +241,16 @@ export function LoanProductsPage() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-600">Interest method</label>
-              <input
-                className="w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700"
-                value="Flat"
-                readOnly
-              />
+              <label className="mb-1 block text-sm font-medium text-slate-600">Interest method *</label>
+              <select
+                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                value={form.interestMethod}
+                onChange={(e) => setForm((prev) => ({ ...prev, interestMethod: e.target.value }))}
+                disabled={!canManage}
+              >
+                <option value="Flat">Flat</option>
+                <option value="DecliningBalance">Declining balance</option>
+              </select>
             </div>
           </div>
 
@@ -274,27 +273,20 @@ export function LoanProductsPage() {
                 min="0.01"
                 step="1"
                 inputMode="decimal"
-                placeholder="e.g. 10000"
-                value={form.amount ?? ''}
+                placeholder="e.g. 5000"
+                value={form.amount}
                 onChange={(e) => {
                   const amount = e.target.value
                   setForm((prev) =>
                     prev.applyFeeRules ? applyRulesToForm(prev, { amount }) : { ...prev, amount },
                   )
                 }}
-                onBlur={() => {
-                  if (!form.applyFeeRules) return
-                  const n = Number(form.amount)
-                  if (!(n > 0)) return
-                  setForm((prev) =>
-                    applyRulesToForm(prev, { amount: String(roundToTens(n)) }, { roundAmount: true }),
-                  )
-                }}
+                onBlur={() => setForm((prev) => roundAmountOnBlur(prev))}
                 required
                 disabled={!canManage}
               />
               <p className="mt-1 text-xs text-slate-500">
-                Enter the loan principal. Rounded to nearest 10 when fee rules apply (on leave field).
+                Enter the loan principal. Rounded to nearest 10 when fee rules apply (on blur).
               </p>
             </div>
             <div>
@@ -349,11 +341,7 @@ export function LoanProductsPage() {
               checked={form.applyFeeRules}
               onChange={(e) => {
                 const applyFeeRules = e.target.checked
-                setForm((prev) =>
-                  applyFeeRules
-                    ? applyRulesToForm({ ...prev, applyFeeRules }, undefined, { roundAmount: true })
-                    : { ...prev, applyFeeRules },
-                )
+                setForm((prev) => (applyFeeRules ? applyRulesToForm({ ...prev, applyFeeRules }) : { ...prev, applyFeeRules }))
               }}
               disabled={!canManage}
             />
@@ -367,7 +355,7 @@ export function LoanProductsPage() {
                 <button
                   type="button"
                   className="text-xs font-medium text-sky-700 hover:underline"
-                  onClick={() => setForm((prev) => applyRulesToForm(prev, undefined, { roundAmount: true }))}
+                  onClick={() => setForm((prev) => applyRulesToForm(prev))}
                 >
                   Recalculate now
                 </button>
