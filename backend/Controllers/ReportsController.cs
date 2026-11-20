@@ -1891,7 +1891,8 @@ public class ReportsController : ControllerBase
 
     /// <summary>
     /// Cashflow: Beginning + Remitted + Injected − Disbursement − Expenses = Cash on hand.
-    /// Savings (memo) = Primary + Extra balances as of To.
+    /// Remitted is gross (includes savings cash). Savings = Primary + Extra balances (liability).
+    /// Cash available = Cash on hand − Savings.
     /// </summary>
     [HttpGet("cashflow")]
     public async Task<ActionResult<ReportCashflowDto>> Cashflow(
@@ -2002,7 +2003,7 @@ public class ReportsController : ControllerBase
 
         var cashOnHand = beginning + remitted + injected - disbursement - expenses;
 
-        // Savings memo = Primary + Extra balances for branch loans (Approved-Final / Closed).
+        // Savings = Primary + Extra balances (liability already sitting inside remitted/COH — not another inflow).
         var savingsLoans = await (
             from loan in _db.Loans.AsNoTracking()
             join customer in customers on loan.CustomerId equals customer.Id
@@ -2014,6 +2015,7 @@ public class ReportsController : ControllerBase
         var savings = primarySavings + extraSavings;
         var savingsLoanCount = savingsLoans.Count(x =>
             x.PrimarySavingsBalance > 0.009m || x.ExtraSavingsBalance > 0.009m);
+        var cashAvailable = cashOnHand - savings;
 
         // Daily savings movement (Primary + Extra ledger) for the period.
         var savingsTxnRows = await (
@@ -2064,6 +2066,7 @@ public class ReportsController : ControllerBase
             primarySavings,
             extraSavings,
             savingsLoanCount,
+            cashAvailable,
             days));
     }
 

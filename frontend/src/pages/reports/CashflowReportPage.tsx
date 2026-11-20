@@ -37,6 +37,7 @@ type Result = {
   primarySavings: number
   extraSavings: number
   savingsLoanCount: number
+  cashAvailable: number
   days: DayRow[]
 }
 
@@ -143,7 +144,7 @@ export function CashflowReportPage() {
   return (
     <ReportChrome
       title="Cashflow report"
-      description="Beginning + Remitted + Injected funds − Disbursement − Expenses = Cash on hand."
+      description="Remitted is gross cash-in (includes savings). Savings = Primary + Extra liability. Cash available = Cash on hand − Savings."
       loading={loading}
       error={error}
       onRefresh={() => void load()}
@@ -158,12 +159,13 @@ export function CashflowReportPage() {
             ['Injected funds (+)', data.injectedFunds, data.injectedFundsCount],
             ['Disbursement (−)', data.disbursement, data.disbursementCount],
             ['Expenses (−)', data.expenses, data.expenseCount],
-            ['Cash on hand', data.cashOnHand, ''],
+            ['Cash on hand', data.cashOnHand, 'Remitted includes savings cash'],
             [
               'Savings (Primary + Extra)',
               data.savings,
-              `Primary ${data.primarySavings}; Extra ${data.extraSavings}; ${data.savingsLoanCount} loan(s)`,
+              `Primary ${data.primarySavings}; Extra ${data.extraSavings}; ${data.savingsLoanCount} loan(s) — liability, not another inflow`,
             ],
+            ['Cash available', data.cashAvailable, 'Cash on hand − Savings'],
             ...data.days.map((d) => [
               d.date.slice(0, 10),
               d.netChange,
@@ -309,7 +311,8 @@ export function CashflowReportPage() {
                     <td className="px-4 py-3 font-medium text-violet-900">
                       Remitted
                       <div className="text-xs font-normal text-violet-700/80">
-                        {data.remittanceCount} slip{data.remittanceCount === 1 ? '' : 's'} turned in to office
+                        {data.remittanceCount} slip{data.remittanceCount === 1 ? '' : 's'} turned in · gross cash (includes
+                        savings)
                       </div>
                     </td>
                     <td className="px-4 py-3 text-right tabular-nums font-medium text-violet-900">
@@ -368,21 +371,29 @@ export function CashflowReportPage() {
                         Primary {money(data.primarySavings)} + Extra {money(data.extraSavings)}
                         {data.savingsLoanCount > 0
                           ? ` · ${data.savingsLoanCount} loan${data.savingsLoanCount === 1 ? '' : 's'}`
-                          : ''}
+                          : ''}{' '}
+                        · liability inside remitted / cash on hand (not another +)
                       </div>
                     </td>
                     <td className="px-4 py-3 text-right tabular-nums font-semibold text-amber-950">
                       {money(data.savings)}
                     </td>
-                    <td className="px-4 py-3 text-xs text-amber-800">Σ</td>
+                    <td className="px-4 py-3 text-xs text-amber-800">−</td>
+                  </tr>
+                  <tr className="bg-slate-900 text-white">
+                    <td className="px-4 py-4 text-base font-semibold">Cash available</td>
+                    <td className="px-4 py-4 text-right text-xl font-semibold tabular-nums">
+                      {money(data.cashAvailable)}
+                    </td>
+                    <td className="px-4 py-4 text-xs font-semibold text-slate-300">=</td>
                   </tr>
                 </tbody>
               </table>
             </div>
 
             <p className="text-xs text-slate-500 print:hidden">
-              Formula: Beginning + Remitted + Injected funds − Disbursement − Expenses = Cash on hand.
-              Savings is Primary + Extra balances (not deducted from cash on hand).
+              Cash on hand = Beginning + Remitted + Injected − Disbursement − Expenses. Remitted already includes
+              savings cash, so Savings (Primary + Extra) is subtracted once: Cash available = Cash on hand − Savings.
             </p>
 
             {data.days.length > 0 && rangeFrom !== rangeTo && (
