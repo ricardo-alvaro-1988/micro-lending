@@ -50,6 +50,8 @@ public static class DbSeeder
             ("remittance.view", "View Cash Remittances", "Transaction"),
             ("remittance.manage", "Manage Cash Remittances", "Transaction"),
             ("remittance.receive", "Receive Cash Remittances", "Transaction"),
+            ("expenses.view", "View Expenses", "Transaction"),
+            ("expenses.manage", "Manage Expenses", "Transaction"),
             ("loanProducts.view", "View Loan Products", "Lending"),
             ("loanProducts.manage", "Manage Loan Products", "Lending"),
         };
@@ -118,6 +120,7 @@ public static class DbSeeder
             ("late-fees", "Late Fees", "/settings/late-fees", "Settings", 35, "lateFees.settings"),
             ("audit-log", "Audit Log", "/settings/audit-log", "Settings", 36, "audit.view"),
             ("remittances", "Cash Remittances", "/transaction/remittances", "Transaction", 37, "remittance.view"),
+            ("expenses", "Expenses", "/transaction/expenses", "Transaction", 40, "expenses.view"),
         };
 
         foreach (var (code, name, path, group, order, perm) in pages)

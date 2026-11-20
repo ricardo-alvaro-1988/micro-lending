@@ -34,6 +34,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
     public DbSet<CashRemittance> CashRemittances => Set<CashRemittance>();
     public DbSet<SavingsTransaction> SavingsTransactions => Set<SavingsTransaction>();
     public DbSet<LoanLateFee> LoanLateFees => Set<LoanLateFee>();
+    public DbSet<ExpenseEntry> ExpenseEntries => Set<ExpenseEntry>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -359,6 +360,16 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
             e.Property(x => x.Notes).HasMaxLength(500);
             e.HasIndex(x => new { x.LoanId, x.OccurredAt });
             e.HasOne(x => x.Loan).WithMany(l => l.LateFees).HasForeignKey(x => x.LoanId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.RecordedByUser).WithMany().HasForeignKey(x => x.RecordedByUserId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<ExpenseEntry>(e =>
+        {
+            e.Property(x => x.Label).HasMaxLength(200).IsRequired();
+            e.Property(x => x.Amount).HasPrecision(18, 2);
+            e.Property(x => x.Notes).HasMaxLength(500);
+            e.HasIndex(x => new { x.ExpenseDate, x.BranchId });
+            e.HasOne(x => x.Branch).WithMany().HasForeignKey(x => x.BranchId).OnDelete(DeleteBehavior.SetNull);
             e.HasOne(x => x.RecordedByUser).WithMany().HasForeignKey(x => x.RecordedByUserId).OnDelete(DeleteBehavior.Restrict);
         });
     }

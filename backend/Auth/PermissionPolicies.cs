@@ -38,6 +38,8 @@ public static class PermissionCodes
     public const string RemittanceReceive = "remittance.receive";
     public const string LoanProductsView = "loanProducts.view";
     public const string LoanProductsManage = "loanProducts.manage";
+    public const string ExpensesView = "expenses.view";
+    public const string ExpensesManage = "expenses.manage";
 
     public static IReadOnlyList<string> All { get; } =
     [
@@ -48,7 +50,7 @@ public static class PermissionCodes
         ActivityView, PaymentScheduleView, PaymentScheduleManage, PaymentScheduleSettings,
         FieldCollect, FieldNotes, ReportsView, LateFeesSettings,
         AuditView, RemittanceView, RemittanceManage, RemittanceReceive,
-        LoanProductsView, LoanProductsManage
+        LoanProductsView, LoanProductsManage, ExpensesView, ExpensesManage
     ];
 }
 

@@ -23,6 +23,7 @@ import { LateFeesSettingsPage } from './pages/LateFeesSettingsPage'
 import { AuditLogPage } from './pages/AuditLogPage'
 import { RecordPaymentPage } from './pages/RecordPaymentPage'
 import { RemittancesPage } from './pages/RemittancesPage'
+import { ExpensesPage } from './pages/ExpensesPage'
 import { ProcessFlowsPage } from './pages/ProcessFlowsPage'
 import { ProfilePage } from './pages/ProfilePage'
 import { RolesPage } from './pages/RolesPage'
@@ -129,6 +130,9 @@ export default function App() {
           </Route>
           <Route element={<RequireAuth permission="remittance.view" />}>
             <Route path="/transaction/remittances" element={<RemittancesPage />} />
+          </Route>
+          <Route element={<RequireAuth permission="expenses.view" />}>
+            <Route path="/transaction/expenses" element={<ExpensesPage />} />
           </Route>
           <Route element={<RequireAuth permission="flows.view" />}>
             <Route path="/lending/flows" element={<ProcessFlowsPage />} />
