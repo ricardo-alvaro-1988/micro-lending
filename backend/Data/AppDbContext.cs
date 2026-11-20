@@ -269,6 +269,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
         {
             e.Property(x => x.Amount).HasPrecision(18, 2);
             e.Property(x => x.ExtraSavingsOffset).HasPrecision(18, 2);
+            e.Property(x => x.OverpaymentToExtraSavings).HasPrecision(18, 2);
             e.Ignore(x => x.AppliedAmount);
             e.Property(x => x.Method).HasMaxLength(100);
             e.Property(x => x.Reference).HasMaxLength(100);

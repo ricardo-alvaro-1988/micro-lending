@@ -18,7 +18,7 @@ function humanize(value: string) {
 
 function toneFor(raw: string): Tone {
   const key = raw.replace(/[\s_-]/g, '').toLowerCase()
-  if (['active', 'approved', 'approvedfinal', 'paid', 'closed', 'restored', 'received', 'created', 'submitted'].includes(key)) return 'success'
+  if (['active', 'approved', 'approvedfinal', 'paid', 'paidextra', 'closed', 'restored', 'received', 'created', 'submitted'].includes(key)) return 'success'
   if (['inactive', 'deleted', 'ended', 'draft'].includes(key)) return 'neutral'
   if (['pending', 'pendingapproval', 'partial', 'underpaid', 'inprogress', 'waiting', 'updated'].includes(key)) return 'warning'
   if (['rejected', 'overdue', 'declined', 'failed', 'discrepancy'].includes(key)) return 'danger'
@@ -39,6 +39,7 @@ function displayLabel(raw: string) {
   const key = raw.replace(/[\s_-]/g, '').toLowerCase()
   if (key === 'approvedfinal') return 'Approved-Final'
   if (key === 'closed') return 'Matured / Closed'
+  if (key === 'paidextra') return 'Paid + extra'
   if (key === 'primarysavings') return 'Primary savings'
   if (key === 'extrasavings') return 'Extra savings'
   if (key === 'latefee' || key === 'latefees') return 'Late fee'

@@ -1310,6 +1310,10 @@ namespace MicroLending.Api.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
+                    b.Property<decimal>("OverpaymentToExtraSavings")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<DateTime>("PaidAt")
                         .HasColumnType("datetime2");
 

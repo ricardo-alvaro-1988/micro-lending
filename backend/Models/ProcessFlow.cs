@@ -397,8 +397,10 @@ public class LoanPayment
     public decimal Amount { get; set; }
     /// <summary>Portion covered from extra (daily) savings for this payment.</summary>
     public decimal ExtraSavingsOffset { get; set; }
-    /// <summary>Cash + extra-savings offset applied to the loan schedule.</summary>
-    public decimal AppliedAmount => Amount + ExtraSavingsOffset;
+    /// <summary>Cash leftover above the installment cover that was deposited to extra savings.</summary>
+    public decimal OverpaymentToExtraSavings { get; set; }
+    /// <summary>Amount applied to the loan schedule (cash − overpayment to extra + underpay offset).</summary>
+    public decimal AppliedAmount => Amount - OverpaymentToExtraSavings + ExtraSavingsOffset;
     public DateTime PaidAt { get; set; } = DateTime.UtcNow;
     public string? Method { get; set; }
     public string? Reference { get; set; }

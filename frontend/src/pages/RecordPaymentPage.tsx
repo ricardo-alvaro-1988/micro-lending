@@ -151,24 +151,33 @@ function GroupDayCollection({
     return Math.min(row.extraSavingsBalance, Math.max(0, remaining - cash))
   }
 
+  const overpayToExtra = (row: GroupDayRow, draft: RowDraft) => {
+    const cash = Number(draft.amount) || 0
+    if (cash <= row.remaining + 0.009) return 0
+    return cash - row.remaining
+  }
+
   const totals = useMemo(() => {
     let cash = 0
     let offset = 0
+    let toExtra = 0
     for (const r of openRows) {
       const d = drafts[r.scheduleItemId]
       if (!d?.checked) continue
       const c = Number(d.amount) || 0
       cash += c
       offset += rowOffset(r, d)
+      toExtra += overpayToExtra(r, d)
     }
-    return { cash, offset, applied: cash + offset }
+    return { cash, offset, toExtra, applied: cash - toExtra + offset }
   }, [openRows, drafts])
 
   const predictStatus = (row: GroupDayRow, draft: RowDraft) => {
     const cash = Number(draft.amount) || 0
     const remaining = row.remaining
     if (remaining <= 0.009) return 'Paid'
-    const cover = cash + rowOffset(row, draft)
+    const cover = Math.min(cash, remaining) + rowOffset(row, draft)
+    if (cash > remaining + 0.009 && cover + 0.009 >= remaining) return 'Paid+extra'
     if (cover + 0.009 >= remaining) return 'Paid'
     if (cover > 0) return 'Underpaid'
     return row.status
@@ -263,7 +272,7 @@ function GroupDayCollection({
       </div>
 
       {rows.length > 0 && (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
             <div className="text-xs font-medium uppercase tracking-wide text-slate-500">Selected</div>
             <div className="mt-1 text-2xl font-semibold tabular-nums text-slate-900">{selectedCount}</div>
@@ -279,10 +288,15 @@ function GroupDayCollection({
             <div className="mt-1 text-2xl font-semibold tabular-nums text-slate-900">{money(totals.offset)}</div>
             <div className="text-xs text-slate-500">from extra savings</div>
           </div>
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 px-4 py-3 shadow-sm">
+            <div className="text-xs font-medium uppercase tracking-wide text-emerald-800">To extra</div>
+            <div className="mt-1 text-2xl font-semibold tabular-nums text-emerald-950">{money(totals.toExtra)}</div>
+            <div className="text-xs text-emerald-800/80">cash leftover → savings</div>
+          </div>
           <div className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 shadow-sm">
-            <div className="text-xs font-medium uppercase tracking-wide text-sky-700">Applied</div>
+            <div className="text-xs font-medium uppercase tracking-wide text-sky-700">Applied to loan</div>
             <div className="mt-1 text-2xl font-semibold tabular-nums text-sky-950">{money(totals.applied)}</div>
-            <div className="text-xs text-sky-700/80">cash + offset</div>
+            <div className="text-xs text-sky-700/80">cash − to extra + offset</div>
           </div>
         </div>
       )}
