@@ -167,11 +167,13 @@ public class PaymentSchedulesController : ControllerBase
 
         try
         {
-            var charges = LoanChargeMapping.Resolve(
-                request,
-                request.LoanProductId is int pid
-                    ? await _db.LoanProducts.FirstOrDefaultAsync(p => p.Id == pid)
-                    : loan.LoanProduct);
+            var charges = LoanChargeMapping.WithMembershipForCycle(
+                LoanChargeMapping.Resolve(
+                    request,
+                    request.LoanProductId is int pid
+                        ? await _db.LoanProducts.FirstOrDefaultAsync(p => p.Id == pid)
+                        : loan.LoanProduct),
+                loan.Cycle);
             LoanFinanceService.ApplyTerms(
                 loan,
                 request.Amount,
@@ -270,7 +272,8 @@ public class PaymentSchedulesController : ControllerBase
                 l.Status.ToString(),
                 l.UpdatedAt,
                 waiting,
-                canManage);
+                canManage,
+                l.Cycle);
         }).ToList();
     }
 

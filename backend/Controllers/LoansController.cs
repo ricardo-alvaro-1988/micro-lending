@@ -369,7 +369,9 @@ public class LoansController : ControllerBase
                 interestMethod = product.InterestMethod;
         }
 
-        var charges = LoanChargeMapping.Resolve(request, product);
+        var charges = LoanChargeMapping.WithMembershipForCycle(
+            LoanChargeMapping.Resolve(request, product),
+            request.Cycle);
 
         var loan = new Loan
         {

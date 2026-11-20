@@ -31,6 +31,7 @@ type PendingItem = {
   readyAt: string
   waitingHours: number
   canManage: boolean
+  cycle?: number | null
 }
 
 type ScheduleRow = {
@@ -253,7 +254,7 @@ export function PaymentSchedulePage() {
                         setForm((prev) => ({ ...prev, loanProductId: 0 }))
                         return
                       }
-                      const fees = feeFieldsFromPrincipal(product.amount, product.termCount)
+                      const fees = feeFieldsFromPrincipal(product.amount, product.termCount, selected?.cycle)
                       setForm((prev) => ({
                         ...prev,
                         loanProductId: product.id,
@@ -291,7 +292,7 @@ export function PaymentSchedulePage() {
                         setForm({
                           ...form,
                           amount,
-                          ...feeFieldsFromPrincipal(n, terms),
+                          ...feeFieldsFromPrincipal(n, terms, selected?.cycle),
                           termCount: form.termCount,
                         })
                         return

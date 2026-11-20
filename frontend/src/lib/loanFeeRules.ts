@@ -1,6 +1,13 @@
 /** Fee formulas from update-nov-19-2026 (loan products). */
 
 export const DEFAULT_INTEREST_RATE_PERCENT = 12
+export const MEMBERSHIP_FEE_AMOUNT = 125
+
+/** Membership is charged only on the first loan cycle. */
+export function membershipFeeFor(cycle?: number | null): number {
+  if (cycle == null || !Number.isFinite(cycle) || cycle <= 1) return MEMBERSHIP_FEE_AMOUNT
+  return 0
+}
 
 export function roundToTens(value: number): number {
   if (!Number.isFinite(value)) return 0
@@ -55,8 +62,12 @@ export type LoanFeeRuleResult = {
   raffle: number
 }
 
-/** Compute product/loan charges from principal + terms. Principal is rounded to tens. */
-export function computeLoanFees(principalInput: number, termCount: number): LoanFeeRuleResult {
+/** Compute product/loan charges from principal + terms (+ cycle for membership). Principal is rounded to tens. */
+export function computeLoanFees(
+  principalInput: number,
+  termCount: number,
+  cycle: number | null = 1,
+): LoanFeeRuleResult {
   const principal = roundToTens(principalInput)
   const terms = Math.max(0, Math.floor(termCount))
   return {
@@ -66,7 +77,7 @@ export function computeLoanFees(principalInput: number, termCount: number): Loan
     initialSavings: round2(principal * 0.02),
     savingsPerPeriod: terms > 0 ? round2((principal * 0.1) / terms) : 0,
     insurancePerPeriod: 0,
-    membershipFee: 0,
+    membershipFee: membershipFeeFor(cycle),
     processingFee: processingFeeFor(principal),
     loanRedemptionFee: loanRedemptionFeeFor(principal),
     taxes: round2(principal * 0.01),
@@ -92,7 +103,17 @@ export function feeRuleStrings(result: LoanFeeRuleResult) {
   }
 }
 
-/** Charge + interest strings for loan forms when principal/terms change. */
-export function feeFieldsFromPrincipal(amount: number, termCount: number) {
-  return feeRuleStrings(computeLoanFees(amount, termCount))
+function parseCycle(cycle?: number | string | null): number {
+  const n = typeof cycle === 'string' ? Number(cycle) : cycle
+  if (n == null || !Number.isFinite(n) || n < 1) return 1
+  return Math.floor(n)
+}
+
+/** Charge + interest strings for loan forms when principal/terms/cycle change. */
+export function feeFieldsFromPrincipal(
+  amount: number,
+  termCount: number,
+  cycle?: number | string | null,
+) {
+  return feeRuleStrings(computeLoanFees(amount, termCount, parseCycle(cycle)))
 }

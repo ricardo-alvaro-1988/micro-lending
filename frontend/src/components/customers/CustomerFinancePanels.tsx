@@ -14,7 +14,11 @@ import {
   emptyChargeStrings,
 } from '../LoanProceedsBreakdown'
 import { StageTag, StatusTag } from '../StatusTag'
-import { DEFAULT_INTEREST_RATE_PERCENT, feeFieldsFromPrincipal } from '../../lib/loanFeeRules'
+import {
+  DEFAULT_INTEREST_RATE_PERCENT,
+  feeFieldsFromPrincipal,
+  membershipFeeFor,
+} from '../../lib/loanFeeRules'
 import {
   notifyApprovalsChanged,
   notifyLoansChanged,
@@ -75,6 +79,7 @@ export function LoanApplicationPanel({ customerId, onError, onMessage }: SharedP
     firstDueDate: '',
     notes: '',
     ...emptyChargeStrings,
+    membershipFee: String(membershipFeeFor(1)),
   })
   const [collaterals, setCollaterals] = useState<LoanCollateral[]>([
     { descriptionOrKind: '', brand: '', estimatedMarketValue: 0 },
@@ -168,7 +173,9 @@ export function LoanApplicationPanel({ customerId, onError, onMessage }: SharedP
         amount: '',
         notes: '',
         approvedAmount: '',
+        cycle: prev.cycle || '1',
         ...emptyChargeStrings,
+        membershipFee: String(membershipFeeFor(Number(prev.cycle) || 1)),
       }))
       setCollaterals([
         { descriptionOrKind: '', brand: '', estimatedMarketValue: 0 },
@@ -248,7 +255,7 @@ export function LoanApplicationPanel({ customerId, onError, onMessage }: SharedP
                 setForm((prev) => ({ ...prev, loanProductId: 0 }))
                 return
               }
-              const fees = feeFieldsFromPrincipal(product.amount, product.termCount)
+              const fees = feeFieldsFromPrincipal(product.amount, product.termCount, form.cycle)
               setForm((prev) => ({
                 ...prev,
                 loanProductId: product.id,
@@ -330,7 +337,7 @@ export function LoanApplicationPanel({ customerId, onError, onMessage }: SharedP
                   setForm({
                     ...form,
                     amount,
-                    ...feeFieldsFromPrincipal(n, terms),
+                    ...feeFieldsFromPrincipal(n, terms, form.cycle),
                     termCount: form.termCount,
                   })
                   return
@@ -350,11 +357,29 @@ export function LoanApplicationPanel({ customerId, onError, onMessage }: SharedP
             />
             <input
               className="rounded-md border border-slate-300 px-3 py-2 text-sm"
-              placeholder="Cycle #"
+              placeholder="Cycle # (1 = membership 125; 2+ = none)"
               type="number"
               min="1"
               value={form.cycle}
-              onChange={(e) => setForm({ ...form, cycle: e.target.value })}
+              onChange={(e) => {
+                const cycle = e.target.value
+                const product = products.find((p) => p.id === form.loanProductId)
+                const n = Number(form.amount)
+                const terms = Number(form.termCount)
+                if (product && n > 0 && terms > 0) {
+                  setForm({
+                    ...form,
+                    cycle,
+                    ...feeFieldsFromPrincipal(n, terms, cycle),
+                  })
+                  return
+                }
+                setForm({
+                  ...form,
+                  cycle,
+                  membershipFee: String(membershipFeeFor(Number(cycle) || 1)),
+                })
+              }}
             />
             <input
               className="rounded-md border border-slate-300 px-3 py-2 text-sm"
@@ -370,7 +395,7 @@ export function LoanApplicationPanel({ customerId, onError, onMessage }: SharedP
                 if (product && n > 0 && terms > 0) {
                   setForm({
                     ...form,
-                    ...feeFieldsFromPrincipal(n, terms),
+                    ...feeFieldsFromPrincipal(n, terms, form.cycle),
                     termCount,
                   })
                   return
@@ -859,7 +884,7 @@ export function PaymentTermsPanel({ customerId, onError, onMessage }: SharedProp
                     setForm((prev) => ({ ...prev, loanProductId: 0 }))
                     return
                   }
-                  const fees = feeFieldsFromPrincipal(product.amount, product.termCount)
+                  const fees = feeFieldsFromPrincipal(product.amount, product.termCount, selected?.cycle)
                   setForm((prev) => ({
                     ...prev,
                     loanProductId: product.id,
@@ -900,7 +925,7 @@ export function PaymentTermsPanel({ customerId, onError, onMessage }: SharedProp
                     setForm({
                       ...form,
                       amount,
-                      ...feeFieldsFromPrincipal(n, terms),
+                      ...feeFieldsFromPrincipal(n, terms, selected?.cycle),
                       termCount: form.termCount,
                     })
                     return
@@ -939,7 +964,7 @@ export function PaymentTermsPanel({ customerId, onError, onMessage }: SharedProp
                   if (product && n > 0 && terms > 0) {
                     setForm({
                       ...form,
-                      ...feeFieldsFromPrincipal(n, terms),
+                      ...feeFieldsFromPrincipal(n, terms, selected?.cycle),
                       termCount,
                     })
                     return
