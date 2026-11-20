@@ -140,7 +140,7 @@ export function LoanAgreementPrintView({
           Repayment is to be made in installment of <strong>{money(installment)}</strong> per{' '}
           <strong>{freqWord}</strong>, until the obligation has been fulfilled
           {loan.termCount ? ` (${loan.termCount} installments)` : ''}.
-          {loan.firstDueDate ? ` First due date: ${dateOnly(loan.firstDueDate)}.` : ''}
+          {loan.firstDueDate ? ` First day of payment: ${dateOnly(loan.firstDueDate)}.` : ''}
         </p>
 
         <p className="text-justify">
@@ -231,7 +231,7 @@ export function LoanAgreementPrintView({
               </td>
             </tr>
             <tr>
-              <td className="border border-slate-300 px-2 py-1.5 font-medium">First due</td>
+              <td className="border border-slate-300 px-2 py-1.5 font-medium">First day of payment</td>
               <td className="border border-slate-300 px-2 py-1.5">{dateOnly(loan.firstDueDate)}</td>
               <td className="border border-slate-300 px-2 py-1.5 font-medium">Net proceeds</td>
               <td className="border border-slate-300 px-2 py-1.5 tabular-nums">
