@@ -14,7 +14,12 @@ import {
   emptyChargeStrings,
 } from '../LoanProceedsBreakdown'
 import { StageTag, StatusTag } from '../StatusTag'
-import { DEFAULT_INTEREST_RATE_PERCENT, feeFieldsFromPrincipal } from '../../lib/loanFeeRules'
+import {
+  DEFAULT_INTEREST_RATE_PERCENT,
+  feeChargesFromPrincipal,
+  feeFieldsFromPrincipal,
+  roundToTens,
+} from '../../lib/loanFeeRules'
 import {
   notifyApprovalsChanged,
   notifyLoansChanged,
@@ -143,7 +148,7 @@ export function LoanApplicationPanel({ customerId, onError, onMessage }: SharedP
           interestRatePercent: Number(form.interestRatePercent || 0),
           termCount: form.firstDueDate ? Number(form.termCount || 0) : 0,
           paymentFrequency: form.paymentFrequency,
-          interestMethod: form.interestMethod,
+          interestMethod: 'Flat',
           loanType: form.loanType || null,
           applicationType: form.applicationType || null,
           cycle: form.cycle ? Number(form.cycle) : null,
@@ -253,7 +258,7 @@ export function LoanApplicationPanel({ customerId, onError, onMessage }: SharedP
                 ...prev,
                 loanProductId: product.id,
                 paymentFrequency: product.paymentFrequency,
-                interestMethod: product.interestMethod,
+                interestMethod: 'Flat',
                 ...fees,
                 termCount: String(product.termCount),
               }))
@@ -315,10 +320,11 @@ export function LoanApplicationPanel({ customerId, onError, onMessage }: SharedP
             </label>
             <input
               className="rounded-md border border-slate-300 px-3 py-2 text-sm"
-              placeholder="Amount applied *"
+              placeholder="Loan amount *"
               type="number"
               min="0.01"
-              step="10"
+              step="1"
+              inputMode="decimal"
               value={form.amount}
               onChange={(e) => {
                 const amount = e.target.value
@@ -328,12 +334,29 @@ export function LoanApplicationPanel({ customerId, onError, onMessage }: SharedP
                 if (product && n > 0 && terms > 0) {
                   setForm({
                     ...form,
-                    ...feeFieldsFromPrincipal(n, terms),
+                    amount,
+                    ...feeChargesFromPrincipal(n, terms),
                     termCount: form.termCount,
                   })
                   return
                 }
                 setForm({ ...form, amount })
+              }}
+              onBlur={() => {
+                const n = Number(form.amount)
+                if (!(n > 0)) return
+                const rounded = roundToTens(n)
+                const terms = Number(form.termCount)
+                const product = products.find((p) => p.id === form.loanProductId)
+                if (product && terms > 0) {
+                  setForm({
+                    ...form,
+                    ...feeFieldsFromPrincipal(rounded, terms),
+                    termCount: form.termCount,
+                  })
+                } else {
+                  setForm({ ...form, amount: String(rounded) })
+                }
               }}
               required
             />
@@ -368,7 +391,8 @@ export function LoanApplicationPanel({ customerId, onError, onMessage }: SharedP
                 if (product && n > 0 && terms > 0) {
                   setForm({
                     ...form,
-                    ...feeFieldsFromPrincipal(n, terms),
+                    amount: form.amount,
+                    ...feeChargesFromPrincipal(n, terms),
                     termCount,
                   })
                   return
@@ -395,15 +419,12 @@ export function LoanApplicationPanel({ customerId, onError, onMessage }: SharedP
               <option value="BiWeekly">Bi-weekly</option>
               <option value="Monthly">Monthly</option>
             </select>
-            <select
-              className="rounded-md border border-slate-300 px-3 py-2 text-sm"
-              value={form.interestMethod}
-              onChange={(e) => setForm({ ...form, interestMethod: e.target.value })}
+            <input
+              className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700"
+              value="Flat interest"
+              readOnly
               title="Interest method"
-            >
-              <option value="Flat">Flat interest</option>
-              <option value="DecliningBalance">Declining balance</option>
-            </select>
+            />
             <input
               className="rounded-md border border-slate-300 px-3 py-2 text-sm"
               type="date"
@@ -784,7 +805,7 @@ export function PaymentTermsPanel({ customerId, onError, onMessage }: SharedProp
             interestRatePercent: Number(form.interestRatePercent || 0),
             termCount: Number(form.termCount),
             paymentFrequency: form.paymentFrequency,
-            interestMethod: form.interestMethod,
+            interestMethod: 'Flat',
             firstDueDate: form.firstDueDate,
             notes: form.notes || null,
             ...chargePayloadFrom(form),
@@ -862,7 +883,7 @@ export function PaymentTermsPanel({ customerId, onError, onMessage }: SharedProp
                     ...prev,
                     loanProductId: product.id,
                     paymentFrequency: product.paymentFrequency,
-                    interestMethod: product.interestMethod,
+                    interestMethod: 'Flat',
                     ...fees,
                     termCount: String(product.termCount),
                   }))
@@ -881,12 +902,13 @@ export function PaymentTermsPanel({ customerId, onError, onMessage }: SharedProp
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-slate-500">Principal *</label>
+              <label className="mb-1 block text-xs font-medium text-slate-500">Loan amount *</label>
               <input
                 className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
                 type="number"
                 min="0.01"
-                step="10"
+                step="1"
+                inputMode="decimal"
                 value={form.amount}
                 onChange={(e) => {
                   const amount = e.target.value
@@ -896,12 +918,30 @@ export function PaymentTermsPanel({ customerId, onError, onMessage }: SharedProp
                   if (product && n > 0 && terms > 0) {
                     setForm({
                       ...form,
-                      ...feeFieldsFromPrincipal(n, terms),
+                      amount,
+                      ...feeChargesFromPrincipal(n, terms),
                       termCount: form.termCount,
                     })
                     return
                   }
                   setForm({ ...form, amount })
+                }}
+                onBlur={() => {
+                  if (!canManage || !readyForTerms) return
+                  const n = Number(form.amount)
+                  if (!(n > 0)) return
+                  const rounded = roundToTens(n)
+                  const terms = Number(form.termCount)
+                  const product = products.find((p) => p.id === form.loanProductId)
+                  if (product && terms > 0) {
+                    setForm({
+                      ...form,
+                      ...feeFieldsFromPrincipal(rounded, terms),
+                      termCount: form.termCount,
+                    })
+                  } else {
+                    setForm({ ...form, amount: String(rounded) })
+                  }
                 }}
                 required
                 disabled={!canManage || !readyForTerms}
@@ -961,16 +1001,12 @@ export function PaymentTermsPanel({ customerId, onError, onMessage }: SharedProp
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-slate-500">Interest method *</label>
-              <select
-                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-                value={form.interestMethod}
-                onChange={(e) => setForm({ ...form, interestMethod: e.target.value })}
-                disabled={!canManage || !readyForTerms}
-              >
-                <option value="Flat">Flat interest</option>
-                <option value="DecliningBalance">Declining balance</option>
-              </select>
+              <label className="mb-1 block text-xs font-medium text-slate-500">Interest method</label>
+              <input
+                className="w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700"
+                value="Flat interest"
+                readOnly
+              />
             </div>
             <div>
               <label className="mb-1 block text-xs font-medium text-slate-500">First due date *</label>
