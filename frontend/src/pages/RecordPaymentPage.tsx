@@ -144,14 +144,31 @@ function GroupDayCollection({
     [openRows, drafts],
   )
 
+  const rowOffset = (row: GroupDayRow, draft: RowDraft) => {
+    const cash = Number(draft.amount) || 0
+    const remaining = row.remaining
+    if (!draft.useExtraSavings || cash + 0.009 >= remaining) return 0
+    return Math.min(row.extraSavingsBalance, Math.max(0, remaining - cash))
+  }
+
+  const totals = useMemo(() => {
+    let cash = 0
+    let offset = 0
+    for (const r of openRows) {
+      const d = drafts[r.scheduleItemId]
+      if (!d?.checked) continue
+      const c = Number(d.amount) || 0
+      cash += c
+      offset += rowOffset(r, d)
+    }
+    return { cash, offset, applied: cash + offset }
+  }, [openRows, drafts])
+
   const predictStatus = (row: GroupDayRow, draft: RowDraft) => {
     const cash = Number(draft.amount) || 0
     const remaining = row.remaining
     if (remaining <= 0.009) return 'Paid'
-    let cover = cash
-    if (draft.useExtraSavings && cash < remaining) {
-      cover += Math.min(row.extraSavingsBalance, remaining - cash)
-    }
+    const cover = cash + rowOffset(row, draft)
     if (cover + 0.009 >= remaining) return 'Paid'
     if (cover > 0) return 'Underpaid'
     return row.status
@@ -245,6 +262,31 @@ function GroupDayCollection({
         </label>
       </div>
 
+      {rows.length > 0 && (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+            <div className="text-xs font-medium uppercase tracking-wide text-slate-500">Selected</div>
+            <div className="mt-1 text-2xl font-semibold tabular-nums text-slate-900">{selectedCount}</div>
+            <div className="text-xs text-slate-500">open installment(s)</div>
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+            <div className="text-xs font-medium uppercase tracking-wide text-slate-500">Cash</div>
+            <div className="mt-1 text-2xl font-semibold tabular-nums text-slate-900">{money(totals.cash)}</div>
+            <div className="text-xs text-slate-500">amount to collect</div>
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+            <div className="text-xs font-medium uppercase tracking-wide text-slate-500">Extra offset</div>
+            <div className="mt-1 text-2xl font-semibold tabular-nums text-slate-900">{money(totals.offset)}</div>
+            <div className="text-xs text-slate-500">from extra savings</div>
+          </div>
+          <div className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 shadow-sm">
+            <div className="text-xs font-medium uppercase tracking-wide text-sky-700">Applied</div>
+            <div className="mt-1 text-2xl font-semibold tabular-nums text-sky-950">{money(totals.applied)}</div>
+            <div className="text-xs text-sky-700/80">cash + offset</div>
+          </div>
+        </div>
+      )}
+
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-4 py-3">
           <p className="text-sm text-slate-600">
@@ -288,7 +330,7 @@ function GroupDayCollection({
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[1020px] text-left text-sm">
+          <table className="w-full min-w-[960px] text-left text-sm">
             <thead className="bg-slate-50 text-slate-600">
               <tr>
                 <th className="px-3 py-2 font-medium">Pay</th>
@@ -298,7 +340,7 @@ function GroupDayCollection({
                 <th className="px-3 py-2 font-medium">Due</th>
                 <th className="px-3 py-2 font-medium">Remaining</th>
                 <th className="px-3 py-2 font-medium">Cash</th>
-                <th className="px-3 py-2 font-medium">Primary</th>
+                <th className="px-3 py-2 font-medium">Offset</th>
                 <th className="px-3 py-2 font-medium">Extra</th>
                 <th className="px-3 py-2 font-medium">Use extra</th>
                 <th className="px-3 py-2 font-medium">Result</th>
@@ -324,8 +366,10 @@ function GroupDayCollection({
                     amount: String(r.remaining),
                     useExtraSavings: false,
                   }
-                  const paid = r.alreadyPaidForDay
+                  const paid = r.alreadyPaidForDay || r.remaining <= 0.009
+                  const offset = paid ? 0 : rowOffset(r, draft)
                   const predicted = paid ? 'Paid' : predictStatus(r, draft)
+                  const showOverdue = !paid && r.isOverdue
                   return (
                     <tr key={r.scheduleItemId} className="border-t border-slate-100">
                       <td className="px-3 py-2">
@@ -349,7 +393,7 @@ function GroupDayCollection({
                       <td className="px-3 py-2">#{r.installmentNumber}</td>
                       <td className="px-3 py-2">
                         {r.dueDate.slice(0, 10)}
-                        {r.isOverdue ? <span className="ml-1 text-xs text-rose-600">overdue</span> : null}
+                        {showOverdue ? <span className="ml-1 text-xs text-rose-600">overdue</span> : null}
                       </td>
                       <td className="px-3 py-2">{money(r.remaining)}</td>
                       <td className="px-3 py-2">
@@ -368,10 +412,10 @@ function GroupDayCollection({
                           }
                         />
                       </td>
-                      <td className="px-3 py-2 text-xs text-slate-500" title="Initial savings — not used for underpay">
-                        {money(r.primarySavingsBalance)}
+                      <td className="px-3 py-2 tabular-nums text-slate-700" title="Extra savings cover for this row">
+                        {offset > 0 ? money(offset) : '—'}
                       </td>
-                      <td className="px-3 py-2 text-xs font-medium text-slate-800" title="Daily savings — may offset underpay">
+                      <td className="px-3 py-2 text-xs font-medium text-slate-800" title="Daily savings available">
                         {money(r.extraSavingsBalance)}
                       </td>
                       <td className="px-3 py-2">
