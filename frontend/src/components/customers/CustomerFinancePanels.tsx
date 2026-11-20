@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
+import { Link } from 'react-router-dom'
 import { api } from '../../api/client'
 import { useAuth } from '../../auth/AuthContext'
 import { ActionButton } from '../ActionButton'
@@ -552,11 +553,23 @@ export function LoanApplicationPanel({ customerId, onError, onMessage }: SharedP
                   <StatusTag status={loan.status} />
                 </td>
                 <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
-                  {canManageLoans && loan.canAdvance && (
-                    <button type="button" className="text-sky-700 hover:underline" onClick={() => void onAdvance(loan)}>
-                      Advance
-                    </button>
-                  )}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Link
+                      to={`/lending/loans/${loan.id}/agreement`}
+                      className="text-sky-700 hover:underline"
+                    >
+                      Print agreement
+                    </Link>
+                    {canManageLoans && loan.canAdvance && (
+                      <button
+                        type="button"
+                        className="text-sky-700 hover:underline"
+                        onClick={() => void onAdvance(loan)}
+                      >
+                        Advance
+                      </button>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}

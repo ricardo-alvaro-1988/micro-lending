@@ -263,7 +263,7 @@ body {
   animation: dash-shimmer 2.4s ease-in-out infinite;
 }
 
-/* Statement of Account: print only the statement document */
+/* Print only statement / loan agreement documents */
 @media print {
   @page {
     margin: 12mm;
@@ -278,11 +278,14 @@ body {
   }
 
   .statement-print-root,
-  .statement-print-root * {
+  .statement-print-root *,
+  .agreement-print-root,
+  .agreement-print-root * {
     visibility: visible;
   }
 
-  .statement-print-root {
+  .statement-print-root,
+  .agreement-print-root {
     position: absolute;
     left: 0;
     top: 0;
@@ -295,7 +298,8 @@ body {
     background: #fff !important;
   }
 
-  .statement-print-root table {
+  .statement-print-root table,
+  .agreement-print-root table {
     width: 100%;
     border-collapse: collapse;
   }
@@ -304,5 +308,10 @@ body {
   .statement-print-root td {
     border-bottom: 1px solid #e2e8f0;
     padding: 6px 8px;
+  }
+
+  .break-before-page {
+    break-before: page;
+    page-break-before: always;
   }
 }

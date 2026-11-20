@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
+import { Link } from 'react-router-dom'
 import { api } from '../api/client'
 import type {
   CustomerDetail,
@@ -166,6 +167,13 @@ export function LoanApplicationReviewDialog({ loanId, onClose, headerActions }: 
           </div>
           <div className="flex shrink-0 flex-wrap items-center gap-2">
             {headerActions}
+            <Link
+              to={`/lending/loans/${loanId}/agreement`}
+              className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
+              onClick={(e) => e.stopPropagation()}
+            >
+              Print agreement
+            </Link>
             <button
               type="button"
               className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
