@@ -1891,6 +1891,7 @@ public class ReportsController : ControllerBase
 
     /// <summary>
     /// Cashflow: Beginning + Remitted + Injected − Disbursement − Expenses = Cash on hand.
+    /// Savings (memo) = Primary + Extra balances as of To.
     /// </summary>
     [HttpGet("cashflow")]
     public async Task<ActionResult<ReportCashflowDto>> Cashflow(
@@ -2001,6 +2002,27 @@ public class ReportsController : ControllerBase
 
         var cashOnHand = beginning + remitted + injected - disbursement - expenses;
 
+        // Savings memo = Primary + Extra balances for branch loans (Approved-Final / Closed).
+        var savingsLoans = await (
+            from loan in _db.Loans.AsNoTracking()
+            join customer in customers on loan.CustomerId equals customer.Id
+            where loan.Status == LoanStatus.ApprovedFinal || loan.Status == LoanStatus.Closed
+            select new { loan.PrimarySavingsBalance, loan.ExtraSavingsBalance }
+        ).ToListAsync();
+        var primarySavings = savingsLoans.Sum(x => x.PrimarySavingsBalance);
+        var extraSavings = savingsLoans.Sum(x => x.ExtraSavingsBalance);
+        var savings = primarySavings + extraSavings;
+        var savingsLoanCount = savingsLoans.Count(x =>
+            x.PrimarySavingsBalance > 0.009m || x.ExtraSavingsBalance > 0.009m);
+
+        // Daily savings movement (Primary + Extra ledger) for the period.
+        var savingsTxnRows = await (
+            from t in _db.SavingsTransactions.AsNoTracking()
+            join customer in customers on t.CustomerId equals customer.Id
+            where t.OccurredAt >= start && t.OccurredAt < endExclusive
+            select new { t.OccurredAt, t.Amount }
+        ).ToListAsync();
+
         var days = new List<ReportCashflowDayDto>();
         for (var d = start; d <= end; d = d.AddDays(1))
         {
@@ -2009,9 +2031,10 @@ public class ReportsController : ControllerBase
             var dayInj = injectRows.Where(i => i.InjectionDate >= d && i.InjectionDate < dayEnd).Sum(i => i.Amount);
             var dayDisb = disbRows.Where(x => x.At >= d && x.At < dayEnd).Sum(x => x.Net);
             var dayExp = expenseRows.Where(e => e.ExpenseDate >= d && e.ExpenseDate < dayEnd).Sum(e => e.Amount);
-            if (dayRem == 0 && dayInj == 0 && dayDisb == 0 && dayExp == 0 && start != end) continue;
+            var daySav = savingsTxnRows.Where(t => t.OccurredAt >= d && t.OccurredAt < dayEnd).Sum(t => t.Amount);
+            if (dayRem == 0 && dayInj == 0 && dayDisb == 0 && dayExp == 0 && daySav == 0 && start != end) continue;
             days.Add(new ReportCashflowDayDto(
-                d, dayRem, dayInj, dayDisb, dayExp, dayRem + dayInj - dayDisb - dayExp));
+                d, dayRem, dayInj, dayDisb, dayExp, daySav, dayRem + dayInj - dayDisb - dayExp));
         }
 
         string? branchName = null;
@@ -2037,6 +2060,10 @@ public class ReportsController : ControllerBase
             expenses,
             expenseRows.Count,
             cashOnHand,
+            savings,
+            primarySavings,
+            extraSavings,
+            savingsLoanCount,
             days));
     }
 
