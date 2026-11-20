@@ -46,8 +46,10 @@ public class GroupPaymentsController : ControllerBase
         var scope = await _branchScope.ResolveAsync(User, branchId);
         if (scope is null) return Unauthorized();
 
+        // "Due as of" controls which installments are listed; late fees / overdue use PH today only.
         var day = (asOf ?? PhilippineTime.Today).Date;
-        await _finance.AccrueOpenItemsAsync(day);
+        var today = PhilippineTime.Today;
+        await _finance.AccrueOpenItemsAsync(today);
 
         var customers = BranchScopeService.Customers(_db.Customers.AsNoTracking(), scope)
             .Where(c => c.GroupId == groupId);
@@ -99,8 +101,8 @@ public class GroupPaymentsController : ControllerBase
                 x.PaidAmount,
                 remaining,
                 x.Status.ToString(),
-                // Overdue only when still open past due — paid rows never show overdue.
-                open && x.DueDate.Date < day,
+                // Overdue vs Philippine today — not the filter date (avoids future "overdue").
+                open && x.DueDate.Date < today,
                 x.PrimarySavingsBalance,
                 x.ExtraSavingsBalance,
                 !open);
