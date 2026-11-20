@@ -275,15 +275,25 @@ public class RemittancesController : ControllerBase
         return BranchScopeService.CanAccessBranch(scope, row.BranchId);
     }
 
+    /// <summary>
+    /// Cash collected for remittance = cash payments on the agent's customers that day.
+    /// Uses Amount only (not ExtraSavingsOffset). Attributes by customer Agent 1, not who clicked Record
+    /// (office/group posting still belongs to the field agent's float).
+    /// </summary>
     private async Task<decimal> SumCollectedAsync(string agentUserId, DateTime date)
     {
         var dayStart = date.Date;
         var dayEnd = dayStart.AddDays(1);
-        // PaidAt may be stored as UTC or local; compare by calendar date of PaidAt.
-        var sum = await _db.LoanPayments
-            .Where(p => p.RecordedByUserId == agentUserId)
-            .Where(p => p.PaidAt >= dayStart && p.PaidAt < dayEnd)
-            .SumAsync(p => (decimal?)p.Amount) ?? 0m;
+        var sum = await (
+            from p in _db.LoanPayments.AsNoTracking()
+            join loan in _db.Loans.AsNoTracking() on p.LoanId equals loan.Id
+            join customer in _db.Customers.AsNoTracking() on loan.CustomerId equals customer.Id
+            where customer.Agent1UserId == agentUserId
+                  && p.PaidAt >= dayStart && p.PaidAt < dayEnd
+                  && p.Method != null
+                  && p.Method.ToLower() == "cash"
+            select (decimal?)p.Amount
+        ).SumAsync() ?? 0m;
         return decimal.Round(sum, 2);
     }
 

@@ -200,8 +200,9 @@ export function RemittancesPage() {
         <div>
           <h2 className="text-xl font-semibold text-slate-900">Cash remittances</h2>
           <p className="mt-1 max-w-2xl text-sm text-slate-500">
-            Track cash collected by agents versus amounts remitted to the office. Variance is collected − remitted
-            (positive means cash still held as float).
+            Collected is cash payments recorded for the agent&apos;s customers that day (cash only — not extra
+            savings offset). Remitted is the actual money turned in. Variance is collected − remitted (positive
+            means cash still held as float).
           </p>
         </div>
         {canManage && (
@@ -335,7 +336,8 @@ export function RemittancesPage() {
 
               {expectedCollected != null && (
                 <div className="rounded-md border border-sky-100 bg-sky-50 px-3 py-2 text-sm text-sky-900">
-                  Expected collected (payments that day): <strong>{money(expectedCollected)}</strong>
+                  Expected collected (agent cash payments that day):{' '}
+                  <strong>{money(expectedCollected)}</strong>
                 </div>
               )}
 

@@ -1751,8 +1751,8 @@ public class ReportsController : ControllerBase
     }
 
     /// <summary>
-    /// Balancing report: field <c>Collected</c> (payments recorded) vs office <c>Remitted</c>
-    /// (cash remittance RemittedAmount). Columns are kept separate — not netted into one figure.
+    /// Balancing report: field <c>Collected</c> (cash payments for the agent's customers) vs office
+    /// <c>Remitted</c> (cash remittance RemittedAmount). Columns stay separate — not netted.
     /// </summary>
     [HttpGet("balancing")]
     public async Task<ActionResult<ReportBalancingResultDto>> Balancing(
@@ -1788,12 +1788,25 @@ public class ReportsController : ControllerBase
             .ThenBy(r => r.AgentUser.FullName)
             .ToListAsync();
 
-        // Payments recorded by agents in period (Collected). Scope by recorder branch when possible.
+        // Collected = cash payments for the agent's customers (Agent 1), Amount only — not ExtraSavingsOffset,
+        // and not who clicked Record (group/office posting still counts to the field agent).
         var paymentQuery =
             from p in _db.LoanPayments.AsNoTracking()
-            join u in _db.Users.AsNoTracking() on p.RecordedByUserId equals u.Id
+            join loan in _db.Loans.AsNoTracking() on p.LoanId equals loan.Id
+            join customer in _db.Customers.AsNoTracking() on loan.CustomerId equals customer.Id
+            join u in _db.Users.AsNoTracking() on customer.Agent1UserId equals u.Id
             where p.PaidAt >= start && p.PaidAt < endExclusive
-            select new { p.RecordedByUserId, RecorderName = u.FullName, u.BranchId, BranchName = u.Branch != null ? u.Branch.Name : null, p.Amount };
+                  && customer.Agent1UserId != null
+                  && p.Method != null
+                  && p.Method.ToLower() == "cash"
+            select new
+            {
+                AgentUserId = customer.Agent1UserId!,
+                AgentName = u.FullName,
+                u.BranchId,
+                BranchName = u.Branch != null ? u.Branch.Name : null,
+                p.Amount,
+            };
 
         if (scope.EffectiveBranchId is int payBid)
             paymentQuery = paymentQuery.Where(x => x.BranchId == payBid);
@@ -1801,12 +1814,12 @@ public class ReportsController : ControllerBase
             paymentQuery = paymentQuery.Where(_ => false);
 
         if (!string.IsNullOrWhiteSpace(agentUserId))
-            paymentQuery = paymentQuery.Where(x => x.RecordedByUserId == agentUserId);
+            paymentQuery = paymentQuery.Where(x => x.AgentUserId == agentUserId);
 
         var payments = await paymentQuery.ToListAsync();
 
         var agentIds = remittances.Select(r => r.AgentUserId)
-            .Concat(payments.Select(p => p.RecordedByUserId))
+            .Concat(payments.Select(p => p.AgentUserId))
             .Distinct()
             .ToList();
 
@@ -1825,7 +1838,7 @@ public class ReportsController : ControllerBase
             {
                 var name = agentMeta.TryGetValue(id, out var meta) ? meta.FullName : "(Unknown)";
                 var branchName = agentMeta.TryGetValue(id, out var m2) ? m2.BranchName : null;
-                var payRows = payments.Where(p => p.RecordedByUserId == id).ToList();
+                var payRows = payments.Where(p => p.AgentUserId == id).ToList();
                 var remRows = remittances.Where(r => r.AgentUserId == id).ToList();
                 var collected = payRows.Sum(p => p.Amount);
                 // Remitted = cash turned in only (never use CollectedAmount here).
