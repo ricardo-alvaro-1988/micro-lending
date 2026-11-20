@@ -711,12 +711,20 @@ public class CustomerFinanceController : ControllerBase
                     SavingsTransactionType.ManualAdjust => "Manual adjustment",
                     _ => t.Type.ToString()
                 };
-                var desc = $"{kindWord} · {reason} on {loanNo} (bal {t.BalanceAfter:0.00})"
+                var desc = $"{kindWord} · {reason} on {loanNo}"
                     + (string.IsNullOrWhiteSpace(t.Notes) ? "" : $" — {t.Notes}");
-                // Display amount on statement; does not affect loan receivable balance.
+                // Debit/credit for display; Balance column uses that ledger's BalanceAfter (not loan).
                 var debit = t.Amount < 0 ? Math.Abs(t.Amount) : 0m;
                 var credit = t.Amount > 0 ? t.Amount : 0m;
-                lines.Add(new StatementLineDto(t.OccurredAt, typeLabel, desc, debit, credit, 0, t.LoanId, loanNo));
+                lines.Add(new StatementLineDto(
+                    t.OccurredAt,
+                    typeLabel,
+                    desc,
+                    debit,
+                    credit,
+                    t.BalanceAfter,
+                    t.LoanId,
+                    loanNo));
             }
         }
 
@@ -730,11 +738,14 @@ public class CustomerFinanceController : ControllerBase
             _ => 5
         };
 
-        static bool AffectsLoanBalance(string type) =>
+        static bool IsLoanLine(string type) =>
             type is "Charge" or "LateFee" or "Payment";
 
+        static bool IsPrimaryLine(string type) => type == "PrimarySavings";
+        static bool IsExtraLine(string type) => type == "ExtraSavings";
+
         lines = lines.OrderBy(l => l.Date).ThenBy(l => LineSort(l.Type)).ToList();
-        decimal balance = 0;
+        decimal loanRunning = 0;
         decimal opening = 0;
         var ordered = new List<StatementLineDto>();
         foreach (var line in lines)
@@ -743,19 +754,31 @@ public class CustomerFinanceController : ControllerBase
                           && (!rangeEndExclusive.HasValue || line.Date < rangeEndExclusive.Value);
             if (!inRange)
             {
-                if (rangeStart.HasValue && line.Date < rangeStart.Value && AffectsLoanBalance(line.Type))
+                if (rangeStart.HasValue && line.Date < rangeStart.Value && IsLoanLine(line.Type))
                     opening += line.Debit - line.Credit;
                 continue;
             }
 
             if (ordered.Count == 0 && rangeStart.HasValue)
-                balance = opening;
+                loanRunning = opening;
 
-            if (AffectsLoanBalance(line.Type))
-                balance += line.Debit - line.Credit;
-            ordered.Add(line with { Balance = balance });
+            if (IsLoanLine(line.Type))
+            {
+                loanRunning += line.Debit - line.Credit;
+                ordered.Add(line with { Balance = loanRunning });
+            }
+            else if (IsPrimaryLine(line.Type) || IsExtraLine(line.Type))
+            {
+                // Balance already set to that savings ledger's BalanceAfter.
+                ordered.Add(line);
+            }
+            else
+            {
+                ordered.Add(line with { Balance = loanRunning });
+            }
         }
 
+        var balance = loanRunning;
         if (ordered.Count == 0 && rangeStart.HasValue)
             balance = opening;
 
