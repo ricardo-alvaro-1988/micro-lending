@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using MicroLending.Api.Auth;
 using MicroLending.Api.Data;
 using MicroLending.Api.Dtos;
@@ -1590,6 +1591,176 @@ public class ReportsController : ControllerBase
             remittances.Count,
             agents,
             lines));
+    }
+
+    /// <summary>
+    /// Cashflow: Beginning + Remitted − Disbursement − Expenses = Cash on hand.
+    /// </summary>
+    [HttpGet("cashflow")]
+    public async Task<ActionResult<ReportCashflowDto>> Cashflow(
+        [FromQuery] DateTime? from = null,
+        [FromQuery] DateTime? to = null,
+        [FromQuery] int? branchId = null)
+    {
+        var scope = await _branchScope.ResolveAsync(User, branchId);
+        if (scope is null) return Unauthorized();
+        if (scope.IsFieldAgent) return Forbid();
+
+        var start = (from ?? DateTime.UtcNow.Date).Date;
+        var end = (to ?? start).Date;
+        var endExclusive = end.AddDays(1);
+        var balanceBranchId = scope.EffectiveBranchId;
+
+        var opening = await _db.CashflowOpeningBalances.AsNoTracking()
+            .FirstOrDefaultAsync(b => b.AsOfDate == start && b.BranchId == balanceBranchId);
+        var beginning = opening?.Amount ?? 0m;
+        var beginningSet = opening is not null;
+
+        // Remitted into office (non-draft slips).
+        var remittanceQuery = _db.CashRemittances.AsNoTracking()
+            .Where(r => r.RemittanceDate >= start && r.RemittanceDate < endExclusive)
+            .Where(r => r.Status != CashRemittanceStatus.Draft);
+        if (balanceBranchId is int remBid)
+            remittanceQuery = remittanceQuery.Where(r => r.BranchId == remBid);
+        else if (!scope.IsAdmin)
+            remittanceQuery = remittanceQuery.Where(_ => false);
+
+        var remittanceRows = await remittanceQuery
+            .Select(r => new { r.RemittanceDate, r.RemittedAmount })
+            .ToListAsync();
+        var remitted = remittanceRows.Sum(r => r.RemittedAmount);
+
+        // Disbursement = net cash released (Approved-Final in period).
+        var customers = BranchScopeService.Customers(_db.Customers.AsNoTracking(), scope);
+        var activityDisb = await (
+            from act in _db.LoanActivities.AsNoTracking()
+            join loan in _db.Loans.AsNoTracking() on act.LoanId equals loan.Id
+            join customer in customers on loan.CustomerId equals customer.Id
+            where act.Type == LoanActivityType.ApprovedFinal
+                  && act.OccurredAt >= start
+                  && act.OccurredAt < endExclusive
+            select new { act.OccurredAt, loan.NetProceeds, loan.Amount, loan.TotalDeductions }
+        ).ToListAsync();
+
+        List<(DateTime At, decimal Net)> disbRows;
+        if (activityDisb.Count > 0)
+        {
+            disbRows = activityDisb
+                .Select(x => (x.OccurredAt, Net: x.NetProceeds > 0
+                    ? x.NetProceeds
+                    : Math.Max(0, x.Amount - x.TotalDeductions)))
+                .ToList();
+        }
+        else
+        {
+            // Fallback when ApprovedFinal activities missing.
+            var fallback = await (
+                from loan in _db.Loans.AsNoTracking()
+                join customer in customers on loan.CustomerId equals customer.Id
+                where (loan.Status == LoanStatus.ApprovedFinal || loan.Status == LoanStatus.Closed)
+                      && loan.UpdatedAt >= start
+                      && loan.UpdatedAt < endExclusive
+                select new { loan.UpdatedAt, loan.NetProceeds, loan.Amount, loan.TotalDeductions }
+            ).ToListAsync();
+            disbRows = fallback
+                .Select(x => (x.UpdatedAt, Net: x.NetProceeds > 0
+                    ? x.NetProceeds
+                    : Math.Max(0, x.Amount - x.TotalDeductions)))
+                .ToList();
+        }
+        var disbursement = disbRows.Sum(x => x.Net);
+
+        var expenseQuery = _db.ExpenseEntries.AsNoTracking()
+            .Where(e => e.ExpenseDate >= start && e.ExpenseDate < endExclusive);
+        if (balanceBranchId is int expBid)
+            expenseQuery = expenseQuery.Where(e => e.BranchId == expBid);
+        else if (!scope.IsAdmin)
+            expenseQuery = expenseQuery.Where(_ => false);
+
+        var expenseRows = await expenseQuery
+            .Select(e => new { e.ExpenseDate, e.Amount })
+            .ToListAsync();
+        var expenses = expenseRows.Sum(e => e.Amount);
+
+        var cashOnHand = beginning + remitted - disbursement - expenses;
+
+        var days = new List<ReportCashflowDayDto>();
+        for (var d = start; d <= end; d = d.AddDays(1))
+        {
+            var dayEnd = d.AddDays(1);
+            var dayRem = remittanceRows.Where(r => r.RemittanceDate >= d && r.RemittanceDate < dayEnd).Sum(r => r.RemittedAmount);
+            var dayDisb = disbRows.Where(x => x.At >= d && x.At < dayEnd).Sum(x => x.Net);
+            var dayExp = expenseRows.Where(e => e.ExpenseDate >= d && e.ExpenseDate < dayEnd).Sum(e => e.Amount);
+            if (dayRem == 0 && dayDisb == 0 && dayExp == 0 && start != end) continue;
+            days.Add(new ReportCashflowDayDto(d, dayRem, dayDisb, dayExp, dayRem - dayDisb - dayExp));
+        }
+
+        string? branchName = null;
+        if (balanceBranchId is int bn)
+            branchName = await _db.Branches.AsNoTracking()
+                .Where(b => b.Id == bn)
+                .Select(b => b.Name)
+                .FirstOrDefaultAsync();
+
+        return Ok(new ReportCashflowDto(
+            start,
+            end,
+            balanceBranchId,
+            branchName,
+            beginning,
+            beginningSet,
+            remitted,
+            remittanceRows.Count,
+            disbursement,
+            disbRows.Count,
+            expenses,
+            expenseRows.Count,
+            cashOnHand,
+            days));
+    }
+
+    [HttpPut("cashflow/beginning-balance")]
+    [Authorize(Policy = $"perm:{PermissionCodes.ReportsView}")]
+    public async Task<ActionResult<object>> SetCashflowBeginning(
+        [FromBody] SetCashflowBeginningRequest request,
+        [FromQuery] int? branchId = null)
+    {
+        var scope = await _branchScope.ResolveAsync(User, branchId ?? request.BranchId);
+        if (scope is null) return Unauthorized();
+        if (scope.IsFieldAgent) return Forbid();
+
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
+        if (string.IsNullOrWhiteSpace(userId)) return Unauthorized();
+
+        var asOf = (request.AsOfDate == default ? DateTime.UtcNow : request.AsOfDate).Date;
+        var balanceBranchId = scope.EffectiveBranchId;
+        if (!scope.IsAdmin)
+            balanceBranchId = BranchScopeService.EnforceWriteBranchId(scope, balanceBranchId);
+
+        var row = await _db.CashflowOpeningBalances
+            .FirstOrDefaultAsync(b => b.AsOfDate == asOf && b.BranchId == balanceBranchId);
+
+        if (row is null)
+        {
+            row = new CashflowOpeningBalance
+            {
+                AsOfDate = asOf,
+                BranchId = balanceBranchId,
+                Amount = decimal.Round(request.Amount, 2, MidpointRounding.AwayFromZero),
+                UpdatedByUserId = userId,
+                UpdatedAt = DateTime.UtcNow,
+            };
+            _db.CashflowOpeningBalances.Add(row);
+        }
+        else
+        {
+            row.Amount = decimal.Round(request.Amount, 2, MidpointRounding.AwayFromZero);
+            row.UpdatedByUserId = userId;
+            row.UpdatedAt = DateTime.UtcNow;
+        }
+
+        await _db.SaveChangesAsync();
+        return Ok(new { asOfDate = asOf, branchId = balanceBranchId, amount = row.Amount });
     }
 
     private static string AgingBucket(int daysPastDue) => daysPastDue switch

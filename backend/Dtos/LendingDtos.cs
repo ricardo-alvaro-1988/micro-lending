@@ -1345,6 +1345,41 @@ public record ExpenseSummaryDto(
     int Count,
     decimal TotalAmount);
 
+/// <summary>
+/// Cashflow: Beginning + Remitted − Disbursement − Expenses = Cash on hand.
+/// </summary>
+public record ReportCashflowDto(
+    DateTime From,
+    DateTime To,
+    int? BranchId,
+    string? BranchName,
+    decimal BeginningBalance,
+    bool BeginningBalanceIsSet,
+    decimal Remitted,
+    int RemittanceCount,
+    decimal Disbursement,
+    int DisbursementCount,
+    decimal Expenses,
+    int ExpenseCount,
+    /// <summary>Beginning + Remitted − Disbursement − Expenses.</summary>
+    decimal CashOnHand,
+    IReadOnlyList<ReportCashflowDayDto> Days);
+
+public record ReportCashflowDayDto(
+    DateTime Date,
+    decimal Remitted,
+    decimal Disbursement,
+    decimal Expenses,
+    decimal NetChange);
+
+public class SetCashflowBeginningRequest
+{
+    public DateTime AsOfDate { get; set; }
+    [Range(0, double.MaxValue)]
+    public decimal Amount { get; set; }
+    public int? BranchId { get; set; }
+}
+
 public record DashboardKpiDto(
     DateTime AsOf,
     /// <summary>Remaining on installments due on asOf (not yet past).</summary>
