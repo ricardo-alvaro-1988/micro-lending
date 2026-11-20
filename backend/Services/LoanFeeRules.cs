@@ -35,13 +35,16 @@ public static class LoanFeeRules
         return fee < 0 ? 0 : decimal.Round(fee, 2, MidpointRounding.AwayFromZero);
     }
 
+    /// <summary>
+    /// Insurance brackets: 5k–10k = 200, then +50 every next 5k
+    /// (11k–15k = 250, 16k–20k = 300, 21k–25k = 350, …).
+    /// </summary>
     public static decimal InsuranceForPrincipal(decimal principal)
     {
         if (principal < 5000m) return 0;
-        if (principal <= 10000m) return 200;
-        if (principal <= 15000m) return 250;
-        if (principal <= 20000m) return 300;
-        return 300;
+        if (principal <= 10000m) return 200m;
+        var bandsAbove10k = (int)Math.Ceiling((principal - 10000m) / 5000m);
+        return 200m + bandsAbove10k * 50m;
     }
 
     public static decimal ProcessingFeeFor(decimal principal) =>

@@ -58,12 +58,12 @@ function steppedFrom5k(principal: number, baseAt5k: number, per1k: number): numb
   return Math.max(0, baseAt5k + steps * per1k)
 }
 
+/** 5k–10k = 200, then +50 every next 5k (11–15=250, 16–20=300, 21–25=350, …). */
 export function insuranceForPrincipal(principal: number): number {
   if (principal < 5000) return 0
   if (principal <= 10000) return 200
-  if (principal <= 15000) return 250
-  if (principal <= 20000) return 300
-  return 300
+  const bandsAbove10k = Math.ceil((principal - 10000) / 5000)
+  return 200 + bandsAbove10k * 50
 }
 
 /** Processing: 5k = 100, then +10 every 1k. */
