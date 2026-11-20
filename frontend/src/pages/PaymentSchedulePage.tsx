@@ -11,7 +11,7 @@ import {
   emptyChargeStrings,
 } from '../components/LoanProceedsBreakdown'
 import { StageTag, StatusTag } from '../components/StatusTag'
-import { feeChargesFromPrincipal, feeFieldsFromPrincipal, roundToTens } from '../lib/loanFeeRules'
+import { feeFieldsFromPrincipal } from '../lib/loanFeeRules'
 import { notifyPaymentSchedulesChanged } from '../notify'
 import type { LoanProduct } from '../types'
 import { useToast } from '../toast/ToastContext'
@@ -132,7 +132,7 @@ export function PaymentSchedulePage() {
           interestRatePercent: Number(form.interestRatePercent || 0),
           termCount: Number(form.termCount),
           paymentFrequency: form.paymentFrequency,
-          interestMethod: 'Flat',
+          interestMethod: form.interestMethod,
           firstDueDate: form.firstDueDate,
           notes: form.notes || null,
           ...chargePayloadFrom(form),
@@ -258,8 +258,9 @@ export function PaymentSchedulePage() {
                         ...prev,
                         loanProductId: product.id,
                         paymentFrequency: product.paymentFrequency,
-                        interestMethod: 'Flat',
+                        interestMethod: product.interestMethod,
                         ...fees,
+                        amount: String(product.amount),
                         termCount: String(product.termCount),
                       }))
                     }}
@@ -274,13 +275,12 @@ export function PaymentSchedulePage() {
                   </select>
                 </label>
                 <label className="block text-sm">
-                  <span className="mb-1 block text-xs font-medium text-slate-500">Loan amount *</span>
+                  <span className="mb-1 block text-xs font-medium text-slate-500">Principal *</span>
                   <input
                     className="w-full rounded-md border border-slate-300 px-3 py-2"
                     type="number"
                     min="0.01"
-                    step="1"
-                    inputMode="decimal"
+                    step="10"
                     value={form.amount}
                     onChange={(e) => {
                       const amount = e.target.value
@@ -291,29 +291,12 @@ export function PaymentSchedulePage() {
                         setForm({
                           ...form,
                           amount,
-                          ...feeChargesFromPrincipal(n, terms),
+                          ...feeFieldsFromPrincipal(n, terms),
                           termCount: form.termCount,
                         })
                         return
                       }
                       setForm({ ...form, amount })
-                    }}
-                    onBlur={() => {
-                      if (!canManage) return
-                      const n = Number(form.amount)
-                      if (!(n > 0)) return
-                      const rounded = roundToTens(n)
-                      const terms = Number(form.termCount)
-                      const product = products.find((p) => p.id === form.loanProductId)
-                      if (product && terms > 0) {
-                        setForm({
-                          ...form,
-                          ...feeFieldsFromPrincipal(rounded, terms),
-                          termCount: form.termCount,
-                        })
-                      } else {
-                        setForm({ ...form, amount: String(rounded) })
-                      }
                     }}
                     required
                     disabled={!canManage}
@@ -359,12 +342,16 @@ export function PaymentSchedulePage() {
                   </select>
                 </label>
                 <label className="block text-sm sm:col-span-2">
-                  <span className="mb-1 block text-xs font-medium text-slate-500">Interest method</span>
-                  <input
-                    className="w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-slate-700"
-                    value="Flat interest"
-                    readOnly
-                  />
+                  <span className="mb-1 block text-xs font-medium text-slate-500">Interest method *</span>
+                  <select
+                    className="w-full rounded-md border border-slate-300 px-3 py-2"
+                    value={form.interestMethod}
+                    onChange={(e) => setForm({ ...form, interestMethod: e.target.value })}
+                    disabled={!canManage}
+                  >
+                    <option value="Flat">Flat interest</option>
+                    <option value="DecliningBalance">Declining balance</option>
+                  </select>
                 </label>
                 <label className="block text-sm sm:col-span-2">
                   <span className="mb-1 block text-xs font-medium text-slate-500">First due date *</span>

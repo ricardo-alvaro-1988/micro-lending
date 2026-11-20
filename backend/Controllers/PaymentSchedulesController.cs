@@ -147,8 +147,8 @@ public class PaymentSchedulesController : ControllerBase
 
         if (!TryParseFrequency(request.PaymentFrequency, out var frequency))
             return BadRequest(new { message = "Payment frequency must be Daily, Weekly, BiWeekly, or Monthly." });
-        // Interest method is always Flat.
-        var interestMethod = InterestMethod.Flat;
+        if (!LoanFinanceService.TryParseInterestMethod(request.InterestMethod, out var interestMethod))
+            return BadRequest(new { message = "Interest method must be Flat or DecliningBalance." });
 
         if (request.LoanProductId is int productId)
         {
@@ -157,6 +157,8 @@ public class PaymentSchedulesController : ControllerBase
             if (!product.IsActive && loan.LoanProductId != product.Id)
                 return BadRequest(new { message = "Selected loan product is inactive." });
             loan.LoanProductId = product.Id;
+            if (string.IsNullOrWhiteSpace(request.InterestMethod))
+                interestMethod = product.InterestMethod;
         }
         else
         {

@@ -75,9 +75,9 @@ export function computeLoanFees(principalInput: number, termCount: number): Loan
   }
 }
 
+/** Fee/interest field strings only — does not include loan amount (keep the typed amount). */
 export function feeRuleStrings(result: LoanFeeRuleResult) {
   return {
-    amount: String(result.amount || ''),
     interestRatePercent: String(result.interestRatePercent),
     insuranceAmount: String(result.insuranceAmount),
     initialSavings: String(result.initialSavings),
@@ -95,13 +95,4 @@ export function feeRuleStrings(result: LoanFeeRuleResult) {
 /** Charge + interest strings for loan forms when principal/terms change. */
 export function feeFieldsFromPrincipal(amount: number, termCount: number) {
   return feeRuleStrings(computeLoanFees(amount, termCount))
-}
-
-/**
- * Same as feeFieldsFromPrincipal but leaves the typed loan amount alone
- * (avoids wiping/rounding the input on every keystroke).
- */
-export function feeChargesFromPrincipal(amount: number, termCount: number) {
-  const { amount: _roundedAmount, ...charges } = feeFieldsFromPrincipal(amount, termCount)
-  return charges
 }
