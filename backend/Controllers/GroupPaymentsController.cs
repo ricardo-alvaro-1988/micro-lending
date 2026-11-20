@@ -84,6 +84,7 @@ public class GroupPaymentsController : ControllerBase
         var rows = raw.Select(x =>
         {
             var remaining = Math.Max(0, x.AmountDue + x.PenaltyAmount - x.PaidAmount);
+            var open = remaining > 0.009m;
             return new GroupDayPaymentRowDto(
                 x.Id,
                 x.CustomerId,
@@ -98,10 +99,11 @@ public class GroupPaymentsController : ControllerBase
                 x.PaidAmount,
                 remaining,
                 x.Status.ToString(),
-                x.DueDate.Date < day,
+                // Overdue only when still open past due — paid rows never show overdue.
+                open && x.DueDate.Date < day,
                 x.PrimarySavingsBalance,
                 x.ExtraSavingsBalance,
-                remaining <= 0.009m);
+                !open);
         }).ToList();
 
         return Ok(rows);
