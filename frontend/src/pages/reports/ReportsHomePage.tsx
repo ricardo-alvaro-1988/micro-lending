@@ -50,6 +50,11 @@ const reports = [
         blurb: 'Collected vs remitted kept separate, with variance by agent and remittance slips.',
       },
       {
+        to: '/reports/cashflow',
+        title: 'Cashflow report',
+        blurb: 'Beginning + remitted − disbursement − expenses = cash on hand.',
+      },
+      {
         to: '/reports/expected-vs-actual',
         title: 'Expected vs actual',
         blurb: 'Daily schedule due compared with payments received.',

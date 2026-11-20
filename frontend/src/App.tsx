@@ -41,6 +41,7 @@ import { PortfolioSummaryReportPage } from './pages/reports/PortfolioSummaryRepo
 import { LoanReleasesReportPage } from './pages/reports/LoanReleasesReportPage'
 import { DailyLoanDisbursementPage } from './pages/reports/DailyLoanDisbursementPage'
 import { BalancingReportPage } from './pages/reports/BalancingReportPage'
+import { CashflowReportPage } from './pages/reports/CashflowReportPage'
 import { ExpectedVsActualReportPage } from './pages/reports/ExpectedVsActualReportPage'
 import { ParReportPage } from './pages/reports/ParReportPage'
 import { ClosedLoansReportPage } from './pages/reports/ClosedLoansReportPage'
@@ -163,6 +164,7 @@ export default function App() {
             <Route path="/reports/loan-releases" element={<LoanReleasesReportPage />} />
             <Route path="/reports/daily-disbursement" element={<DailyLoanDisbursementPage />} />
             <Route path="/reports/balancing" element={<BalancingReportPage />} />
+            <Route path="/reports/cashflow" element={<CashflowReportPage />} />
             <Route path="/reports/expected-vs-actual" element={<ExpectedVsActualReportPage />} />
             <Route path="/reports/par" element={<ParReportPage />} />
             <Route path="/reports/closed-loans" element={<ClosedLoansReportPage />} />

@@ -284,14 +284,17 @@ body {
   .disbursement-print-root,
   .disbursement-print-root *,
   .balancing-print-root,
-  .balancing-print-root * {
+  .balancing-print-root *,
+  .cashflow-print-root,
+  .cashflow-print-root * {
     visibility: visible;
   }
 
   .statement-print-root,
   .agreement-print-root,
   .disbursement-print-root,
-  .balancing-print-root {
+  .balancing-print-root,
+  .cashflow-print-root {
     position: absolute;
     left: 0;
     top: 0;
@@ -307,7 +310,8 @@ body {
   .statement-print-root table,
   .agreement-print-root table,
   .disbursement-print-root table,
-  .balancing-print-root table {
+  .balancing-print-root table,
+  .cashflow-print-root table {
     width: 100%;
     border-collapse: collapse;
   }
