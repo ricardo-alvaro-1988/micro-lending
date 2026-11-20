@@ -766,7 +766,11 @@ public record StatementOfAccountDto(
     DateTime GeneratedAt,
     decimal OpeningBalance,
     decimal ClosingBalance,
-    IReadOnlyList<StatementLineDto> Lines);
+    IReadOnlyList<StatementLineDto> Lines,
+    /// <summary>Outstanding loan receivable (TotalPayable − payments incl. extra-savings offsets).</summary>
+    decimal LoanBalance = 0,
+    decimal PrimarySavingsBalance = 0,
+    decimal ExtraSavingsBalance = 0);
 
 public class ApprovalActionRequest
 {
