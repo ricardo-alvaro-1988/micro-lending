@@ -1303,6 +1303,48 @@ public class ReceiveCashRemittanceRequest
     public string? Notes { get; set; }
 }
 
+public record ExpenseEntryDto(
+    int Id,
+    string Label,
+    decimal Amount,
+    DateTime ExpenseDate,
+    int? BranchId,
+    string? BranchName,
+    string? Notes,
+    string RecordedByUserId,
+    string RecordedByName,
+    DateTime CreatedAt,
+    DateTime UpdatedAt);
+
+public class CreateExpenseEntryRequest
+{
+    [Required, MaxLength(200)]
+    public string Label { get; set; } = string.Empty;
+    [Range(0.01, double.MaxValue)]
+    public decimal Amount { get; set; }
+    public DateTime ExpenseDate { get; set; }
+    public int? BranchId { get; set; }
+    [MaxLength(500)]
+    public string? Notes { get; set; }
+}
+
+public class UpdateExpenseEntryRequest
+{
+    [Required, MaxLength(200)]
+    public string Label { get; set; } = string.Empty;
+    [Range(0.01, double.MaxValue)]
+    public decimal Amount { get; set; }
+    public DateTime ExpenseDate { get; set; }
+    [MaxLength(500)]
+    public string? Notes { get; set; }
+}
+
+public record ExpenseSummaryDto(
+    DateTime From,
+    DateTime To,
+    int Count,
+    decimal TotalAmount);
+
 public record DashboardKpiDto(
     DateTime AsOf,
     /// <summary>Remaining on installments due on asOf (not yet past).</summary>

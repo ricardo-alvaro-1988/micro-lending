@@ -131,6 +131,12 @@ const nav: NavItem[] = [
         permission: 'remittance.view',
         icon: <IconTransaction />,
       },
+      {
+        label: 'Expenses',
+        to: '/transaction/expenses',
+        permission: 'expenses.view',
+        icon: <IconTransaction />,
+      },
     ],
   },
   {
