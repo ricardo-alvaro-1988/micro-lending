@@ -1015,6 +1015,40 @@ public record ReportPortfolioSummaryDto(
     int OverdueLoanCount,
     IReadOnlyList<ReportPortfolioLoanDto> Loans);
 
+/// <summary>Loan receivables (amounts still owed by borrowers) as of a date.</summary>
+public record ReportReceivableLoanDto(
+    int LoanId,
+    string LoanNumber,
+    int CustomerId,
+    string CustomerName,
+    string? Agent1Name,
+    string? GroupName,
+    int? BranchId,
+    string? BranchName,
+    string Status,
+    decimal Principal,
+    decimal TotalPayable,
+    decimal TotalPaid,
+    /// <summary>Outstanding receivable (payable − paid).</summary>
+    decimal Receivable,
+    /// <summary>Portion of receivable not yet past due.</summary>
+    decimal CurrentReceivable,
+    /// <summary>Past-due installment remaining (incl. penalties).</summary>
+    decimal OverdueReceivable,
+    int OverdueInstallments);
+
+public record ReportReceivablesDto(
+    DateTime AsOf,
+    int LoanCount,
+    decimal TotalPrincipal,
+    decimal TotalPayable,
+    decimal TotalPaid,
+    decimal TotalReceivable,
+    decimal CurrentReceivable,
+    decimal OverdueReceivable,
+    int OverdueLoanCount,
+    IReadOnlyList<ReportReceivableLoanDto> Loans);
+
 public record ReportLoanReleaseDto(
     int LoanId,
     string LoanNumber,

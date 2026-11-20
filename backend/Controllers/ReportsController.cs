@@ -318,6 +318,118 @@ public class ReportsController : ControllerBase
         return Ok(rows);
     }
 
+    /// <summary>Receivables: outstanding amounts owed by borrowers as of a date.</summary>
+    [HttpGet("receivables")]
+    public async Task<ActionResult<ReportReceivablesDto>> Receivables(
+        [FromQuery] DateTime? asOf = null,
+        [FromQuery] int? branchId = null,
+        [FromQuery] string? agent1UserId = null,
+        [FromQuery] int? groupId = null)
+    {
+        var scope = await _branchScope.ResolveAsync(User, branchId);
+        if (scope is null) return Unauthorized();
+        if (scope.IsFieldAgent) return Forbid();
+
+        var day = (asOf ?? DateTime.UtcNow).Date;
+        await _finance.AccrueOpenItemsAsync(day);
+
+        var customers = BranchScopeService.Customers(_db.Customers.AsNoTracking(), scope);
+        if (!string.IsNullOrWhiteSpace(agent1UserId))
+            customers = customers.Where(c => c.Agent1UserId == agent1UserId);
+        if (groupId is int gid)
+            customers = customers.Where(c => c.GroupId == gid);
+
+        var loanRows = await (
+            from loan in _db.Loans.AsNoTracking()
+            join customer in customers on loan.CustomerId equals customer.Id
+            where loan.Status == LoanStatus.ApprovedFinal
+            select new
+            {
+                LoanId = loan.Id,
+                loan.LoanNumber,
+                CustomerId = customer.Id,
+                customer.FullName,
+                Agent1Name = customer.Agent1 != null ? customer.Agent1.FullName : null,
+                GroupName = customer.Group != null ? customer.Group.Name : null,
+                customer.BranchId,
+                BranchName = customer.Branch != null ? customer.Branch.Name : null,
+                Status = loan.Status.ToString(),
+                Principal = loan.Amount,
+                loan.TotalPayable
+            }
+        ).ToListAsync();
+
+        var loanIds = loanRows.Select(l => l.LoanId).ToList();
+        var paidMap = loanIds.Count == 0
+            ? new Dictionary<int, decimal>()
+            : await _db.LoanPayments.AsNoTracking()
+                .Where(p => loanIds.Contains(p.LoanId))
+                .GroupBy(p => p.LoanId)
+                .Select(g => new { LoanId = g.Key, TotalPaid = g.Sum(p => p.Amount) })
+                .ToDictionaryAsync(x => x.LoanId, x => x.TotalPaid);
+
+        var overdueSchedule = loanIds.Count == 0
+            ? new List<(int LoanId, decimal Remaining)>()
+            : (await _db.LoanScheduleItems.AsNoTracking()
+                .Where(s => loanIds.Contains(s.LoanId)
+                            && s.DueDate < day
+                            && s.PaidAmount < s.AmountDue + s.PenaltyAmount)
+                .Select(s => new { s.LoanId, Remaining = s.AmountDue + s.PenaltyAmount - s.PaidAmount })
+                .ToListAsync())
+              .Select(s => (s.LoanId, s.Remaining))
+              .ToList();
+
+        var overdueByLoan = overdueSchedule
+            .GroupBy(s => s.LoanId)
+            .ToDictionary(
+                g => g.Key,
+                g => (Remaining: g.Sum(x => x.Remaining), Count: g.Count()));
+
+        var loans = loanRows
+            .Select(l =>
+            {
+                var paid = paidMap.GetValueOrDefault(l.LoanId);
+                var receivable = Math.Max(0, l.TotalPayable - paid);
+                overdueByLoan.TryGetValue(l.LoanId, out var od);
+                var overdue = Math.Min(receivable, Math.Max(0, od.Remaining));
+                var current = Math.Max(0, receivable - overdue);
+                return new ReportReceivableLoanDto(
+                    l.LoanId,
+                    l.LoanNumber,
+                    l.CustomerId,
+                    l.FullName,
+                    l.Agent1Name,
+                    l.GroupName,
+                    l.BranchId,
+                    l.BranchName,
+                    l.Status,
+                    l.Principal,
+                    l.TotalPayable,
+                    paid,
+                    receivable,
+                    current,
+                    overdue,
+                    od.Count);
+            })
+            .Where(l => l.Receivable > 0.009m)
+            .OrderByDescending(l => l.OverdueReceivable)
+            .ThenByDescending(l => l.Receivable)
+            .ThenBy(l => l.CustomerName)
+            .ToList();
+
+        return Ok(new ReportReceivablesDto(
+            day,
+            loans.Count,
+            loans.Sum(l => l.Principal),
+            loans.Sum(l => l.TotalPayable),
+            loans.Sum(l => l.TotalPaid),
+            loans.Sum(l => l.Receivable),
+            loans.Sum(l => l.CurrentReceivable),
+            loans.Sum(l => l.OverdueReceivable),
+            loans.Count(l => l.OverdueReceivable > 0.009m),
+            loans));
+    }
+
     /// <summary>Active portfolio outstanding and overdue totals.</summary>
     [HttpGet("portfolio-summary")]
     public async Task<ActionResult<ReportPortfolioSummaryDto>> PortfolioSummary(
