@@ -378,6 +378,9 @@ export type StatementOfAccount = {
   openingBalance: number
   closingBalance: number
   lines: StatementLine[]
+  loanBalance?: number
+  primarySavingsBalance?: number
+  extraSavingsBalance?: number
 }
 
 export type ApprovalItem = {

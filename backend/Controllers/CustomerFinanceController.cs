@@ -575,7 +575,16 @@ public class CustomerFinanceController : ControllerBase
             .Where(l => l.Status == LoanStatus.ApprovedFinal || l.Status == LoanStatus.Closed)
             .Where(l => l.TotalPayable > 0)
             .OrderBy(l => l.CreatedAt)
-            .Select(l => new { l.Id, l.LoanNumber, l.TotalPayable, l.CreatedAt, l.UpdatedAt })
+            .Select(l => new
+            {
+                l.Id,
+                l.LoanNumber,
+                l.TotalPayable,
+                l.CreatedAt,
+                l.UpdatedAt,
+                l.PrimarySavingsBalance,
+                l.ExtraSavingsBalance,
+            })
             .ToListAsync();
         if (loanId is not null && loanRows.Count == 0)
         {
@@ -595,14 +604,14 @@ public class CustomerFinanceController : ControllerBase
                 .ToDictionaryAsync(x => x.LoanId, x => x.At);
 
         var payments = loanIds.Count == 0
-            ? new List<(int LoanId, DateTime PaidAt, decimal Amount, string? Reference, int Id)>()
+            ? new List<(int LoanId, DateTime PaidAt, decimal Amount, string? Reference, string? Notes, int Id)>()
             : (await _db.LoanPayments.AsNoTracking()
                 .Where(p => loanIds.Contains(p.LoanId))
                 .OrderBy(p => p.PaidAt)
                 .ThenBy(p => p.Id)
-                .Select(p => new { p.LoanId, p.PaidAt, p.Amount, p.Reference, p.Id })
+                .Select(p => new { p.LoanId, p.PaidAt, p.Amount, p.Reference, p.Notes, p.Id })
                 .ToListAsync())
-              .Select(p => (p.LoanId, p.PaidAt, p.Amount, p.Reference, p.Id))
+              .Select(p => (p.LoanId, p.PaidAt, p.Amount, p.Reference, p.Notes, p.Id))
               .ToList();
         var paymentsByLoan = payments.GroupBy(p => p.LoanId).ToDictionary(g => g.Key, g => g.ToList());
 
@@ -662,10 +671,15 @@ public class CustomerFinanceController : ControllerBase
             if (!paymentsByLoan.TryGetValue(loan.Id, out var loanPayments)) continue;
             foreach (var payment in loanPayments)
             {
+                var payDesc = $"Payment on {loan.LoanNumber}";
+                if (!string.IsNullOrWhiteSpace(payment.Reference))
+                    payDesc += $" ({payment.Reference})";
+                if (!string.IsNullOrWhiteSpace(payment.Notes))
+                    payDesc += $" — {payment.Notes}";
                 lines.Add(new StatementLineDto(
                     payment.PaidAt,
                     "Payment",
-                    $"Payment on {loan.LoanNumber}" + (string.IsNullOrWhiteSpace(payment.Reference) ? "" : $" ({payment.Reference})"),
+                    payDesc,
                     0,
                     payment.Amount,
                     0,
@@ -750,6 +764,12 @@ public class CustomerFinanceController : ControllerBase
             .Select(c => c.FullName)
             .FirstAsync();
 
+        var totalPayable = loanRows.Sum(l => l.TotalPayable);
+        var totalPaid = payments.Sum(p => p.Amount);
+        var loanBalance = Math.Max(0, totalPayable - totalPaid);
+        var primarySavings = loanRows.Sum(l => l.PrimarySavingsBalance);
+        var extraSavings = loanRows.Sum(l => l.ExtraSavingsBalance);
+
         return Ok(new StatementOfAccountDto(
             customerId,
             customerName,
@@ -758,7 +778,10 @@ public class CustomerFinanceController : ControllerBase
             DateTime.UtcNow,
             opening,
             balance,
-            ordered));
+            ordered,
+            loanBalance,
+            primarySavings,
+            extraSavings));
     }
 
     private async Task<LoanDto> MapLoanAsync(Loan loan, ApplicationUser user)

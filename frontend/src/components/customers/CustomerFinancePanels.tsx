@@ -1728,7 +1728,31 @@ export function StatementOfAccountPanel({ customerId, onError, onMessage }: Shar
               </tbody>
             </table>
           </div>
-          <div className="text-right text-sm font-semibold">Closing balance: {money(statement.closingBalance)}</div>
+          {(from || to) && (
+            <div className="text-right text-sm text-slate-600">
+              Statement closing (loan running): {money(statement.closingBalance)}
+            </div>
+          )}
+          <div className="grid gap-3 border-t border-slate-200 pt-4 sm:grid-cols-3">
+            <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+              <div className="text-xs font-medium uppercase tracking-wide text-slate-500">Loan balance</div>
+              <div className="mt-1 text-lg font-semibold tabular-nums text-slate-900">
+                {money(statement.loanBalance ?? statement.closingBalance)}
+              </div>
+            </div>
+            <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+              <div className="text-xs font-medium uppercase tracking-wide text-slate-500">Primary balance</div>
+              <div className="mt-1 text-lg font-semibold tabular-nums text-slate-900">
+                {money(statement.primarySavingsBalance ?? 0)}
+              </div>
+            </div>
+            <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+              <div className="text-xs font-medium uppercase tracking-wide text-slate-500">Extra balance</div>
+              <div className="mt-1 text-lg font-semibold tabular-nums text-slate-900">
+                {money(statement.extraSavingsBalance ?? 0)}
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
