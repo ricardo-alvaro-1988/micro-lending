@@ -98,7 +98,8 @@ public class CustomerFinanceController : ControllerBase
 
         var list = await _db.Loans.AsNoTracking()
             .Where(l => l.CustomerId == customerId)
-            .OrderByDescending(l => l.CreatedAt)
+            .OrderBy(l => l.Amount)
+            .ThenByDescending(l => l.CreatedAt)
             .Select(l => new { l.Id, l.LoanNumber, Status = l.Status.ToString() })
             .ToListAsync();
         return Ok(list);

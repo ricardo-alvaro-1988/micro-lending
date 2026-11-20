@@ -40,7 +40,8 @@ public class LoanProductsController : ControllerBase
 
         var list = await query
             .Include(p => p.Loans)
-            .OrderBy(p => p.Name)
+            .OrderBy(p => p.Amount)
+            .ThenBy(p => p.Name)
             .ToListAsync();
 
         return Ok(list.Select(p => Map(p, p.Loans.Count)).ToList());
