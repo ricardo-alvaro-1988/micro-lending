@@ -149,6 +149,12 @@ export default function App() {
           </Route>
           <Route element={<RequireAuth permission="loans.view" />}>
             <Route path="/lending/loans" element={<LoansPage />} />
+          </Route>
+          <Route
+            element={
+              <RequireAuth permission={['loans.view', 'paymentSchedule.view', 'customers.view']} />
+            }
+          >
             <Route path="/lending/loans/:loanId/agreement" element={<LoanAgreementPage />} />
           </Route>
           <Route element={<RequireAuth permission="dashboard.view" />}>

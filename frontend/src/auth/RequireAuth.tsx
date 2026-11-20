@@ -2,7 +2,7 @@ import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { PageLoading } from '../components/ListLoading'
 import { useAuth } from './AuthContext'
 
-export function RequireAuth({ permission }: { permission?: string }) {
+export function RequireAuth({ permission }: { permission?: string | string[] }) {
   const { user, loading, can } = useAuth()
   const location = useLocation()
 
@@ -18,7 +18,8 @@ export function RequireAuth({ permission }: { permission?: string }) {
     return <Navigate to="/login" replace state={{ from: location }} />
   }
 
-  if (permission && !can(permission)) {
+  const perms = permission == null ? [] : Array.isArray(permission) ? permission : [permission]
+  if (perms.length > 0 && !perms.some((p) => can(p))) {
     return <Navigate to="/dashboard" replace />
   }
 

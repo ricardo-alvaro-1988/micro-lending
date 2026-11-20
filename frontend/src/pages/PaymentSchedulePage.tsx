@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { api } from '../api/client'
 import { useAuth } from '../auth/AuthContext'
 import { useBranchScope, withBranchQuery } from '../branch/BranchContext'
@@ -66,8 +67,10 @@ type ScheduleRow = {
 const money = (n: number) =>
   n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
-function todayIso() {
+/** First day of payment defaults to the next calendar day. */
+function nextDayIso() {
   const d = new Date()
+  d.setDate(d.getDate() + 1)
   const pad = (n: number) => String(n).padStart(2, '0')
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 }
@@ -92,7 +95,7 @@ function formFromPending(item: PendingItem) {
     termCount: String(termCount),
     paymentFrequency: item.paymentFrequency || 'Daily',
     interestMethod: item.interestMethod || 'Flat',
-    firstDueDate: todayIso(),
+    firstDueDate: nextDayIso(),
     notes: item.notes ?? '',
     ...(hasCharges
       ? chargeStringsFrom(item)
@@ -104,6 +107,7 @@ function formFromPending(item: PendingItem) {
 
 export function PaymentSchedulePage() {
   const { can } = useAuth()
+  const navigate = useNavigate()
   const { filterBranchId } = useBranchScope()
   const canManage = can('paymentSchedule.manage')
   const [items, setItems] = useState<PendingItem[]>([])
@@ -121,7 +125,7 @@ export function PaymentSchedulePage() {
     termCount: '70',
     paymentFrequency: 'Daily',
     interestMethod: 'Flat',
-    firstDueDate: todayIso(),
+    firstDueDate: nextDayIso(),
     notes: '',
     ...emptyChargeStrings,
   })
@@ -180,7 +184,7 @@ export function PaymentSchedulePage() {
         interestMethod: detail.loan.interestMethod || item.interestMethod || 'Flat',
         firstDueDate: detail.loan.firstDueDate
           ? detail.loan.firstDueDate.slice(0, 10)
-          : todayIso(),
+          : nextDayIso(),
         notes: detail.loan.notes ?? '',
         ...chargeStringsFrom(detail.loan),
       })
@@ -214,10 +218,12 @@ export function PaymentSchedulePage() {
         }),
       })
       setSchedule(result.schedule ?? [])
-      toast.success(`Disbursement schedule created for ${selected.loanNumber}.`)
+      toast.success(`Schedule created for ${selected.loanNumber}. Opening print…`)
       notifyPaymentSchedulesChanged()
+      const loanId = selected.loanId
       await load()
       setSelectedId(null)
+      navigate(`/lending/loans/${loanId}/agreement?autoprint=1`)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to save disbursement schedule')
     } finally {
@@ -445,6 +451,9 @@ export function PaymentSchedulePage() {
                     required
                     disabled={!canManage}
                   />
+                  <span className="mt-0.5 block text-[11px] text-slate-500">
+                    Defaults to the next day
+                  </span>
                 </label>
                 <label className="block text-sm sm:col-span-2">
                   <span className="mb-1 block text-xs font-medium text-slate-500">Notes</span>
@@ -478,8 +487,8 @@ export function PaymentSchedulePage() {
               )}
 
               {canManage ? (
-                <ActionButton type="submit" loading={saving} loadingText="Creating…">
-                  Create disbursement schedule
+                <ActionButton type="submit" loading={saving} loadingText="Creating and opening print…">
+                  Create payment schedule & print
                 </ActionButton>
               ) : (
                 <p className="text-sm text-slate-500">You can view this queue but cannot create schedules.</p>
