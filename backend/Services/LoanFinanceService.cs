@@ -304,6 +304,10 @@ public class LoanFinanceService
         if (applyTotal > openBefore)
             applyTotal = openBefore;
 
+        // Payment slip / TotalPaid must reflect full amount applied (cash + extra-savings offset).
+        if (loanPayment is not null)
+            loanPayment.Amount = applyTotal;
+
         var previouslyPaid = loan.ScheduleItems
             .Where(s => s.Status == ScheduleItemStatus.Paid)
             .Select(s => s.Id)
