@@ -1228,6 +1228,53 @@ public record CashRemittanceDto(
     DateTime UpdatedAt,
     DateTime? ReceivedAt);
 
+/// <summary>Balancing report: field collections vs cash remitted to office (kept separate).</summary>
+public record ReportBalancingAgentDto(
+    string? AgentUserId,
+    string AgentName,
+    string? BranchName,
+    int PaymentCount,
+    /// <summary>Payments recorded by the agent in the period.</summary>
+    decimal Collected,
+    int RemittanceCount,
+    /// <summary>Cash turned in (RemittedAmount on remittance records).</summary>
+    decimal Remitted,
+    /// <summary>CollectedAmount declared on remittance slips (for cross-check only).</summary>
+    decimal RemittanceSlipCollected,
+    /// <summary>Collected − Remitted (positive = still with agent / short remittance).</summary>
+    decimal Variance,
+    decimal DraftRemitted,
+    decimal SubmittedRemitted,
+    decimal ReceivedRemitted,
+    decimal DiscrepancyRemitted);
+
+public record ReportBalancingRemittanceLineDto(
+    int RemittanceId,
+    DateTime RemittanceDate,
+    string AgentName,
+    string? BranchName,
+    /// <summary>Collected column — payments declared / slip collected.</summary>
+    decimal Collected,
+    /// <summary>Remitted column — cash turned in (separate from collected).</summary>
+    decimal Remitted,
+    decimal Variance,
+    string Status,
+    string? ReceivedByName,
+    DateTime? ReceivedAt);
+
+public record ReportBalancingResultDto(
+    DateTime From,
+    DateTime To,
+    /// <summary>Total payments recorded (collected in field).</summary>
+    decimal TotalCollected,
+    /// <summary>Total cash remitted to office (separate from collected).</summary>
+    decimal TotalRemitted,
+    decimal TotalVariance,
+    int PaymentCount,
+    int RemittanceCount,
+    IReadOnlyList<ReportBalancingAgentDto> Agents,
+    IReadOnlyList<ReportBalancingRemittanceLineDto> RemittanceLines);
+
 public class CreateCashRemittanceRequest
 {
     [Required]

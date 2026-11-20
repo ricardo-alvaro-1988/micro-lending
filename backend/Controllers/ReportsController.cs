@@ -1466,6 +1466,132 @@ public class ReportsController : ControllerBase
         return Ok(rows);
     }
 
+    /// <summary>
+    /// Balancing report: field <c>Collected</c> (payments recorded) vs office <c>Remitted</c>
+    /// (cash remittance RemittedAmount). Columns are kept separate — not netted into one figure.
+    /// </summary>
+    [HttpGet("balancing")]
+    public async Task<ActionResult<ReportBalancingResultDto>> Balancing(
+        [FromQuery] DateTime? from = null,
+        [FromQuery] DateTime? to = null,
+        [FromQuery] int? branchId = null,
+        [FromQuery] string? agentUserId = null)
+    {
+        var scope = await _branchScope.ResolveAsync(User, branchId);
+        if (scope is null) return Unauthorized();
+        if (scope.IsFieldAgent) return Forbid();
+
+        var start = (from ?? DateTime.UtcNow.Date).Date;
+        var end = (to ?? start).Date;
+        var endExclusive = end.AddDays(1);
+
+        var remittanceQuery = _db.CashRemittances.AsNoTracking()
+            .Include(r => r.AgentUser)
+            .Include(r => r.Branch)
+            .Include(r => r.ReceivedByUser)
+            .Where(r => r.RemittanceDate >= start && r.RemittanceDate < endExclusive);
+
+        if (scope.EffectiveBranchId is int bid)
+            remittanceQuery = remittanceQuery.Where(r => r.BranchId == bid);
+        else if (!scope.IsAdmin && scope.UserBranchId is null)
+            remittanceQuery = remittanceQuery.Where(_ => false);
+
+        if (!string.IsNullOrWhiteSpace(agentUserId))
+            remittanceQuery = remittanceQuery.Where(r => r.AgentUserId == agentUserId);
+
+        var remittances = await remittanceQuery
+            .OrderBy(r => r.RemittanceDate)
+            .ThenBy(r => r.AgentUser.FullName)
+            .ToListAsync();
+
+        // Payments recorded by agents in period (Collected). Scope by recorder branch when possible.
+        var paymentQuery =
+            from p in _db.LoanPayments.AsNoTracking()
+            join u in _db.Users.AsNoTracking() on p.RecordedByUserId equals u.Id
+            where p.PaidAt >= start && p.PaidAt < endExclusive
+            select new { p.RecordedByUserId, RecorderName = u.FullName, u.BranchId, BranchName = u.Branch != null ? u.Branch.Name : null, p.Amount };
+
+        if (scope.EffectiveBranchId is int payBid)
+            paymentQuery = paymentQuery.Where(x => x.BranchId == payBid);
+        else if (!scope.IsAdmin && scope.UserBranchId is null)
+            paymentQuery = paymentQuery.Where(_ => false);
+
+        if (!string.IsNullOrWhiteSpace(agentUserId))
+            paymentQuery = paymentQuery.Where(x => x.RecordedByUserId == agentUserId);
+
+        var payments = await paymentQuery.ToListAsync();
+
+        var agentIds = remittances.Select(r => r.AgentUserId)
+            .Concat(payments.Select(p => p.RecordedByUserId))
+            .Distinct()
+            .ToList();
+
+        var agentMeta = await _db.Users.AsNoTracking()
+            .Where(u => agentIds.Contains(u.Id))
+            .Select(u => new
+            {
+                u.Id,
+                u.FullName,
+                BranchName = u.Branch != null ? u.Branch.Name : null
+            })
+            .ToDictionaryAsync(u => u.Id);
+
+        var agents = agentIds
+            .Select(id =>
+            {
+                var name = agentMeta.TryGetValue(id, out var meta) ? meta.FullName : "(Unknown)";
+                var branchName = agentMeta.TryGetValue(id, out var m2) ? m2.BranchName : null;
+                var payRows = payments.Where(p => p.RecordedByUserId == id).ToList();
+                var remRows = remittances.Where(r => r.AgentUserId == id).ToList();
+                var collected = payRows.Sum(p => p.Amount);
+                // Remitted = cash turned in only (never use CollectedAmount here).
+                var remitted = remRows.Sum(r => r.RemittedAmount);
+                var slipCollected = remRows.Sum(r => r.CollectedAmount);
+                return new ReportBalancingAgentDto(
+                    id,
+                    name,
+                    branchName ?? remRows.FirstOrDefault()?.Branch?.Name,
+                    payRows.Count,
+                    collected,
+                    remRows.Count,
+                    remitted,
+                    slipCollected,
+                    collected - remitted,
+                    remRows.Where(r => r.Status == CashRemittanceStatus.Draft).Sum(r => r.RemittedAmount),
+                    remRows.Where(r => r.Status == CashRemittanceStatus.Submitted).Sum(r => r.RemittedAmount),
+                    remRows.Where(r => r.Status == CashRemittanceStatus.Received).Sum(r => r.RemittedAmount),
+                    remRows.Where(r => r.Status == CashRemittanceStatus.Discrepancy).Sum(r => r.RemittedAmount));
+            })
+            .OrderBy(a => a.AgentName)
+            .ToList();
+
+        var lines = remittances.Select(r => new ReportBalancingRemittanceLineDto(
+            r.Id,
+            r.RemittanceDate,
+            r.AgentUser.FullName,
+            r.Branch?.Name,
+            r.CollectedAmount,
+            r.RemittedAmount,
+            r.Variance,
+            r.Status.ToString(),
+            r.ReceivedByUser?.FullName,
+            r.ReceivedAt)).ToList();
+
+        var totalCollected = payments.Sum(p => p.Amount);
+        var totalRemitted = remittances.Sum(r => r.RemittedAmount);
+
+        return Ok(new ReportBalancingResultDto(
+            start,
+            end,
+            totalCollected,
+            totalRemitted,
+            totalCollected - totalRemitted,
+            payments.Count,
+            remittances.Count,
+            agents,
+            lines));
+    }
+
     private static string AgingBucket(int daysPastDue) => daysPastDue switch
     {
         <= 7 => "1-7",
