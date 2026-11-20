@@ -55,6 +55,11 @@ const reports = [
         blurb: 'Beginning + remitted − disbursement − expenses = cash on hand.',
       },
       {
+        to: '/reports/receivables',
+        title: 'Receivables report',
+        blurb: 'Outstanding loan balances owed by borrowers — current vs overdue.',
+      },
+      {
         to: '/reports/expected-vs-actual',
         title: 'Expected vs actual',
         blurb: 'Daily schedule due compared with payments received.',

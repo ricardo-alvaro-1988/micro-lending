@@ -105,6 +105,7 @@ public static class DbSeeder
             ("reports-disbursement", "Daily Loan Disbursement", "/reports/daily-disbursement", "Reports", 23, "reports.view"),
             ("reports-balancing", "Balancing Report", "/reports/balancing", "Reports", 23, "reports.view"),
             ("reports-cashflow", "Cashflow Report", "/reports/cashflow", "Reports", 23, "reports.view"),
+            ("reports-receivables", "Receivables Report", "/reports/receivables", "Reports", 23, "reports.view"),
             ("reports-expected", "Expected vs Actual", "/reports/expected-vs-actual", "Reports", 24, "reports.view"),
             ("reports-par", "Portfolio at Risk", "/reports/par", "Reports", 25, "reports.view"),
             ("reports-closed", "Closed Loans", "/reports/closed-loans", "Reports", 26, "reports.view"),
