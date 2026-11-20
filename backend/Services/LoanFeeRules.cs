@@ -7,12 +7,12 @@ namespace MicroLending.Api.Services;
 /// notarial 5k=100 +5/1k; loan redemption 5k=70 +15/1k; processing 5k=100 +10/1k;
 /// savings = principal×10%/terms; initial savings 2%; insurance brackets;
 /// tax 1%; membership 125 on cycle 1 only (0 when cycle &gt; 1);
-/// interest 12% with principal/interest rounded to tens;
+/// interest 12.5% with principal/interest rounded to tens;
 /// daily principal / interest / savings / insurance rounded to whole pesos.
 /// </summary>
 public static class LoanFeeRules
 {
-    public const decimal DefaultInterestRatePercent = 12m;
+    public const decimal DefaultInterestRatePercent = 12.5m;
     public const decimal MembershipFeeAmount = 125m;
     public const decimal DefaultInsurancePerPeriod = 5m;
 

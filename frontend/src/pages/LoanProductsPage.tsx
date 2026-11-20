@@ -166,7 +166,7 @@ export function LoanProductsPage() {
         <div>
           <h2 className="text-xl font-semibold">Loan Products</h2>
           <p className="text-sm text-slate-500">
-            Templates with fee rules: notarial, processing, loan redemption, savings, insurance, tax, 12%
+            Templates with fee rules: notarial, processing, loan redemption, savings, insurance, tax, 12.5%
             interest (round to tens).
           </p>
         </div>
@@ -340,7 +340,7 @@ export function LoanProductsPage() {
               }}
               disabled={!canManage}
             />
-            Auto-calculate fees from principal (notarial, processing, redemption, savings, insurance, tax, 12%)
+            Auto-calculate fees from principal (notarial, processing, redemption, savings, insurance, tax, 12.5%)
           </label>
 
           <div>

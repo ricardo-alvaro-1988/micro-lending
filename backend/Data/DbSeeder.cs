@@ -470,7 +470,7 @@ public static class DbSeeder
             var daily10k = new LoanProduct
             {
                 Name = "Daily 10,000",
-                Description = "₱10,000 · 70 days · 12% flat · redemption 5k=70 +15/1k · processing 5k=100 +10/1k",
+                Description = "₱10,000 · 70 days · 12.5% flat · redemption 5k=70 +15/1k · processing 5k=100 +10/1k",
                 Amount = 10000,
                 TermCount = 70,
                 PaymentFrequency = PaymentFrequency.Daily,
@@ -482,7 +482,7 @@ public static class DbSeeder
             var daily15k = new LoanProduct
             {
                 Name = "Daily 15,000",
-                Description = "₱15,000 · 70 days · 12% flat · redemption 5k=70 +15/1k · processing 5k=100 +10/1k",
+                Description = "₱15,000 · 70 days · 12.5% flat · redemption 5k=70 +15/1k · processing 5k=100 +10/1k",
                 Amount = 15000,
                 TermCount = 70,
                 PaymentFrequency = PaymentFrequency.Daily,

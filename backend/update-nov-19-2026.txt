@@ -26,7 +26,7 @@ tax = principal * 1%
 membership fee = 125
 if the loan cycle is more than 1 = no membership fee
 ====
-12% as interest rate round of tens
+12.5% as interest rate round of tens
 the principal should be round off as well
 ====
 daily payment round off to whole pesos

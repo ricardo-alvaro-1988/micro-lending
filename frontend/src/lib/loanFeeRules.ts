@@ -1,6 +1,6 @@
 /** Fee formulas from update-nov-19-2026 (loan products). */
 
-export const DEFAULT_INTEREST_RATE_PERCENT = 12
+export const DEFAULT_INTEREST_RATE_PERCENT = 12.5
 export const MEMBERSHIP_FEE_AMOUNT = 125
 export const DEFAULT_INSURANCE_PER_PERIOD = 5
 
