@@ -31,7 +31,7 @@ public class LoanProduct
     public decimal LoanRedemptionFee { get; set; }
     public decimal Taxes { get; set; }
     public decimal NotarialFee { get; set; }
-    public decimal Raffle { get; set; }
+    public decimal Raffle { get; set; } = 70m;
 
     public bool IsActive { get; set; } = true;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

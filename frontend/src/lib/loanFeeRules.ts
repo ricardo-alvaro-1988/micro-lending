@@ -3,6 +3,7 @@
 export const DEFAULT_INTEREST_RATE_PERCENT = 12.5
 export const MEMBERSHIP_FEE_AMOUNT = 125
 export const DEFAULT_INSURANCE_PER_PERIOD = 5
+export const DEFAULT_RAFFLE = 70
 
 /** Membership is charged only on the first loan cycle. */
 export function membershipFeeFor(cycle?: number | null): number {
@@ -115,7 +116,7 @@ export function computeLoanFees(
     loanRedemptionFee: loanRedemptionFeeFor(principal),
     taxes: round2(principal * 0.01),
     notarialFee: notarialFeeFor(principal),
-    raffle: 0,
+    raffle: DEFAULT_RAFFLE,
   }
 }
 

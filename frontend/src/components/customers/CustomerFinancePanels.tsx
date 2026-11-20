@@ -125,6 +125,11 @@ export function LoanApplicationPanel({ customerId, onError, onMessage }: SharedP
     setSelectedLoanId(null)
     setApprovals([])
     setFieldNotes([])
+    setForm((prev) => ({
+      ...prev,
+      applicationDate: localDateTimeInputValue(),
+      approvedAmount: prev.approvedAmount || prev.amount,
+    }))
     load().catch((err) => onError(err instanceof Error ? err.message : 'Failed to load loans'))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [customerId])
@@ -162,9 +167,12 @@ export function LoanApplicationPanel({ customerId, onError, onMessage }: SharedP
           applicationType: form.applicationType || null,
           cycle: form.cycle ? Number(form.cycle) : null,
           approvedAmount: Number(form.approvedAmount || form.amount || 0) || null,
-          applicationDate: form.applicationDate
-            ? new Date(form.applicationDate).toISOString()
-            : new Date().toISOString(),
+          applicationDate: (() => {
+            const raw = form.applicationDate?.trim()
+            if (!raw) return new Date().toISOString()
+            const parsed = new Date(raw)
+            return Number.isNaN(parsed.getTime()) ? new Date().toISOString() : parsed.toISOString()
+          })(),
           firstDueDate: form.firstDueDate || null,
           notes: form.notes || null,
           collaterals: collaterals
@@ -375,8 +383,13 @@ export function LoanApplicationPanel({ customerId, onError, onMessage }: SharedP
               <input
                 className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
                 type="datetime-local"
-                value={form.applicationDate}
-                onChange={(e) => setForm({ ...form, applicationDate: e.target.value })}
+                value={form.applicationDate || localDateTimeInputValue()}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    applicationDate: e.target.value || localDateTimeInputValue(),
+                  })
+                }
                 required
               />
             </label>

@@ -15,6 +15,7 @@ public static class LoanFeeRules
     public const decimal DefaultInterestRatePercent = 12.5m;
     public const decimal MembershipFeeAmount = 125m;
     public const decimal DefaultInsurancePerPeriod = 5m;
+    public const decimal DefaultRaffle = 70m;
 
     /// <summary>Membership is charged only on the first loan cycle.</summary>
     public static decimal MembershipFeeFor(int? cycle) =>
@@ -74,7 +75,7 @@ public static class LoanFeeRules
             LoanRedemptionFee: LoanRedemptionFeeFor(principal),
             Taxes: decimal.Round(principal * 0.01m, 2, MidpointRounding.AwayFromZero),
             NotarialFee: NotarialFeeFor(principal),
-            Raffle: 0);
+            Raffle: DefaultRaffle);
     }
 
     public static void ApplyComputedFees(
