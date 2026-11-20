@@ -13,7 +13,7 @@ public class LoanProduct
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }
     public decimal Amount { get; set; }
-    public decimal InterestRatePercent { get; set; } = 12m;
+    public decimal InterestRatePercent { get; set; } = 12.5m;
     public int TermCount { get; set; } = 70;
     public PaymentFrequency PaymentFrequency { get; set; } = PaymentFrequency.Daily;
     public InterestMethod InterestMethod { get; set; } = InterestMethod.Flat;
