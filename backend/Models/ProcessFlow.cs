@@ -393,7 +393,12 @@ public class LoanPayment
     public int Id { get; set; }
     public int LoanId { get; set; }
     public Loan Loan { get; set; } = null!;
+    /// <summary>Cash (or method) amount actually remitted — does not include extra-savings offset.</summary>
     public decimal Amount { get; set; }
+    /// <summary>Portion covered from extra (daily) savings for this payment.</summary>
+    public decimal ExtraSavingsOffset { get; set; }
+    /// <summary>Cash + extra-savings offset applied to the loan schedule.</summary>
+    public decimal AppliedAmount => Amount + ExtraSavingsOffset;
     public DateTime PaidAt { get; set; } = DateTime.UtcNow;
     public string? Method { get; set; }
     public string? Reference { get; set; }

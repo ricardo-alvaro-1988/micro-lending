@@ -116,7 +116,7 @@ public class LoansController : ControllerBase
             : await _db.LoanPayments.AsNoTracking()
                 .Where(p => loanIds.Contains(p.LoanId))
                 .GroupBy(p => p.LoanId)
-                .Select(g => new { LoanId = g.Key, Total = g.Sum(p => p.Amount) })
+                .Select(g => new { LoanId = g.Key, Total = g.Sum(p => p.Amount + p.ExtraSavingsOffset) })
                 .ToDictionaryAsync(x => x.LoanId, x => x.Total);
 
         var approverCtx = await _workflow.GetApproverContextAsync(user);
@@ -514,7 +514,7 @@ public class LoansController : ControllerBase
         if (loan.CurrentStage is not null)
             await _workflow.EnsureStageApproversLoadedAsync(loan.CurrentStage);
         var ctx = await _workflow.GetApproverContextAsync(user);
-        var totalPaid = loan.Payments?.Sum(p => p.Amount) ?? 0;
+        var totalPaid = loan.Payments?.Sum(p => p.Amount + p.ExtraSavingsOffset) ?? 0;
         return MapLoan(loan, ctx, totalPaid);
     }
 
@@ -626,7 +626,8 @@ public class LoansController : ControllerBase
                 p.Reference,
                 p.Notes,
                 p.RecordedByUser?.FullName ?? "",
-                p.CreatedAt))
+                p.CreatedAt,
+                p.ExtraSavingsOffset))
             .ToList();
 
     private static IReadOnlyList<LoanApprovalHistoryDto> MapApprovals(Loan loan) =>

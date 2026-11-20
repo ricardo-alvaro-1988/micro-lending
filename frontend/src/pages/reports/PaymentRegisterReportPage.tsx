@@ -9,6 +9,7 @@ type Row = {
   paymentId: number
   paidAt: string
   amount: number
+  extraSavingsOffset?: number
   method?: string | null
   reference?: string | null
   recordedBy: string
@@ -51,37 +52,59 @@ export function PaymentRegisterReportPage() {
   }, [load])
 
   const totals = useMemo(() => {
-    let total = 0
     let cash = 0
+    let cashMethod = 0
+    let applied = 0
+    let offset = 0
     for (const r of rows) {
-      total += r.amount
-      if ((r.method ?? '').toLowerCase() === 'cash') cash += r.amount
+      const extra = r.extraSavingsOffset ?? 0
+      cash += r.amount
+      offset += extra
+      applied += r.amount + extra
+      if ((r.method ?? '').toLowerCase() === 'cash') cashMethod += r.amount
     }
-    return { total, cash }
+    return { cash, cashMethod, applied, offset }
   }, [rows])
 
   return (
     <ReportChrome
       title="Payment register"
-      description="Posted payments for the selected period."
+      description="Posted payments for the selected period. Amount is cash received; extra savings offset is separate."
       loading={loading}
       error={error}
       onRefresh={() => void load()}
       onExport={() =>
         downloadCsv(
           `payment-register-${from}_${to}.csv`,
-          ['Paid at', 'Amount', 'Method', 'Reference', 'Recorded by', 'Customer', 'Agent', 'Loan', 'Branch'],
-          rows.map((r) => [
-            r.paidAt,
-            r.amount,
-            r.method,
-            r.reference,
-            r.recordedBy,
-            r.customerName,
-            r.agent1Name,
-            r.loanNumber,
-            r.branchName,
-          ]),
+          [
+            'Paid at',
+            'Cash amount',
+            'Extra savings offset',
+            'Applied',
+            'Method',
+            'Reference',
+            'Recorded by',
+            'Customer',
+            'Agent',
+            'Loan',
+            'Branch',
+          ],
+          rows.map((r) => {
+            const extra = r.extraSavingsOffset ?? 0
+            return [
+              r.paidAt,
+              r.amount,
+              extra,
+              r.amount + extra,
+              r.method,
+              r.reference,
+              r.recordedBy,
+              r.customerName,
+              r.agent1Name,
+              r.loanNumber,
+              r.branchName,
+            ]
+          }),
         )
       }
       filters={
@@ -115,13 +138,14 @@ export function PaymentRegisterReportPage() {
       summary={
         <ReportSummary>
           <ReportStat label="Payments" value={String(rows.length)} />
-          <ReportStat label="Total amount" value={money(totals.total)} />
-          <ReportStat label="Cash total" value={money(totals.cash)} hint="method = Cash" />
+          <ReportStat label="Cash total" value={money(totals.cashMethod)} hint="method = Cash" />
+          <ReportStat label="Applied total" value={money(totals.applied)} hint="cash + extra offset" />
         </ReportSummary>
       }
     >
       <div className="border-b border-slate-100 px-4 py-2 text-sm text-slate-600">
-        {rows.length} payment(s) · total {money(totals.total)}
+        {rows.length} payment(s) · cash {money(totals.cash)}
+        {totals.offset > 0 ? ` · offset ${money(totals.offset)} · applied ${money(totals.applied)}` : ''}
       </div>
       <div className="overflow-x-auto">
         <table className="min-w-full text-left text-sm">
@@ -132,32 +156,39 @@ export function PaymentRegisterReportPage() {
               <th className="px-3 py-2">Loan</th>
               <th className="px-3 py-2">Method</th>
               <th className="px-3 py-2">Recorded by</th>
-              <th className="px-3 py-2 text-right">Amount</th>
+              <th className="px-3 py-2 text-right">Cash</th>
+              <th className="px-3 py-2 text-right">Offset</th>
+              <th className="px-3 py-2 text-right">Applied</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-3 py-8 text-center text-slate-500">
+                <td colSpan={8} className="px-3 py-8 text-center text-slate-500">
                   No payments in this range.
                 </td>
               </tr>
             ) : (
-              rows.map((r) => (
-                <tr key={r.paymentId}>
-                  <td className="px-3 py-2 whitespace-nowrap">
-                    {new Date(r.paidAt).toLocaleString()}
-                  </td>
-                  <td className="px-3 py-2">
-                    <div className="font-medium">{r.customerName}</div>
-                    <div className="text-xs text-slate-500">{r.agent1Name || '—'}</div>
-                  </td>
-                  <td className="px-3 py-2">{r.loanNumber}</td>
-                  <td className="px-3 py-2">{r.method || '—'}</td>
-                  <td className="px-3 py-2">{r.recordedBy}</td>
-                  <td className="px-3 py-2 text-right font-medium">{money(r.amount)}</td>
-                </tr>
-              ))
+              rows.map((r) => {
+                const extra = r.extraSavingsOffset ?? 0
+                return (
+                  <tr key={r.paymentId}>
+                    <td className="px-3 py-2 whitespace-nowrap">
+                      {new Date(r.paidAt).toLocaleString()}
+                    </td>
+                    <td className="px-3 py-2">
+                      <div className="font-medium">{r.customerName}</div>
+                      <div className="text-xs text-slate-500">{r.agent1Name || '—'}</div>
+                    </td>
+                    <td className="px-3 py-2">{r.loanNumber}</td>
+                    <td className="px-3 py-2">{r.method || '—'}</td>
+                    <td className="px-3 py-2">{r.recordedBy}</td>
+                    <td className="px-3 py-2 text-right font-medium">{money(r.amount)}</td>
+                    <td className="px-3 py-2 text-right text-slate-600">{extra > 0 ? money(extra) : '—'}</td>
+                    <td className="px-3 py-2 text-right font-medium">{money(r.amount + extra)}</td>
+                  </tr>
+                )
+              })
             )}
           </tbody>
         </table>

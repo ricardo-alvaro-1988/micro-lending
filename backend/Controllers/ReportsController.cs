@@ -312,7 +312,8 @@ public class ReportsController : ControllerBase
                 x.loan.Id,
                 x.loan.LoanNumber,
                 x.customer.BranchId,
-                x.customer.Branch != null ? x.customer.Branch.Name : null))
+                x.customer.Branch != null ? x.customer.Branch.Name : null,
+                x.pay.ExtraSavingsOffset))
             .ToListAsync();
 
         return Ok(rows);
@@ -365,7 +366,7 @@ public class ReportsController : ControllerBase
             : await _db.LoanPayments.AsNoTracking()
                 .Where(p => loanIds.Contains(p.LoanId))
                 .GroupBy(p => p.LoanId)
-                .Select(g => new { LoanId = g.Key, TotalPaid = g.Sum(p => p.Amount) })
+                .Select(g => new { LoanId = g.Key, TotalPaid = g.Sum(p => p.Amount + p.ExtraSavingsOffset) })
                 .ToDictionaryAsync(x => x.LoanId, x => x.TotalPaid);
 
         var overdueSchedule = loanIds.Count == 0
@@ -477,7 +478,7 @@ public class ReportsController : ControllerBase
         var payments = await _db.LoanPayments.AsNoTracking()
             .Where(p => loanIds.Contains(p.LoanId))
             .GroupBy(p => p.LoanId)
-            .Select(g => new { LoanId = g.Key, TotalPaid = g.Sum(p => p.Amount) })
+            .Select(g => new { LoanId = g.Key, TotalPaid = g.Sum(p => p.Amount + p.ExtraSavingsOffset) })
             .ToListAsync();
         var paidMap = payments.ToDictionary(p => p.LoanId, p => p.TotalPaid);
 
@@ -888,7 +889,7 @@ public class ReportsController : ControllerBase
         var paidMap = await _db.LoanPayments.AsNoTracking()
             .Where(p => loanIds.Contains(p.LoanId))
             .GroupBy(p => p.LoanId)
-            .Select(g => new { LoanId = g.Key, Paid = g.Sum(x => x.Amount) })
+            .Select(g => new { LoanId = g.Key, Paid = g.Sum(x => x.Amount + x.ExtraSavingsOffset) })
             .ToDictionaryAsync(x => x.LoanId, x => x.Paid);
 
         var overdueItems = await _db.LoanScheduleItems.AsNoTracking()
@@ -984,7 +985,7 @@ public class ReportsController : ControllerBase
         var paidTotals = await _db.LoanPayments.AsNoTracking()
             .Where(p => closedIds.Contains(p.LoanId))
             .GroupBy(p => p.LoanId)
-            .Select(g => new { LoanId = g.Key, Paid = g.Sum(x => x.Amount) })
+            .Select(g => new { LoanId = g.Key, Paid = g.Sum(x => x.Amount + x.ExtraSavingsOffset) })
             .ToDictionaryAsync(x => x.LoanId, x => x.Paid);
 
         var results = closedActs.Select(x => new ReportClosedLoanDto(
@@ -1023,14 +1024,14 @@ public class ReportsController : ControllerBase
         {
             var pays = await _db.LoanPayments.AsNoTracking()
                 .Where(p => activeIds.Contains(p.LoanId))
-                .Select(p => new { p.LoanId, p.Amount, p.PaidAt })
+                .Select(p => new { p.LoanId, Applied = p.Amount + p.ExtraSavingsOffset, p.PaidAt })
                 .ToListAsync();
             var byLoan = pays.GroupBy(p => p.LoanId).ToDictionary(g => g.Key, g => g.ToList());
 
             foreach (var row in active)
             {
                 if (!byLoan.TryGetValue(row.LoanId, out var list) || list.Count == 0) continue;
-                var totalPaid = list.Sum(p => p.Amount);
+                var totalPaid = list.Sum(p => p.Applied);
                 if (totalPaid + 0.009m < row.TotalPayable) continue;
                 var lastPay = list.Max(p => p.PaidAt);
                 if (lastPay < start || lastPay >= endExclusive) continue;
@@ -1117,7 +1118,7 @@ public class ReportsController : ControllerBase
             : await _db.LoanPayments.AsNoTracking()
                 .Where(p => loanIds.Contains(p.LoanId))
                 .GroupBy(p => p.LoanId)
-                .Select(g => new { LoanId = g.Key, Total = g.Sum(p => p.Amount) })
+                .Select(g => new { LoanId = g.Key, Total = g.Sum(p => p.Amount + p.ExtraSavingsOffset) })
                 .ToDictionaryAsync(x => x.LoanId, x => x.Total);
 
         var rows = raw.Select(x =>
@@ -1258,7 +1259,7 @@ public class ReportsController : ControllerBase
                         "Payment",
                         $"Payment on {row.loan.LoanNumber}" + (string.IsNullOrWhiteSpace(p.Reference) ? "" : $" ({p.Reference})"),
                         0,
-                        p.Amount));
+                        p.Amount + p.ExtraSavingsOffset));
                 }
             }
 

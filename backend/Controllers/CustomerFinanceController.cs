@@ -77,7 +77,7 @@ public class CustomerFinanceController : ControllerBase
             : await _db.LoanPayments.AsNoTracking()
                 .Where(p => loanIds.Contains(p.LoanId))
                 .GroupBy(p => p.LoanId)
-                .Select(g => new { LoanId = g.Key, Total = g.Sum(p => p.Amount) })
+                .Select(g => new { LoanId = g.Key, Total = g.Sum(p => p.Amount + p.ExtraSavingsOffset) })
                 .ToDictionaryAsync(x => x.LoanId, x => x.Total);
 
         var approverCtx = await _workflow.GetApproverContextAsync(user);
@@ -243,7 +243,7 @@ public class CustomerFinanceController : ControllerBase
             var cash = decimal.Round(request.Amount, 2);
             var payment = new LoanPayment
             {
-                Amount = cash, // raised to cash + extra offset inside ApplyPaymentAsync when used
+                Amount = cash, // cash only; ExtraSavingsOffset set inside ApplyPaymentAsync
                 PaidAt = (request.PaidAt ?? DateTime.UtcNow).ToUniversalTime(),
                 Method = method,
                 Reference = string.IsNullOrWhiteSpace(request.Reference) ? null : request.Reference.Trim(),
@@ -515,7 +515,7 @@ public class CustomerFinanceController : ControllerBase
             : await _db.LoanPayments.AsNoTracking()
                 .Where(p => loanIds.Contains(p.LoanId))
                 .GroupBy(p => p.LoanId)
-                .Select(g => new { LoanId = g.Key, Total = g.Sum(p => p.Amount) })
+                .Select(g => new { LoanId = g.Key, Total = g.Sum(p => p.Amount + p.ExtraSavingsOffset) })
                 .ToDictionaryAsync(x => x.LoanId, x => x.Total);
 
         var today = DateTime.UtcNow.Date;
@@ -609,7 +609,15 @@ public class CustomerFinanceController : ControllerBase
                 .Where(p => loanIds.Contains(p.LoanId))
                 .OrderBy(p => p.PaidAt)
                 .ThenBy(p => p.Id)
-                .Select(p => new { p.LoanId, p.PaidAt, p.Amount, p.Reference, p.Notes, p.Id })
+                .Select(p => new
+                {
+                    p.LoanId,
+                    p.PaidAt,
+                    Amount = p.Amount + p.ExtraSavingsOffset,
+                    p.Reference,
+                    p.Notes,
+                    p.Id,
+                })
                 .ToListAsync())
               .Select(p => (p.LoanId, p.PaidAt, p.Amount, p.Reference, p.Notes, p.Id))
               .ToList();
@@ -788,6 +796,7 @@ public class CustomerFinanceController : ControllerBase
             .FirstAsync();
 
         var totalPayable = loanRows.Sum(l => l.TotalPayable);
+        // Statement payment lines already store applied (cash + ExtraSavingsOffset).
         var totalPaid = payments.Sum(p => p.Amount);
         var loanBalance = Math.Max(0, totalPayable - totalPaid);
         var primarySavings = loanRows.Sum(l => l.PrimarySavingsBalance);
@@ -811,7 +820,7 @@ public class CustomerFinanceController : ControllerBase
     {
         if (loan.CurrentStage is not null)
             await _workflow.EnsureStageApproversLoadedAsync(loan.CurrentStage);
-        var totalPaid = loan.Payments?.Sum(p => p.Amount) ?? 0;
+        var totalPaid = loan.Payments?.Sum(p => p.Amount + p.ExtraSavingsOffset) ?? 0;
         var ctx = await _workflow.GetApproverContextAsync(user);
         return MapLoan(loan, ctx, totalPaid);
     }
@@ -903,7 +912,8 @@ public class CustomerFinanceController : ControllerBase
                 p.Reference,
                 p.Notes,
                 p.RecordedByUser?.FullName ?? "",
-                p.CreatedAt))
+                p.CreatedAt,
+                p.ExtraSavingsOffset))
             .ToList();
 
     private static IReadOnlyList<LoanApprovalHistoryDto> MapApprovals(Loan loan) =>

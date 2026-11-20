@@ -304,9 +304,12 @@ public class LoanFinanceService
         if (applyTotal > openBefore)
             applyTotal = openBefore;
 
-        // Payment slip / TotalPaid must reflect full amount applied (cash + extra-savings offset).
+        // Keep Amount as cash only; ExtraSavingsOffset is the savings cover (payment register / remittance).
         if (loanPayment is not null)
-            loanPayment.Amount = applyTotal;
+        {
+            loanPayment.Amount = cash;
+            loanPayment.ExtraSavingsOffset = extraOffset;
+        }
 
         var previouslyPaid = loan.ScheduleItems
             .Where(s => s.Status == ScheduleItemStatus.Paid)

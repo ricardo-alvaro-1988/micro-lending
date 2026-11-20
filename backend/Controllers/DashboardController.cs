@@ -106,7 +106,7 @@ public class DashboardController : ControllerBase
             : await _db.LoanPayments.AsNoTracking()
                 .Where(p => activeIds.Contains(p.LoanId))
                 .GroupBy(p => p.LoanId)
-                .Select(g => new { LoanId = g.Key, Paid = g.Sum(x => x.Amount) })
+                .Select(g => new { LoanId = g.Key, Paid = g.Sum(x => x.Amount + x.ExtraSavingsOffset) })
                 .ToDictionaryAsync(x => x.LoanId, x => x.Paid);
 
         var outstanding = activeLoans.Sum(l =>
