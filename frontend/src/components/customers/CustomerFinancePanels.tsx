@@ -1346,7 +1346,7 @@ export function RecordPaymentPanel({
               disabled={(selected?.extraSavingsBalance ?? 0) <= 0}
               onChange={(e) => setPayForm({ ...payForm, useExtraSavings: e.target.checked })}
             />
-            Use extra (daily) savings to cover shortfall
+            Use extra (daily) savings to cover shortfall — primary (initial) savings are never deducted
           </label>
           <input
             className="rounded-md border border-slate-300 px-3 py-2 text-sm md:col-span-2"

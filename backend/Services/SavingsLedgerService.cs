@@ -43,13 +43,23 @@ public class SavingsLedgerService
         var amount = decimal.Round(signedAmount, 2, MidpointRounding.AwayFromZero);
         if (amount == 0) return kind == SavingsKind.Primary ? loan.PrimarySavingsBalance : loan.ExtraSavingsBalance;
 
+        // Primary (= initial savings) is ring-fenced: credits only, never deductions/offsets.
+        if (kind == SavingsKind.Primary && amount < 0)
+            throw new InvalidOperationException("Primary savings cannot be deducted. Use extra savings for underpayment offsets.");
+        if (kind == SavingsKind.Primary
+            && type is not (SavingsTransactionType.InitialSavings or SavingsTransactionType.ManualAdjust))
+            throw new InvalidOperationException("Primary savings only accepts initial savings (or manual credit adjustments).");
+        if (kind == SavingsKind.Primary && type == SavingsTransactionType.ManualAdjust && amount < 0)
+            throw new InvalidOperationException("Primary savings cannot be reduced.");
+
+        // Underpay offsets must always post to Extra, never Primary.
+        if (type == SavingsTransactionType.UnderpayOffset && kind != SavingsKind.Extra)
+            throw new InvalidOperationException("Underpayment offsets can only deduct from extra savings.");
+
         var balance = kind == SavingsKind.Primary ? loan.PrimarySavingsBalance : loan.ExtraSavingsBalance;
         var next = decimal.Round(balance + amount, 2, MidpointRounding.AwayFromZero);
         if (next < 0)
-            throw new InvalidOperationException(
-                kind == SavingsKind.Extra
-                    ? "Insufficient extra savings balance."
-                    : "Insufficient primary savings balance.");
+            throw new InvalidOperationException("Insufficient extra savings balance.");
 
         if (kind == SavingsKind.Primary)
             loan.PrimarySavingsBalance = next;

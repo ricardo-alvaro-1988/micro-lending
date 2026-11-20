@@ -289,7 +289,7 @@ function GroupDayCollection({
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[960px] text-left text-sm">
+          <table className="w-full min-w-[1020px] text-left text-sm">
             <thead className="bg-slate-50 text-slate-600">
               <tr>
                 <th className="px-3 py-2 font-medium">Pay</th>
@@ -299,7 +299,8 @@ function GroupDayCollection({
                 <th className="px-3 py-2 font-medium">Due</th>
                 <th className="px-3 py-2 font-medium">Remaining</th>
                 <th className="px-3 py-2 font-medium">Cash</th>
-                <th className="px-3 py-2 font-medium">Extra sav.</th>
+                <th className="px-3 py-2 font-medium">Primary</th>
+                <th className="px-3 py-2 font-medium">Extra</th>
                 <th className="px-3 py-2 font-medium">Use extra</th>
                 <th className="px-3 py-2 font-medium">Result</th>
               </tr>
@@ -307,13 +308,13 @@ function GroupDayCollection({
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={10} className="px-4 py-8 text-center text-slate-500">
+                  <td colSpan={11} className="px-4 py-8 text-center text-slate-500">
                     Loading…
                   </td>
                 </tr>
               ) : rows.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="px-4 py-8 text-center text-slate-500">
+                  <td colSpan={11} className="px-4 py-8 text-center text-slate-500">
                     {groupId ? 'No dues for this group/date.' : 'Select a group and load dues.'}
                   </td>
                 </tr>
@@ -368,9 +369,11 @@ function GroupDayCollection({
                           }
                         />
                       </td>
-                      <td className="px-3 py-2 text-xs text-slate-600">
-                        <div>P {money(r.primarySavingsBalance)}</div>
-                        <div>E {money(r.extraSavingsBalance)}</div>
+                      <td className="px-3 py-2 text-xs text-slate-500" title="Initial savings — not used for underpay">
+                        {money(r.primarySavingsBalance)}
+                      </td>
+                      <td className="px-3 py-2 text-xs font-medium text-slate-800" title="Daily savings — may offset underpay">
+                        {money(r.extraSavingsBalance)}
                       </td>
                       <td className="px-3 py-2">
                         <input
@@ -387,7 +390,7 @@ function GroupDayCollection({
                               },
                             }))
                           }
-                          title="Cover shortfall from extra (daily) savings"
+                          title="Cover shortfall from extra (daily) savings only — never primary"
                         />
                       </td>
                       <td className="px-3 py-2">
