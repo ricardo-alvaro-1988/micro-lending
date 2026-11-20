@@ -366,7 +366,7 @@ public class ReportsController : ControllerBase
             : await _db.LoanPayments.AsNoTracking()
                 .Where(p => loanIds.Contains(p.LoanId))
                 .GroupBy(p => p.LoanId)
-                .Select(g => new { LoanId = g.Key, TotalPaid = g.Sum(p => p.Amount + p.ExtraSavingsOffset) })
+                .Select(g => new { LoanId = g.Key, TotalPaid = g.Sum(p => (p.Amount - p.OverpaymentToExtraSavings + p.ExtraSavingsOffset)) })
                 .ToDictionaryAsync(x => x.LoanId, x => x.TotalPaid);
 
         var overdueSchedule = loanIds.Count == 0
@@ -478,7 +478,7 @@ public class ReportsController : ControllerBase
         var payments = await _db.LoanPayments.AsNoTracking()
             .Where(p => loanIds.Contains(p.LoanId))
             .GroupBy(p => p.LoanId)
-            .Select(g => new { LoanId = g.Key, TotalPaid = g.Sum(p => p.Amount + p.ExtraSavingsOffset) })
+            .Select(g => new { LoanId = g.Key, TotalPaid = g.Sum(p => (p.Amount - p.OverpaymentToExtraSavings + p.ExtraSavingsOffset)) })
             .ToListAsync();
         var paidMap = payments.ToDictionary(p => p.LoanId, p => p.TotalPaid);
 
@@ -889,7 +889,7 @@ public class ReportsController : ControllerBase
         var paidMap = await _db.LoanPayments.AsNoTracking()
             .Where(p => loanIds.Contains(p.LoanId))
             .GroupBy(p => p.LoanId)
-            .Select(g => new { LoanId = g.Key, Paid = g.Sum(x => x.Amount + x.ExtraSavingsOffset) })
+            .Select(g => new { LoanId = g.Key, Paid = g.Sum(x => (x.Amount - x.OverpaymentToExtraSavings + x.ExtraSavingsOffset)) })
             .ToDictionaryAsync(x => x.LoanId, x => x.Paid);
 
         var overdueItems = await _db.LoanScheduleItems.AsNoTracking()
@@ -985,7 +985,7 @@ public class ReportsController : ControllerBase
         var paidTotals = await _db.LoanPayments.AsNoTracking()
             .Where(p => closedIds.Contains(p.LoanId))
             .GroupBy(p => p.LoanId)
-            .Select(g => new { LoanId = g.Key, Paid = g.Sum(x => x.Amount + x.ExtraSavingsOffset) })
+            .Select(g => new { LoanId = g.Key, Paid = g.Sum(x => (x.Amount - x.OverpaymentToExtraSavings + x.ExtraSavingsOffset)) })
             .ToDictionaryAsync(x => x.LoanId, x => x.Paid);
 
         var results = closedActs.Select(x => new ReportClosedLoanDto(
@@ -1024,7 +1024,7 @@ public class ReportsController : ControllerBase
         {
             var pays = await _db.LoanPayments.AsNoTracking()
                 .Where(p => activeIds.Contains(p.LoanId))
-                .Select(p => new { p.LoanId, Applied = p.Amount + p.ExtraSavingsOffset, p.PaidAt })
+                .Select(p => new { p.LoanId, Applied = (p.Amount - p.OverpaymentToExtraSavings + p.ExtraSavingsOffset), p.PaidAt })
                 .ToListAsync();
             var byLoan = pays.GroupBy(p => p.LoanId).ToDictionary(g => g.Key, g => g.ToList());
 
@@ -1118,7 +1118,7 @@ public class ReportsController : ControllerBase
             : await _db.LoanPayments.AsNoTracking()
                 .Where(p => loanIds.Contains(p.LoanId))
                 .GroupBy(p => p.LoanId)
-                .Select(g => new { LoanId = g.Key, Total = g.Sum(p => p.Amount + p.ExtraSavingsOffset) })
+                .Select(g => new { LoanId = g.Key, Total = g.Sum(p => (p.Amount - p.OverpaymentToExtraSavings + p.ExtraSavingsOffset)) })
                 .ToDictionaryAsync(x => x.LoanId, x => x.Total);
 
         var rows = raw.Select(x =>
@@ -1259,7 +1259,7 @@ public class ReportsController : ControllerBase
                         "Payment",
                         $"Payment on {row.loan.LoanNumber}" + (string.IsNullOrWhiteSpace(p.Reference) ? "" : $" ({p.Reference})"),
                         0,
-                        p.Amount + p.ExtraSavingsOffset));
+                        (p.Amount - p.OverpaymentToExtraSavings + p.ExtraSavingsOffset)));
                 }
             }
 

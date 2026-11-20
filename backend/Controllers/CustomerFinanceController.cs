@@ -77,7 +77,7 @@ public class CustomerFinanceController : ControllerBase
             : await _db.LoanPayments.AsNoTracking()
                 .Where(p => loanIds.Contains(p.LoanId))
                 .GroupBy(p => p.LoanId)
-                .Select(g => new { LoanId = g.Key, Total = g.Sum(p => p.Amount + p.ExtraSavingsOffset) })
+                .Select(g => new { LoanId = g.Key, Total = g.Sum(p => (p.Amount - p.OverpaymentToExtraSavings + p.ExtraSavingsOffset)) })
                 .ToDictionaryAsync(x => x.LoanId, x => x.Total);
 
         var approverCtx = await _workflow.GetApproverContextAsync(user);
@@ -253,20 +253,11 @@ public class CustomerFinanceController : ControllerBase
             };
             loan.Payments.Add(payment);
 
-            // When covering shortfall from extra savings, apply toward the next open installment(s)
-            // up to cash + available extra — not the entire remaining loan unless cash alone does.
-            decimal? coverTarget = null;
-            if (request.UseExtraSavings)
-            {
-                var nextOpen = loan.ScheduleItems
-                    .OrderBy(s => s.InstallmentNumber)
-                    .FirstOrDefault(s => LoanFinanceService.ItemBalance(s) > 0);
-                if (nextOpen is not null)
-                {
-                    var nextBal = LoanFinanceService.ItemBalance(nextOpen);
-                    coverTarget = cash >= nextBal ? cash : nextBal;
-                }
-            }
+            // Cover the next open installment only; cash above that goes to extra savings.
+            var nextOpen = loan.ScheduleItems
+                .OrderBy(s => s.InstallmentNumber)
+                .FirstOrDefault(s => LoanFinanceService.ItemBalance(s) > 0);
+            decimal? coverTarget = nextOpen is null ? null : LoanFinanceService.ItemBalance(nextOpen);
 
             var (_, extraOffset, _) = await _finance.ApplyPaymentAsync(
                 loan,
@@ -278,7 +269,12 @@ public class CustomerFinanceController : ControllerBase
 
             if (extraOffset > 0)
             {
-                var note = $"Extra savings offset {extraOffset:0.00}; full applied {payment.Amount:0.00}";
+                var note = $"Extra savings offset {extraOffset:0.00}; loan applied {payment.AppliedAmount:0.00}";
+                payment.Notes = string.IsNullOrWhiteSpace(payment.Notes) ? note : $"{payment.Notes}; {note}";
+            }
+            if (payment.OverpaymentToExtraSavings > 0)
+            {
+                var note = $"Overpayment to extra savings {payment.OverpaymentToExtraSavings:0.00}";
                 payment.Notes = string.IsNullOrWhiteSpace(payment.Notes) ? note : $"{payment.Notes}; {note}";
             }
 
@@ -515,7 +511,7 @@ public class CustomerFinanceController : ControllerBase
             : await _db.LoanPayments.AsNoTracking()
                 .Where(p => loanIds.Contains(p.LoanId))
                 .GroupBy(p => p.LoanId)
-                .Select(g => new { LoanId = g.Key, Total = g.Sum(p => p.Amount + p.ExtraSavingsOffset) })
+                .Select(g => new { LoanId = g.Key, Total = g.Sum(p => (p.Amount - p.OverpaymentToExtraSavings + p.ExtraSavingsOffset)) })
                 .ToDictionaryAsync(x => x.LoanId, x => x.Total);
 
         var today = PhilippineTime.Today;
@@ -613,7 +609,7 @@ public class CustomerFinanceController : ControllerBase
                 {
                     p.LoanId,
                     p.PaidAt,
-                    Amount = p.Amount + p.ExtraSavingsOffset,
+                    Amount = (p.Amount - p.OverpaymentToExtraSavings + p.ExtraSavingsOffset),
                     p.Reference,
                     p.Notes,
                     p.Id,
@@ -820,7 +816,7 @@ public class CustomerFinanceController : ControllerBase
     {
         if (loan.CurrentStage is not null)
             await _workflow.EnsureStageApproversLoadedAsync(loan.CurrentStage);
-        var totalPaid = loan.Payments?.Sum(p => p.Amount + p.ExtraSavingsOffset) ?? 0;
+        var totalPaid = loan.Payments?.Sum(p => (p.Amount - p.OverpaymentToExtraSavings + p.ExtraSavingsOffset)) ?? 0;
         var ctx = await _workflow.GetApproverContextAsync(user);
         return MapLoan(loan, ctx, totalPaid);
     }

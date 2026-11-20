@@ -283,32 +283,37 @@ public class LoanFinanceService
         if (openBefore <= 0)
             throw new InvalidOperationException("This loan has no open installment balance.");
 
+        // Cover target = selected installment(s) / next due. Cash above that goes to extra savings
+        // (does not prepay later installments).
         var target = decimal.Round(coverTarget ?? openBefore, 2, MidpointRounding.AwayFromZero);
         if (target <= 0) throw new InvalidOperationException("Nothing to apply toward the loan.");
         if (target > openBefore) target = openBefore;
 
         var cash = decimal.Round(cashAmount, 2, MidpointRounding.AwayFromZero);
-        if (cash > openBefore)
-            throw new InvalidOperationException("Payment exceeds remaining loan balance.");
+        if (cash < 0) throw new InvalidOperationException("Payment amount cannot be negative.");
+
+        var cashToLoan = Math.Min(cash, target);
+        var overpayToExtra = decimal.Round(cash - cashToLoan, 2, MidpointRounding.AwayFromZero);
 
         var extraOffset = 0m;
-        if (useExtraSavings && cash < target)
+        if (useExtraSavings && cashToLoan < target)
         {
-            var shortfall = target - cash;
+            var shortfall = target - cashToLoan;
             extraOffset = _savings.OffsetUnderpayFromExtra(loan, shortfall, recordedByUserId, loanPayment);
         }
 
-        var applyTotal = cash + extraOffset;
-        if (applyTotal <= 0)
+        var applyTotal = cashToLoan + extraOffset;
+        if (applyTotal <= 0 && overpayToExtra <= 0)
             throw new InvalidOperationException("Nothing to apply toward the loan.");
         if (applyTotal > openBefore)
             applyTotal = openBefore;
 
-        // Keep Amount as cash only; ExtraSavingsOffset is the savings cover (payment register / remittance).
+        // Amount = full cash received (remittance). OverpaymentToExtraSavings is leftover to extra.
         if (loanPayment is not null)
         {
             loanPayment.Amount = cash;
             loanPayment.ExtraSavingsOffset = extraOffset;
+            loanPayment.OverpaymentToExtraSavings = overpayToExtra;
         }
 
         var previouslyPaid = loan.ScheduleItems
@@ -341,6 +346,18 @@ public class LoanFinanceService
             .ToList();
 
         _savings.CreditDailySavingsForNewlyPaid(loan, newlyPaid, recordedByUserId, loanPayment);
+
+        if (overpayToExtra > 0.009m)
+        {
+            _savings.Post(
+                loan,
+                SavingsKind.Extra,
+                SavingsTransactionType.ExtraDeposit,
+                overpayToExtra,
+                recordedByUserId,
+                loanPayment,
+                notes: $"Overpayment to extra savings ({overpayToExtra:0.00})");
+        }
 
         return (cash, extraOffset, newlyPaid);
     }

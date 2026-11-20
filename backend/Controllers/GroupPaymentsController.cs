@@ -204,9 +204,16 @@ public class GroupPaymentsController : ControllerBase
                     payment,
                     coverTarget);
 
-                if (extraOffset > 0)
-                    payment.Notes =
-                        $"Group day collection; Extra savings offset {extraOffset:0.00}; full applied {payment.Amount:0.00}";
+                if (extraOffset > 0 || payment.OverpaymentToExtraSavings > 0)
+                {
+                    var parts = new List<string> { "Group day collection" };
+                    if (extraOffset > 0)
+                        parts.Add($"Extra savings offset {extraOffset:0.00}");
+                    if (payment.OverpaymentToExtraSavings > 0)
+                        parts.Add($"Overpayment to extra savings {payment.OverpaymentToExtraSavings:0.00}");
+                    parts.Add($"loan applied {payment.AppliedAmount:0.00}");
+                    payment.Notes = string.Join("; ", parts);
+                }
 
                 loan.UpdatedAt = PhilippineTime.Now;
                 _finance.TryMatureIfFullyPaid(loan, user);
