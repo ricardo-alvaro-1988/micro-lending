@@ -6,6 +6,7 @@ import { CustomerAvatar } from '../components/CustomerAvatar'
 import { RecordPaymentPanel } from '../components/customers/CustomerFinancePanels'
 import { StatusTag } from '../components/StatusTag'
 import { useToast } from '../toast/ToastContext'
+import { todayIso } from '../lib/phDate'
 import type { CustomerGroup, CustomerListItem } from '../types'
 
 type Mode = 'single' | 'group'
@@ -38,8 +39,6 @@ type RowDraft = {
 
 const money = (n: number) =>
   n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-
-const todayIso = () => new Date().toISOString().slice(0, 10)
 
 export function RecordPaymentPage() {
   const { filterBranchId } = useBranchScope()

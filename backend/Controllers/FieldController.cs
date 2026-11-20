@@ -32,7 +32,7 @@ public class FieldController : ControllerBase
         var scope = await _branchScope.ResolveAsync(User);
         if (scope is null) return Unauthorized();
 
-        var day = (asOf ?? DateTime.UtcNow).Date;
+        var day = (asOf ?? PhilippineTime.Today).Date;
         await _finance.AccrueOpenItemsAsync(day);
 
         var query =

@@ -8,7 +8,7 @@ public static class CustomerMapping
     public static int? AgeYears(DateTime? dateOfBirth, DateTime? asOf = null)
     {
         if (dateOfBirth is null) return null;
-        var today = (asOf ?? DateTime.UtcNow).Date;
+        var today = (asOf ?? PhilippineTime.Today).Date;
         var dob = dateOfBirth.Value.Date;
         var age = today.Year - dob.Year;
         if (dob > today.AddYears(-age)) age--;

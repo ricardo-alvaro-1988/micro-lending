@@ -4,14 +4,13 @@ import { useAuth } from '../auth/AuthContext'
 import { useBranchScope, withBranchQuery } from '../branch/BranchContext'
 import { ActionButton } from '../components/ActionButton'
 import { LoadingTableRow } from '../components/ListLoading'
+import { todayIso } from '../lib/phDate'
 import { useToast } from '../toast/ToastContext'
 
 const fieldClass = 'rounded-lg border border-slate-300 px-3 py-2 text-sm w-full'
 
 const money = (n: number) =>
   n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-
-const todayIso = () => new Date().toISOString().slice(0, 10)
 
 type ExpenseRow = {
   id: number

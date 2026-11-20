@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { api } from '../../api/client'
 import { withBranchQuery } from '../../branch/BranchContext'
+import { formatPhDateTime } from '../../lib/phDate'
 import { downloadCsv, money, todayIso } from '../../reports/csv'
 import { FilterField, ReportChrome, ReportStat, ReportSummary, filterClass } from './ReportChrome'
 import { useReportFilters } from './useReportFilters'
@@ -174,7 +175,7 @@ export function PaymentRegisterReportPage() {
                 return (
                   <tr key={r.paymentId}>
                     <td className="px-3 py-2 whitespace-nowrap">
-                      {new Date(r.paidAt).toLocaleString()}
+                      {formatPhDateTime(r.paidAt)}
                     </td>
                     <td className="px-3 py-2">
                       <div className="font-medium">{r.customerName}</div>

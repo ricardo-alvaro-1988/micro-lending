@@ -14,6 +14,7 @@ import {
 } from '../components/LoanProceedsBreakdown'
 import { StageTag, StatusTag } from '../components/StatusTag'
 import { DEFAULT_INTEREST_RATE_PERCENT, dailyPaymentLines, feeFieldsFromPrincipal } from '../lib/loanFeeRules'
+import { todayIso } from '../lib/phDate'
 import { notifyPaymentSchedulesChanged } from '../notify'
 import type { LoanDetailBundle, LoanProduct } from '../types'
 import { useToast } from '../toast/ToastContext'
@@ -67,12 +68,12 @@ type ScheduleRow = {
 const money = (n: number) =>
   n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
-/** First day of payment defaults to the next calendar day. */
+/** First day of payment defaults to the next Philippine calendar day. */
 function nextDayIso() {
-  const d = new Date()
-  d.setDate(d.getDate() + 1)
+  const [y, m, d] = todayIso().split('-').map(Number)
+  const next = new Date(Date.UTC(y, m - 1, d + 1))
   const pad = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+  return `${next.getUTCFullYear()}-${pad(next.getUTCMonth() + 1)}-${pad(next.getUTCDate())}`
 }
 
 function formFromPending(item: PendingItem) {

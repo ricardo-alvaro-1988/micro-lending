@@ -6,6 +6,7 @@ import { ActionButton } from '../components/ActionButton'
 import { AgentAutocomplete } from '../components/AgentAutocomplete'
 import { LoadingTableRow } from '../components/ListLoading'
 import { StatusTag } from '../components/StatusTag'
+import { todayIso } from '../lib/phDate'
 import type { AgentOption, CashRemittance } from '../types'
 import { useToast } from '../toast/ToastContext'
 
@@ -16,7 +17,7 @@ const money = (n: number) =>
 
 const emptyForm = () => ({
   agentUserId: '',
-  remittanceDate: new Date().toISOString().slice(0, 10),
+  remittanceDate: todayIso(),
   remittedAmount: '',
   notes: '',
 })

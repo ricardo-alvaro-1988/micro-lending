@@ -98,7 +98,7 @@ public class LoanFinanceService
         loan.TotalPayable = portions.Sum(p => p.AmountDue);
         // Regular daily installment (last period may differ to absorb rounding).
         loan.InstallmentAmount = portions.Count > 0 ? portions[0].AmountDue : 0;
-        loan.UpdatedAt = DateTime.UtcNow;
+        loan.UpdatedAt = PhilippineTime.Now;
     }
 
     public static bool TryParseInterestMethod(string? value, out InterestMethod method)
@@ -317,7 +317,7 @@ public class LoanFinanceService
             .ToHashSet();
 
         var remaining = applyTotal;
-        var today = DateTime.UtcNow.Date;
+        var today = PhilippineTime.Today;
         var items = loan.ScheduleItems.OrderBy(s => s.InstallmentNumber).ToList();
 
         foreach (var item in items)
@@ -357,7 +357,7 @@ public class LoanFinanceService
         if (scheduleRemaining > 0.009m) return false;
 
         loan.Status = LoanStatus.Closed;
-        loan.UpdatedAt = DateTime.UtcNow;
+        loan.UpdatedAt = PhilippineTime.Now;
 
         _db.LoanActivities.Add(new LoanActivity
         {
@@ -368,7 +368,7 @@ public class LoanFinanceService
             ActorUserId = actor?.Id,
             ActorName = actor?.FullName,
             Notes = "Loan matured — fully paid",
-            OccurredAt = DateTime.UtcNow,
+            OccurredAt = PhilippineTime.Now,
         });
 
         return true;
@@ -396,7 +396,7 @@ public class LoanFinanceService
     public async Task AccruePenaltiesAsync(Loan loan, DateTime? asOf = null)
     {
         var settings = await GetLateFeeSettingsAsync();
-        var day = (asOf ?? DateTime.UtcNow).Date;
+        var day = (asOf ?? PhilippineTime.Today).Date;
         foreach (var item in loan.ScheduleItems)
         {
             AccruePenaltyOnItem(item, settings, day);
@@ -411,7 +411,7 @@ public class LoanFinanceService
     public async Task AccrueOpenItemsAsync(DateTime? asOf = null)
     {
         var settings = await GetLateFeeSettingsAsync();
-        var day = (asOf ?? DateTime.UtcNow).Date;
+        var day = (asOf ?? PhilippineTime.Today).Date;
 
         var items = await (
             from item in _db.LoanScheduleItems
@@ -438,7 +438,7 @@ public class LoanFinanceService
     public void RefreshAllStatuses(Loan loan, DateTime? asOf = null)
     {
         // Sync path used after load when settings already applied or disabled — still refresh status.
-        var day = (asOf ?? DateTime.UtcNow).Date;
+        var day = (asOf ?? PhilippineTime.Today).Date;
         var settings = _cachedLateFees;
         foreach (var item in loan.ScheduleItems)
         {

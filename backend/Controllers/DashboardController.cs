@@ -35,7 +35,7 @@ public class DashboardController : ControllerBase
         if (scope is null) return Unauthorized();
         if (scope.IsFieldAgent) return Forbid();
 
-        var day = (asOf ?? DateTime.UtcNow).Date;
+        var day = (asOf ?? PhilippineTime.Today).Date;
         var next = day.AddDays(1);
 
         await _finance.AccrueOpenItemsAsync(day);
@@ -146,7 +146,7 @@ public class DashboardController : ControllerBase
         if (scope.IsFieldAgent) return Forbid();
 
         days = Math.Clamp(days, 7, 90);
-        var toDate = (asOf ?? DateTime.UtcNow).Date;
+        var toDate = (asOf ?? PhilippineTime.Today).Date;
         var fromDate = toDate.AddDays(1 - days);
 
         var customers = BranchScopeService.Customers(_db.Customers.AsNoTracking(), scope);

@@ -77,7 +77,7 @@ public class ActivityController : ControllerBase
         var scope = await _branchScope.ResolveAsync(User, branchId);
         if (scope is null) return Unauthorized();
 
-        var day = DateTime.UtcNow.Date;
+        var day = PhilippineTime.Today;
         var dayEnd = day.AddDays(1);
 
         var scopedLoans = BranchScopeService.Loans(_db.Loans.AsNoTracking(), scope);

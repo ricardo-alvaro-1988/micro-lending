@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { api } from '../../api/client'
 import { withBranchQuery } from '../../branch/BranchContext'
+import { daysAgoIso } from '../../lib/phDate'
 import { downloadCsv, todayIso } from '../../reports/csv'
 import { FilterField, ReportChrome, ReportStat, ReportSummary, filterClass } from './ReportChrome'
 import { useReportFilters } from './useReportFilters'
@@ -28,11 +29,7 @@ type Result = {
 
 export function ApprovalTatReportPage() {
   const { filterBranchId, agents, groups } = useReportFilters()
-  const [from, setFrom] = useState(() => {
-    const d = new Date()
-    d.setDate(d.getDate() - 30)
-    return d.toISOString().slice(0, 10)
-  })
+  const [from, setFrom] = useState(() => daysAgoIso(30))
   const [to, setTo] = useState(todayIso())
   const [agent1UserId, setAgent1UserId] = useState('')
   const [groupId, setGroupId] = useState('')
