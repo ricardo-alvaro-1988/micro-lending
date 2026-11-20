@@ -67,7 +67,8 @@ public class CustomerFinanceController : ControllerBase
             .Include(l => l.CreatedByUser)
             .Include(l => l.LoanProduct)
             .Where(l => l.CustomerId == customerId)
-            .OrderByDescending(l => l.CreatedAt)
+            .OrderBy(l => l.Amount)
+            .ThenByDescending(l => l.CreatedAt)
             .ToListAsync();
 
         var loanIds = loans.Select(l => l.Id).ToList();
@@ -415,7 +416,8 @@ public class CustomerFinanceController : ControllerBase
             .Include(l => l.CreatedByUser)
             .Include(l => l.LoanProduct)
             .Where(l => l.CustomerId == customerId)
-            .OrderByDescending(l => l.CreatedAt)
+            .OrderBy(l => l.Amount)
+            .ThenByDescending(l => l.CreatedAt)
             .ToListAsync();
 
         var loanIds = loans.Select(l => l.Id).ToList();
