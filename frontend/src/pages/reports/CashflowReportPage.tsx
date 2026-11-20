@@ -2,13 +2,15 @@ import { useCallback, useEffect, useState } from 'react'
 import { api } from '../../api/client'
 import { withBranchQuery } from '../../branch/BranchContext'
 import { ActionButton } from '../../components/ActionButton'
-import { downloadCsv, money, todayIso } from '../../reports/csv'
+import { todayIso } from '../../lib/phDate'
+import { downloadCsv, money } from '../../reports/csv'
 import { FilterField, ReportChrome, filterClass } from './ReportChrome'
 import { useReportFilters } from './useReportFilters'
 
 type DayRow = {
   date: string
   remitted: number
+  injectedFunds: number
   disbursement: number
   expenses: number
   netChange: number
@@ -23,6 +25,8 @@ type Result = {
   beginningBalanceIsSet: boolean
   remitted: number
   remittanceCount: number
+  injectedFunds: number
+  injectedFundsCount: number
   disbursement: number
   disbursementCount: number
   expenses: number
@@ -38,9 +42,14 @@ export function CashflowReportPage() {
   const [from, setFrom] = useState(todayIso())
   const [to, setTo] = useState(todayIso())
   const [data, setData] = useState<Result | null>(null)
-  const [beginningInput, setBeginningInput] = useState('')
+  const [beginningDate, setBeginningDate] = useState(todayIso())
+  const [beginningAmount, setBeginningAmount] = useState('')
+  const [injectDate, setInjectDate] = useState(todayIso())
+  const [injectAmount, setInjectAmount] = useState('')
+  const [injectNotes, setInjectNotes] = useState('')
   const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
+  const [savingBeginning, setSavingBeginning] = useState(false)
+  const [savingInject, setSavingInject] = useState(false)
   const [error, setError] = useState('')
 
   const rangeFrom = mode === 'date' ? asOf : from
@@ -53,7 +62,9 @@ export function CashflowReportPage() {
       const qs = new URLSearchParams({ from: rangeFrom, to: rangeTo })
       const res = await api<Result>(withBranchQuery(`/api/reports/cashflow?${qs}`, filterBranchId))
       setData(res)
-      setBeginningInput(String(res.beginningBalance))
+      setBeginningDate(rangeFrom)
+      setBeginningAmount(String(res.beginningBalance))
+      setInjectDate(rangeFrom)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load')
       setData(null)
@@ -67,36 +78,67 @@ export function CashflowReportPage() {
   }, [load])
 
   const saveBeginning = async () => {
-    const amount = Number(beginningInput)
+    const amount = Number(beginningAmount)
+    if (!beginningDate) {
+      setError('Beginning balance date is required.')
+      return
+    }
     if (!Number.isFinite(amount) || amount < 0) {
       setError('Beginning balance must be zero or greater.')
       return
     }
-    setSaving(true)
+    setSavingBeginning(true)
     setError('')
     try {
-      await api(
-        withBranchQuery('/api/reports/cashflow/beginning-balance', filterBranchId),
-        {
-          method: 'PUT',
-          body: JSON.stringify({ asOfDate: rangeFrom, amount }),
-        },
-      )
+      await api(withBranchQuery('/api/reports/cashflow/beginning-balance', filterBranchId), {
+        method: 'PUT',
+        body: JSON.stringify({ asOfDate: beginningDate, amount }),
+      })
       await load()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save beginning balance')
     } finally {
-      setSaving(false)
+      setSavingBeginning(false)
     }
   }
 
-  const periodLabel =
-    rangeFrom === rangeTo ? rangeFrom : `${rangeFrom} → ${rangeTo}`
+  const saveInject = async () => {
+    const amount = Number(injectAmount)
+    if (!injectDate) {
+      setError('Inject fund date is required.')
+      return
+    }
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setError('Injected amount must be greater than zero.')
+      return
+    }
+    setSavingInject(true)
+    setError('')
+    try {
+      await api(withBranchQuery('/api/reports/cashflow/inject-fund', filterBranchId), {
+        method: 'POST',
+        body: JSON.stringify({
+          injectionDate: injectDate,
+          amount,
+          notes: injectNotes.trim() || null,
+        }),
+      })
+      setInjectAmount('')
+      setInjectNotes('')
+      await load()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to inject funds')
+    } finally {
+      setSavingInject(false)
+    }
+  }
+
+  const periodLabel = rangeFrom === rangeTo ? rangeFrom : `${rangeFrom} → ${rangeTo}`
 
   return (
     <ReportChrome
       title="Cashflow report"
-      description="Beginning + Remitted (cash turned in to office) − Disbursement − Expenses = Cash on hand."
+      description="Beginning + Remitted + Injected funds − Disbursement − Expenses = Cash on hand."
       loading={loading}
       error={error}
       onRefresh={() => void load()}
@@ -108,13 +150,14 @@ export function CashflowReportPage() {
           [
             ['Beginning balance', data.beginningBalance, data.beginningBalanceIsSet ? 'Saved' : 'Not set (0)'],
             ['Remitted (+)', data.remitted, data.remittanceCount],
+            ['Injected funds (+)', data.injectedFunds, data.injectedFundsCount],
             ['Disbursement (−)', data.disbursement, data.disbursementCount],
             ['Expenses (−)', data.expenses, data.expenseCount],
             ['Cash on hand', data.cashOnHand, ''],
             ...data.days.map((d) => [
               d.date.slice(0, 10),
               d.netChange,
-              `Remitted ${d.remitted}; Disb ${d.disbursement}; Exp ${d.expenses}`,
+              `Remitted ${d.remitted}; Injected ${d.injectedFunds}; Disb ${d.disbursement}; Exp ${d.expenses}`,
             ]),
           ],
         )
@@ -157,24 +200,89 @@ export function CashflowReportPage() {
           </p>
         </div>
 
-        <div className="flex flex-wrap items-end gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 print:hidden">
-          <label className="flex min-w-[12rem] flex-col gap-1 text-xs font-medium text-slate-600">
-            Beginning balance (as of {rangeFrom})
-            <input
-              type="number"
-              min="0"
-              step="0.01"
-              className={filterClass}
-              value={beginningInput}
-              onChange={(e) => setBeginningInput(e.target.value)}
-            />
-          </label>
-          <ActionButton type="button" loading={saving} loadingText="Saving…" onClick={() => void saveBeginning()}>
-            Save beginning
-          </ActionButton>
-          {data && !data.beginningBalanceIsSet && (
-            <span className="pb-2 text-xs text-amber-700">Not set yet — currently treated as 0.</span>
-          )}
+        <div className="grid gap-4 print:hidden lg:grid-cols-2">
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <h3 className="text-sm font-semibold text-slate-800">Beginning balance</h3>
+            <p className="mt-0.5 text-xs text-slate-500">Date, then amount only.</p>
+            <div className="mt-3 flex flex-wrap items-end gap-3">
+              <label className="flex min-w-[10rem] flex-col gap-1 text-xs font-medium text-slate-600">
+                Date
+                <input
+                  type="date"
+                  className={filterClass}
+                  value={beginningDate}
+                  onChange={(e) => setBeginningDate(e.target.value)}
+                />
+              </label>
+              <label className="flex min-w-[10rem] flex-1 flex-col gap-1 text-xs font-medium text-slate-600">
+                Amount
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  className={filterClass}
+                  value={beginningAmount}
+                  onChange={(e) => setBeginningAmount(e.target.value)}
+                />
+              </label>
+              <ActionButton
+                type="button"
+                loading={savingBeginning}
+                loadingText="Saving…"
+                onClick={() => void saveBeginning()}
+              >
+                Save
+              </ActionButton>
+            </div>
+            {data && !data.beginningBalanceIsSet && beginningDate === rangeFrom && (
+              <p className="mt-2 text-xs text-amber-700">Not set for this report date — treated as 0.</p>
+            )}
+          </div>
+
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50/40 p-4">
+            <h3 className="text-sm font-semibold text-emerald-950">Inject fund</h3>
+            <p className="mt-0.5 text-xs text-emerald-800/80">Adds cash into office float for the chosen date.</p>
+            <div className="mt-3 flex flex-wrap items-end gap-3">
+              <label className="flex min-w-[10rem] flex-col gap-1 text-xs font-medium text-emerald-900">
+                Date
+                <input
+                  type="date"
+                  className={filterClass}
+                  value={injectDate}
+                  onChange={(e) => setInjectDate(e.target.value)}
+                />
+              </label>
+              <label className="flex min-w-[10rem] flex-1 flex-col gap-1 text-xs font-medium text-emerald-900">
+                Amount
+                <input
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  className={filterClass}
+                  value={injectAmount}
+                  onChange={(e) => setInjectAmount(e.target.value)}
+                  placeholder="0.00"
+                />
+              </label>
+              <ActionButton
+                type="button"
+                loading={savingInject}
+                loadingText="Saving…"
+                onClick={() => void saveInject()}
+              >
+                Inject
+              </ActionButton>
+            </div>
+            <label className="mt-3 flex flex-col gap-1 text-xs font-medium text-emerald-900">
+              Notes (optional)
+              <input
+                className={filterClass}
+                value={injectNotes}
+                onChange={(e) => setInjectNotes(e.target.value)}
+                placeholder="e.g. HQ top-up"
+              />
+            </label>
+          </div>
         </div>
 
         {data && (
@@ -198,6 +306,18 @@ export function CashflowReportPage() {
                       {money(data.remitted)}
                     </td>
                     <td className="px-4 py-3 text-xs text-violet-700">+</td>
+                  </tr>
+                  <tr className="border-b border-slate-100 bg-emerald-50/50">
+                    <td className="px-4 py-3 font-medium text-emerald-950">
+                      Injected funds
+                      <div className="text-xs font-normal text-emerald-800/80">
+                        {data.injectedFundsCount} injection{data.injectedFundsCount === 1 ? '' : 's'}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-right tabular-nums font-medium text-emerald-950">
+                      {money(data.injectedFunds)}
+                    </td>
+                    <td className="px-4 py-3 text-xs text-emerald-800">+</td>
                   </tr>
                   <tr className="border-b border-slate-100 bg-sky-50/40">
                     <td className="px-4 py-3 font-medium text-sky-900">
@@ -236,7 +356,7 @@ export function CashflowReportPage() {
             </div>
 
             <p className="text-xs text-slate-500 print:hidden">
-              Formula: Beginning + Remitted − Disbursement − Expenses = Cash on hand
+              Formula: Beginning + Remitted + Injected funds − Disbursement − Expenses = Cash on hand
             </p>
 
             {data.days.length > 0 && rangeFrom !== rangeTo && (
@@ -248,6 +368,7 @@ export function CashflowReportPage() {
                       <tr>
                         <th className="border border-slate-200 px-3 py-2">Date</th>
                         <th className="border border-slate-200 px-3 py-2 text-right">Remitted</th>
+                        <th className="border border-slate-200 px-3 py-2 text-right">Injected</th>
                         <th className="border border-slate-200 px-3 py-2 text-right">Disbursement</th>
                         <th className="border border-slate-200 px-3 py-2 text-right">Expenses</th>
                         <th className="border border-slate-200 px-3 py-2 text-right">Net change</th>
@@ -261,6 +382,9 @@ export function CashflowReportPage() {
                           </td>
                           <td className="border border-slate-200 px-3 py-2 text-right tabular-nums">
                             {money(d.remitted)}
+                          </td>
+                          <td className="border border-slate-200 px-3 py-2 text-right tabular-nums">
+                            {money(d.injectedFunds)}
                           </td>
                           <td className="border border-slate-200 px-3 py-2 text-right tabular-nums">
                             {money(d.disbursement)}
