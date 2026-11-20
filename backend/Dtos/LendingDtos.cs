@@ -835,7 +835,8 @@ public record PendingPaymentScheduleDto(
     string Status,
     DateTime ReadyAt,
     int WaitingHours,
-    bool CanManage);
+    bool CanManage,
+    int? Cycle = null);
 
 public record PaymentScheduleNotificationSummaryDto(
     int Count,

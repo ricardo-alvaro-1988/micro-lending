@@ -25,6 +25,10 @@ public static class LoanChargeMapping
         return LoanChargeInputs.FromProduct(product);
     }
 
+    /// <summary>Force membership from loan cycle: 125 on cycle 1, else 0.</summary>
+    public static LoanChargeInputs WithMembershipForCycle(LoanChargeInputs charges, int? cycle) =>
+        charges with { MembershipFee = LoanFeeRules.MembershipFeeFor(cycle) };
+
     public static object ToAnonymous(Loan loan) => new
     {
         loan.InsuranceAmount,

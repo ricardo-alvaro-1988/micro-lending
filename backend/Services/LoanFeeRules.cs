@@ -6,11 +6,17 @@ namespace MicroLending.Api.Services;
 /// Loan product fee formulas (update-nov-19-2026):
 /// notarial 5k=100 +5/1k; loan redemption 5k=70 +15/1k; processing 5k=100 +10/1k;
 /// savings = principal×10%/terms; initial savings 2%; insurance brackets;
-/// tax 1%; interest 12% with principal/interest rounded to tens.
+/// tax 1%; membership 125 on cycle 1 only (0 when cycle &gt; 1);
+/// interest 12% with principal/interest rounded to tens.
 /// </summary>
 public static class LoanFeeRules
 {
     public const decimal DefaultInterestRatePercent = 12m;
+    public const decimal MembershipFeeAmount = 125m;
+
+    /// <summary>Membership is charged only on the first loan cycle.</summary>
+    public static decimal MembershipFeeFor(int? cycle) =>
+        cycle is null or <= 1 ? MembershipFeeAmount : 0m;
 
     public static decimal RoundToTens(decimal value) =>
         Math.Round(value / 10m, MidpointRounding.AwayFromZero) * 10m;
@@ -41,7 +47,7 @@ public static class LoanFeeRules
     public static decimal NotarialFeeFor(decimal principal) =>
         SteppedFrom5k(principal, 100m, 5m);
 
-    public static LoanChargeInputs ComputeCharges(decimal principalInput, int termCount)
+    public static LoanChargeInputs ComputeCharges(decimal principalInput, int termCount, int? cycle = 1)
     {
         var principal = RoundToTens(principalInput);
         var terms = Math.Max(0, termCount);
@@ -54,7 +60,7 @@ public static class LoanFeeRules
             InitialSavings: decimal.Round(principal * 0.02m, 2, MidpointRounding.AwayFromZero),
             SavingsPerPeriod: savingsPerPeriod,
             InsurancePerPeriod: 0,
-            MembershipFee: 0,
+            MembershipFee: MembershipFeeFor(cycle),
             ProcessingFee: ProcessingFeeFor(principal),
             LoanRedemptionFee: LoanRedemptionFeeFor(principal),
             Taxes: decimal.Round(principal * 0.01m, 2, MidpointRounding.AwayFromZero),
@@ -69,7 +75,8 @@ public static class LoanFeeRules
     {
         var principal = RoundToTens(principalInput ?? product.Amount);
         var terms = termCount ?? product.TermCount;
-        var charges = ComputeCharges(principal, terms);
+        // Products are templates for a first-cycle loan (membership 125).
+        var charges = ComputeCharges(principal, terms, cycle: 1);
 
         product.Amount = principal;
         product.InterestRatePercent = DefaultInterestRatePercent;
