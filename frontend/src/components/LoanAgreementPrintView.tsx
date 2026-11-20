@@ -67,7 +67,9 @@ export function LoanAgreementPrintView({
       </header>
 
       <section className="space-y-3">
-        <h2 className="text-center text-sm font-bold uppercase tracking-wide">Contract of Loan</h2>
+        <h2 className="text-center text-sm font-bold uppercase tracking-wide">
+          Terms and conditions · Contract of loan
+        </h2>
 
         <p className="text-justify">
           I hereby certify that the foregoing application of loan and the statements therein are true and
@@ -181,7 +183,7 @@ export function LoanAgreementPrintView({
 
       <section className="mt-10 break-before-page space-y-3">
         <h2 className="text-center text-sm font-bold uppercase tracking-wide">
-          Loan application &amp; terms
+          Loan terms &amp; payment schedule
         </h2>
 
         <table className="w-full border-collapse text-[11px]">
