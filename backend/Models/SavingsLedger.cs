@@ -1,5 +1,9 @@
 namespace MicroLending.Api.Models;
 
+/// <summary>
+/// Primary = initial savings (ring-fenced, no underpay deductions).
+/// Extra = daily/period savings (may be deducted to offset underpayment).
+/// </summary>
 public enum SavingsKind
 {
     Primary = 0,
