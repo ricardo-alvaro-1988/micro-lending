@@ -476,7 +476,7 @@ function LoanTab({ loan }: { loan: Loan }) {
       <Field label="Net proceeds" value={money(loan.netProceeds ?? 0)} />
       <Field label="Total paid" value={money(loan.totalPaid)} />
       <Field label="Remaining" value={money(loan.remainingBalance)} />
-      <Field label="First due" value={loan.firstDueDate?.slice(0, 10)} />
+      <Field label="First day of payment" value={loan.firstDueDate?.slice(0, 10)} />
       <Field label="Product" value={loan.loanProductName} />
       <Field label="Interest method" value={loan.interestMethod} />
       <Field label="Has terms" value={loan.hasTerms ? 'Yes' : 'No'} />

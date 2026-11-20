@@ -142,7 +142,7 @@ export function LoanDetailsPanel({ loanId, onClose, className = '', headerAction
                 <DetailField label="Term count" value={String(loan.termCount || '—')} />
                 <DetailField label="Frequency" value={loan.paymentFrequency || '—'} />
                 <DetailField
-                  label="First due"
+                  label="First day of payment"
                   value={loan.firstDueDate ? loan.firstDueDate.slice(0, 10) : '—'}
                 />
                 <DetailField label="Installment" value={money(loan.installmentAmount)} />

@@ -469,13 +469,20 @@ export function LoanApplicationPanel({ customerId, onError, onMessage }: SharedP
               <option value="Flat">Flat interest</option>
               <option value="DecliningBalance">Declining balance</option>
             </select>
-            <input
-              className="rounded-md border border-slate-300 px-3 py-2 text-sm"
-              type="date"
-              value={form.firstDueDate}
-              onChange={(e) => setForm({ ...form, firstDueDate: e.target.value })}
-              title="First due date (optional at create)"
-            />
+            <label className="text-sm">
+              <span className="mb-1 block text-xs font-medium text-slate-600">
+                First day of payment
+              </span>
+              <input
+                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                type="date"
+                value={form.firstDueDate}
+                onChange={(e) => setForm({ ...form, firstDueDate: e.target.value })}
+              />
+              <span className="mt-0.5 block text-[11px] text-slate-500">
+                Date of the first installment (optional when creating)
+              </span>
+            </label>
             <input
               className="rounded-md border border-slate-300 px-3 py-2 text-sm sm:col-span-2"
               placeholder="Notes"
@@ -1042,7 +1049,9 @@ export function PaymentTermsPanel({ customerId, onError, onMessage }: SharedProp
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-slate-500">First due date *</label>
+              <label className="mb-1 block text-xs font-medium text-slate-500">
+                First day of payment *
+              </label>
               <input
                 className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
                 type="date"
@@ -1051,6 +1060,9 @@ export function PaymentTermsPanel({ customerId, onError, onMessage }: SharedProp
                 required
                 disabled={!canManage || !readyForTerms}
               />
+              <span className="mt-0.5 block text-[11px] text-slate-500">
+                Date of the first installment
+              </span>
             </div>
             <div>
               <label className="mb-1 block text-xs font-medium text-slate-500">Notes</label>

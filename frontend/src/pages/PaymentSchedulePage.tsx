@@ -355,7 +355,9 @@ export function PaymentSchedulePage() {
                   </select>
                 </label>
                 <label className="block text-sm sm:col-span-2">
-                  <span className="mb-1 block text-xs font-medium text-slate-500">First due date *</span>
+                  <span className="mb-1 block text-xs font-medium text-slate-500">
+                    First day of payment *
+                  </span>
                   <input
                     className="w-full rounded-md border border-slate-300 px-3 py-2"
                     type="date"
