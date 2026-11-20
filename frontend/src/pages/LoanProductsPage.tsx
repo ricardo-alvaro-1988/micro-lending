@@ -10,23 +10,18 @@ import {
   chargeStringsFrom,
 } from '../components/LoanProceedsBreakdown'
 import { ActiveTag } from '../components/StatusTag'
-import {
-  computeLoanFees,
-  feeRuleStrings,
-  type ProcessingFeeSchedule,
-} from '../lib/loanFeeRules'
+import { computeLoanFees, feeRuleStrings } from '../lib/loanFeeRules'
 import type { LoanProduct } from '../types'
 import { useToast } from '../toast/ToastContext'
 
 const emptyForm = () => {
-  const fees = feeRuleStrings(computeLoanFees(10000, 70, 'Base70Plus15'))
+  const fees = feeRuleStrings(computeLoanFees(10000, 70))
   return {
     name: '',
     description: '',
     termCount: '70',
     paymentFrequency: 'Daily',
     interestMethod: 'Flat',
-    processingFeeSchedule: 'Base70Plus15' as ProcessingFeeSchedule,
     applyFeeRules: true,
     isActive: true,
     ...fees,
@@ -35,18 +30,16 @@ const emptyForm = () => {
 
 function applyRulesToForm(
   prev: ReturnType<typeof emptyForm>,
-  overrides?: Partial<Pick<ReturnType<typeof emptyForm>, 'amount' | 'termCount' | 'processingFeeSchedule'>>,
+  overrides?: Partial<Pick<ReturnType<typeof emptyForm>, 'amount' | 'termCount'>>,
 ) {
   const amount = Number(overrides?.amount ?? prev.amount)
   const termCount = Number(overrides?.termCount ?? prev.termCount)
-  const schedule = (overrides?.processingFeeSchedule ?? prev.processingFeeSchedule) as ProcessingFeeSchedule
   if (!(amount > 0) || !(termCount > 0)) return { ...prev, ...overrides }
-  const fees = computeLoanFees(amount, termCount, schedule)
+  const fees = computeLoanFees(amount, termCount)
   return {
     ...prev,
     ...overrides,
     ...feeRuleStrings(fees),
-    processingFeeSchedule: schedule,
     applyFeeRules: true,
   }
 }
@@ -92,9 +85,6 @@ export function LoanProductsPage() {
       termCount: String(product.termCount),
       paymentFrequency: product.paymentFrequency,
       interestMethod: product.interestMethod,
-      processingFeeSchedule: (product.processingFeeSchedule === 'Base100Plus10'
-        ? 'Base100Plus10'
-        : 'Base70Plus15') as ProcessingFeeSchedule,
       applyFeeRules: true,
       isActive: product.isActive,
       ...chargeStringsFrom(product),
@@ -113,7 +103,6 @@ export function LoanProductsPage() {
         termCount: Number(form.termCount),
         paymentFrequency: form.paymentFrequency,
         interestMethod: form.interestMethod,
-        processingFeeSchedule: form.processingFeeSchedule,
         applyFeeRules: form.applyFeeRules,
         isActive: form.isActive,
         ...chargePayloadFrom(form),
@@ -168,7 +157,8 @@ export function LoanProductsPage() {
         <div>
           <h2 className="text-xl font-semibold">Loan Products</h2>
           <p className="text-sm text-slate-500">
-            Templates with fee rules: notarial, processing, savings, insurance, tax, 12% interest (round to tens).
+            Templates with fee rules: notarial, processing, loan redemption, savings, insurance, tax, 12%
+            interest (round to tens).
           </p>
         </div>
         {canManage && (
@@ -324,25 +314,6 @@ export function LoanProductsPage() {
                 <option value="Monthly">Monthly</option>
               </select>
             </div>
-            <div className="md:col-span-2">
-              <label className="mb-1 block text-sm font-medium text-slate-600">Processing fee schedule *</label>
-              <select
-                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-                value={form.processingFeeSchedule}
-                onChange={(e) => {
-                  const processingFeeSchedule = e.target.value as ProcessingFeeSchedule
-                  setForm((prev) =>
-                    prev.applyFeeRules
-                      ? applyRulesToForm(prev, { processingFeeSchedule })
-                      : { ...prev, processingFeeSchedule },
-                  )
-                }}
-                disabled={!canManage}
-              >
-                <option value="Base70Plus15">5,000 = 70, then +15 every 1,000</option>
-                <option value="Base100Plus10">5,000 = 100, then +10 every 1,000</option>
-              </select>
-            </div>
           </div>
 
           <label className="flex items-center gap-2 text-sm text-slate-700">
@@ -355,7 +326,7 @@ export function LoanProductsPage() {
               }}
               disabled={!canManage}
             />
-            Auto-calculate fees from principal (notarial, processing, savings, insurance, tax, 12%)
+            Auto-calculate fees from principal (notarial, processing, redemption, savings, insurance, tax, 12%)
           </label>
 
           <div>

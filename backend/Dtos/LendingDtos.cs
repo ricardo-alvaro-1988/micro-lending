@@ -517,7 +517,6 @@ public record LoanProductDto(
     int TermCount,
     string PaymentFrequency,
     string InterestMethod,
-    string ProcessingFeeSchedule,
     decimal InsuranceAmount,
     decimal InitialSavings,
     decimal SavingsPerPeriod,
@@ -547,8 +546,6 @@ public class UpsertLoanProductRequest : LoanChargeRequest
     [Required]
     public string PaymentFrequency { get; set; } = "Daily";
     public string InterestMethod { get; set; } = "Flat";
-    /// <summary>Base70Plus15 or Base100Plus10.</summary>
-    public string ProcessingFeeSchedule { get; set; } = "Base70Plus15";
     public bool IsActive { get; set; } = true;
     /// <summary>When true, recompute fees from amount/terms using product fee rules.</summary>
     public bool ApplyFeeRules { get; set; } = true;
