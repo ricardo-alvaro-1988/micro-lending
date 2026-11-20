@@ -13,6 +13,7 @@ type DayRow = {
   injectedFunds: number
   disbursement: number
   expenses: number
+  savings: number
   netChange: number
 }
 
@@ -32,6 +33,10 @@ type Result = {
   expenses: number
   expenseCount: number
   cashOnHand: number
+  savings: number
+  primarySavings: number
+  extraSavings: number
+  savingsLoanCount: number
   days: DayRow[]
 }
 
@@ -154,10 +159,15 @@ export function CashflowReportPage() {
             ['Disbursement (−)', data.disbursement, data.disbursementCount],
             ['Expenses (−)', data.expenses, data.expenseCount],
             ['Cash on hand', data.cashOnHand, ''],
+            [
+              'Savings (Primary + Extra)',
+              data.savings,
+              `Primary ${data.primarySavings}; Extra ${data.extraSavings}; ${data.savingsLoanCount} loan(s)`,
+            ],
             ...data.days.map((d) => [
               d.date.slice(0, 10),
               d.netChange,
-              `Remitted ${d.remitted}; Injected ${d.injectedFunds}; Disb ${d.disbursement}; Exp ${d.expenses}`,
+              `Remitted ${d.remitted}; Injected ${d.injectedFunds}; Disb ${d.disbursement}; Exp ${d.expenses}; Sav ${d.savings}`,
             ]),
           ],
         )
@@ -351,12 +361,28 @@ export function CashflowReportPage() {
                     </td>
                     <td className="px-4 py-4 text-xs font-semibold text-emerald-800">=</td>
                   </tr>
+                  <tr className="border-t border-slate-200 bg-amber-50/50">
+                    <td className="px-4 py-3 font-medium text-amber-950">
+                      Savings
+                      <div className="text-xs font-normal text-amber-800/80">
+                        Primary {money(data.primarySavings)} + Extra {money(data.extraSavings)}
+                        {data.savingsLoanCount > 0
+                          ? ` · ${data.savingsLoanCount} loan${data.savingsLoanCount === 1 ? '' : 's'}`
+                          : ''}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-right tabular-nums font-semibold text-amber-950">
+                      {money(data.savings)}
+                    </td>
+                    <td className="px-4 py-3 text-xs text-amber-800">Σ</td>
+                  </tr>
                 </tbody>
               </table>
             </div>
 
             <p className="text-xs text-slate-500 print:hidden">
-              Formula: Beginning + Remitted + Injected funds − Disbursement − Expenses = Cash on hand
+              Formula: Beginning + Remitted + Injected funds − Disbursement − Expenses = Cash on hand.
+              Savings is Primary + Extra balances (not deducted from cash on hand).
             </p>
 
             {data.days.length > 0 && rangeFrom !== rangeTo && (
@@ -371,6 +397,7 @@ export function CashflowReportPage() {
                         <th className="border border-slate-200 px-3 py-2 text-right">Injected</th>
                         <th className="border border-slate-200 px-3 py-2 text-right">Disbursement</th>
                         <th className="border border-slate-200 px-3 py-2 text-right">Expenses</th>
+                        <th className="border border-slate-200 px-3 py-2 text-right">Savings</th>
                         <th className="border border-slate-200 px-3 py-2 text-right">Net change</th>
                       </tr>
                     </thead>
@@ -391,6 +418,9 @@ export function CashflowReportPage() {
                           </td>
                           <td className="border border-slate-200 px-3 py-2 text-right tabular-nums">
                             {money(d.expenses)}
+                          </td>
+                          <td className="border border-slate-200 px-3 py-2 text-right tabular-nums">
+                            {money(d.savings)}
                           </td>
                           <td className="border border-slate-200 px-3 py-2 text-right tabular-nums font-medium">
                             {money(d.netChange)}
