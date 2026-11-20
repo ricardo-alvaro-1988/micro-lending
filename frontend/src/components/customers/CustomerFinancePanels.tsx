@@ -47,6 +47,12 @@ const dateOnly = (value?: string | null) => {
   return new Date(value).toLocaleDateString()
 }
 
+/** Local `YYYY-MM-DDTHH:mm` for datetime-local inputs. */
+function localDateTimeInputValue(date = new Date()) {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
+
 type SharedProps = {
   customerId: number
   onError: (msg: string) => void
@@ -77,6 +83,7 @@ export function LoanApplicationPanel({ customerId, onError, onMessage }: SharedP
     applicationType: 'New',
     cycle: '1',
     approvedAmount: '',
+    applicationDate: localDateTimeInputValue(),
     firstDueDate: '',
     notes: '',
     ...emptyChargeStrings,
@@ -153,7 +160,10 @@ export function LoanApplicationPanel({ customerId, onError, onMessage }: SharedP
           loanType: form.loanType || null,
           applicationType: form.applicationType || null,
           cycle: form.cycle ? Number(form.cycle) : null,
-          approvedAmount: form.approvedAmount ? Number(form.approvedAmount) : null,
+          approvedAmount: Number(form.approvedAmount || form.amount || 0) || null,
+          applicationDate: form.applicationDate
+            ? new Date(form.applicationDate).toISOString()
+            : new Date().toISOString(),
           firstDueDate: form.firstDueDate || null,
           notes: form.notes || null,
           collaterals: collaterals
@@ -174,6 +184,7 @@ export function LoanApplicationPanel({ customerId, onError, onMessage }: SharedP
         amount: '',
         notes: '',
         approvedAmount: '',
+        applicationDate: localDateTimeInputValue(),
         cycle: prev.cycle || '1',
         ...emptyChargeStrings,
         membershipFee: String(membershipFeeFor(Number(prev.cycle) || 1)),
@@ -264,6 +275,7 @@ export function LoanApplicationPanel({ customerId, onError, onMessage }: SharedP
                 interestMethod: product.interestMethod,
                 ...fees,
                 amount: String(product.amount),
+                approvedAmount: String(product.amount),
                 termCount: String(product.termCount),
               }))
             }}
@@ -338,24 +350,35 @@ export function LoanApplicationPanel({ customerId, onError, onMessage }: SharedP
                   setForm({
                     ...form,
                     amount,
+                    approvedAmount: amount,
                     ...feeFieldsFromPrincipal(n, terms, form.cycle),
                     termCount: form.termCount,
                   })
                   return
                 }
-                setForm({ ...form, amount })
+                setForm({ ...form, amount, approvedAmount: amount })
               }}
               required
             />
             <input
               className="rounded-md border border-slate-300 px-3 py-2 text-sm"
-              placeholder="Approved amount / cycle amount"
+              placeholder="Approved amount (defaults to applied)"
               type="number"
               min="0"
-              step="0.01"
+              step="any"
               value={form.approvedAmount}
               onChange={(e) => setForm({ ...form, approvedAmount: e.target.value })}
             />
+            <label className="text-sm md:col-span-1">
+              <span className="mb-1 block text-xs font-medium text-slate-500">Application date *</span>
+              <input
+                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                type="datetime-local"
+                value={form.applicationDate}
+                onChange={(e) => setForm({ ...form, applicationDate: e.target.value })}
+                required
+              />
+            </label>
             <input
               className="rounded-md border border-slate-300 px-3 py-2 text-sm"
               placeholder="Cycle # (1 = membership 125; 2+ = none)"
