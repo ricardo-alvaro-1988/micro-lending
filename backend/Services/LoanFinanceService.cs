@@ -544,6 +544,6 @@ public class LoanFinanceService
             .Include(l => l.Approvals).ThenInclude(a => a.DecidedByUser)
             .Include(l => l.LoanProduct)
             .Include(l => l.Collaterals)
-            .Include(l => l.LateFees).ThenInclude(f => f.RecordedByUser)
+            .AsSplitQuery()
             .FirstOrDefaultAsync(l => l.Id == loanId);
 }

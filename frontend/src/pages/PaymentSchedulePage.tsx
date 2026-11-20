@@ -155,9 +155,9 @@ export function PaymentSchedulePage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-xl font-semibold">Payment Schedule</h2>
+          <h2 className="text-xl font-semibold">Disbursement</h2>
           <p className="text-sm text-slate-500">
-            Urgent queue — Approved-Final loans that still need a payment schedule.
+            Urgent queue — Approved-Final loans that still need disbursement / payment schedule.
           </p>
         </div>
         <ActionButton type="button" onClick={() => void load()} loading={loading} loadingText="Refreshing…">

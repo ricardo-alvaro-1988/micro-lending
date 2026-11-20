@@ -120,8 +120,8 @@ const nav: NavItem[] = [
       },
       { label: 'Activity', to: '/transaction/activity', permission: 'activity.view', icon: <IconActivity /> },
       {
-        label: 'Payment Schedule',
-        to: '/transaction/payment-schedule',
+        label: 'Disbursement',
+        to: '/transaction/disbursement',
         permission: 'paymentSchedule.view',
         icon: <IconSchedule />,
       },
@@ -469,7 +469,7 @@ export function AppLayout() {
           {child.to === '/lending/loans' && <Badge count={pendingLoanCount} />}
           {child.to === '/lending/approvals' && <Badge count={approvalCount} />}
           {child.to === '/transaction/activity' && <Badge count={todayActivityCount} />}
-          {child.to === '/transaction/payment-schedule' && <Badge count={scheduleCount} />}
+          {child.to === '/transaction/disbursement' && <Badge count={scheduleCount} />}
         </>
       )}
       {collapsed && child.to === '/lending/loans' && pendingLoanCount > 0 && (
@@ -481,7 +481,7 @@ export function AppLayout() {
       {collapsed && child.to === '/transaction/activity' && todayActivityCount > 0 && (
         <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-rose-500" />
       )}
-      {collapsed && child.to === '/transaction/payment-schedule' && scheduleCount > 0 && (
+      {collapsed && child.to === '/transaction/disbursement' && scheduleCount > 0 && (
         <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-rose-500" />
       )}
     </>
@@ -768,7 +768,7 @@ export function AppLayout() {
                                 className="block w-full border-b border-slate-50 px-4 py-3 text-left hover:bg-slate-50"
                                 onClick={() => {
                                   setBellOpen(false)
-                                  navigate('/transaction/payment-schedule')
+                                  navigate('/transaction/disbursement')
                                 }}
                               >
                                 <div className="text-sm font-medium text-slate-800">{item.loanNumber}</div>
@@ -785,10 +785,10 @@ export function AppLayout() {
                           className="w-full border-b border-slate-100 px-4 py-2.5 text-sm font-medium text-rose-700 hover:bg-rose-50"
                           onClick={() => {
                             setBellOpen(false)
-                            navigate('/transaction/payment-schedule')
+                            navigate('/transaction/disbursement')
                           }}
                         >
-                          Open Payment Schedule
+                          Open Disbursement
                         </button>
                       </>
                     )}
@@ -848,14 +848,14 @@ export function AppLayout() {
           </div>
         </header>
 
-        {scheduleCount > 0 && location.pathname !== '/transaction/payment-schedule' && (
+        {scheduleCount > 0 && location.pathname !== '/transaction/disbursement' && (
           <div className="border-b border-rose-200 bg-rose-50 px-6 py-2 text-sm text-rose-900">
             <strong>{scheduleCount}</strong> Approved-Final loan{scheduleCount === 1 ? '' : 's'} urgently need a
             payment schedule.{' '}
             <button
               type="button"
               className="font-semibold underline"
-              onClick={() => navigate('/transaction/payment-schedule')}
+              onClick={() => navigate('/transaction/disbursement')}
             >
               Create now
             </button>

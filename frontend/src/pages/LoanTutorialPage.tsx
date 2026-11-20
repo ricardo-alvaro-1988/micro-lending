@@ -92,7 +92,7 @@ const STEPS: Step[] = [
     where: 'Payment Terms / Schedule',
     do: 'Set rate, term, first due',
     result: 'Installments generated; then collect',
-    href: '/transaction/payment-schedule',
+    href: '/transaction/disbursement',
     permission: 'paymentSchedule.view',
   },
 ]

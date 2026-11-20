@@ -275,7 +275,7 @@ export function LoanDetailsPanel({ loanId, onClose, className = '', headerAction
                         </tr>
                       </thead>
                       <tbody>
-                        {detail.lateFees.map((f) => (
+                        {(detail.lateFees ?? []).map((f) => (
                           <tr key={f.id} className="border-t border-slate-100">
                             <td className="px-3 py-2 font-medium">{f.loanNumber || loan.loanNumber}</td>
                             <td className="px-3 py-2 whitespace-nowrap">

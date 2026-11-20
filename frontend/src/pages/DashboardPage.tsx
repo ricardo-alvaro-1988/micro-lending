@@ -449,7 +449,7 @@ export function DashboardPage() {
                 {can('approvals.view') && <QuickLink to="/lending/approvals" label="Approvals" />}
                 {can('reports.view') && <QuickLink to="/reports" label="All reports" />}
                 {can('paymentSchedule.view') && (
-                  <QuickLink to="/transaction/payment-schedule" label="Payment schedules" />
+                  <QuickLink to="/transaction/disbursement" label="Disbursement" />
                 )}
               </ul>
             </div>
