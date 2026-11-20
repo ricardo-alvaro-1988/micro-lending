@@ -1912,18 +1912,27 @@ public class ReportsController : ControllerBase
         var beginning = opening?.Amount ?? 0m;
         var beginningSet = opening is not null;
 
-        // Remitted into office (non-draft slips).
+        // Remitted into office = cash turned in that day (ReceivedAt / CreatedAt),
+        // not RemittanceDate (field collection day). Non-draft slips only.
         var remittanceQuery = _db.CashRemittances.AsNoTracking()
-            .Where(r => r.RemittanceDate >= start && r.RemittanceDate < endExclusive)
             .Where(r => r.Status != CashRemittanceStatus.Draft);
         if (balanceBranchId is int remBid)
             remittanceQuery = remittanceQuery.Where(r => r.BranchId == remBid);
         else if (!scope.IsAdmin)
             remittanceQuery = remittanceQuery.Where(_ => false);
 
-        var remittanceRows = await remittanceQuery
-            .Select(r => new { r.RemittanceDate, r.RemittedAmount })
+        var remittanceRaw = await remittanceQuery
+            .Select(r => new { r.RemittanceDate, r.ReceivedAt, r.CreatedAt, r.RemittedAmount })
             .ToListAsync();
+        var remittanceRows = remittanceRaw
+            .Select(r =>
+            {
+                // Office cash-in day (PH business stamp when approved/received).
+                var at = r.ReceivedAt ?? r.CreatedAt;
+                return new { At = at, r.RemittedAmount };
+            })
+            .Where(r => r.At >= start && r.At < endExclusive)
+            .ToList();
         var remitted = remittanceRows.Sum(r => r.RemittedAmount);
 
         // Disbursement = net cash released (Approved-Final in period).
@@ -1984,7 +1993,7 @@ public class ReportsController : ControllerBase
         for (var d = start; d <= end; d = d.AddDays(1))
         {
             var dayEnd = d.AddDays(1);
-            var dayRem = remittanceRows.Where(r => r.RemittanceDate >= d && r.RemittanceDate < dayEnd).Sum(r => r.RemittedAmount);
+            var dayRem = remittanceRows.Where(r => r.At >= d && r.At < dayEnd).Sum(r => r.RemittedAmount);
             var dayDisb = disbRows.Where(x => x.At >= d && x.At < dayEnd).Sum(x => x.Net);
             var dayExp = expenseRows.Where(e => e.ExpenseDate >= d && e.ExpenseDate < dayEnd).Sum(e => e.Amount);
             if (dayRem == 0 && dayDisb == 0 && dayExp == 0 && start != end) continue;
