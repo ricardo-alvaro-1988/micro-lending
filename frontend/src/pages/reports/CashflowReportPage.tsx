@@ -144,7 +144,7 @@ export function CashflowReportPage() {
   return (
     <ReportChrome
       title="Cashflow report"
-      description="Remitted is gross cash-in (includes savings). Savings = Primary + Extra liability. Cash available = Cash on hand − Savings."
+      description="Beginning + Remitted + Injected − Disbursement − Expenses − Savings (Primary + Extra) = Cash on hand."
       loading={loading}
       error={error}
       onRefresh={() => void load()}
@@ -159,13 +159,12 @@ export function CashflowReportPage() {
             ['Injected funds (+)', data.injectedFunds, data.injectedFundsCount],
             ['Disbursement (−)', data.disbursement, data.disbursementCount],
             ['Expenses (−)', data.expenses, data.expenseCount],
-            ['Cash on hand', data.cashOnHand, 'Remitted includes savings cash'],
             [
-              'Savings (Primary + Extra)',
+              'Savings (−)',
               data.savings,
-              `Primary ${data.primarySavings}; Extra ${data.extraSavings}; ${data.savingsLoanCount} loan(s) — liability, not another inflow`,
+              `Primary ${data.primarySavings}; Extra ${data.extraSavings}; ${data.savingsLoanCount} loan(s)`,
             ],
-            ['Cash available', data.cashAvailable, 'Cash on hand − Savings'],
+            ['Cash on hand', data.cashAvailable, 'After Savings (Primary + Extra)'],
             ...data.days.map((d) => [
               d.date.slice(0, 10),
               d.netChange,
@@ -357,22 +356,14 @@ export function CashflowReportPage() {
                     </td>
                     <td className="px-4 py-3 text-xs text-rose-700">−</td>
                   </tr>
-                  <tr className="bg-emerald-50">
-                    <td className="px-4 py-4 text-base font-semibold text-emerald-900">Cash on hand</td>
-                    <td className="px-4 py-4 text-right text-xl font-semibold tabular-nums text-emerald-900">
-                      {money(data.cashOnHand)}
-                    </td>
-                    <td className="px-4 py-4 text-xs font-semibold text-emerald-800">=</td>
-                  </tr>
-                  <tr className="border-t border-slate-200 bg-amber-50/50">
+                  <tr className="border-b border-slate-100 bg-amber-50/50">
                     <td className="px-4 py-3 font-medium text-amber-950">
                       Savings
                       <div className="text-xs font-normal text-amber-800/80">
                         Primary {money(data.primarySavings)} + Extra {money(data.extraSavings)}
                         {data.savingsLoanCount > 0
                           ? ` · ${data.savingsLoanCount} loan${data.savingsLoanCount === 1 ? '' : 's'}`
-                          : ''}{' '}
-                        · liability inside remitted / cash on hand (not another +)
+                          : ''}
                       </div>
                     </td>
                     <td className="px-4 py-3 text-right tabular-nums font-semibold text-amber-950">
@@ -380,20 +371,20 @@ export function CashflowReportPage() {
                     </td>
                     <td className="px-4 py-3 text-xs text-amber-800">−</td>
                   </tr>
-                  <tr className="bg-slate-900 text-white">
-                    <td className="px-4 py-4 text-base font-semibold">Cash available</td>
-                    <td className="px-4 py-4 text-right text-xl font-semibold tabular-nums">
+                  <tr className="bg-emerald-50">
+                    <td className="px-4 py-4 text-base font-semibold text-emerald-900">Cash on hand</td>
+                    <td className="px-4 py-4 text-right text-xl font-semibold tabular-nums text-emerald-900">
                       {money(data.cashAvailable)}
                     </td>
-                    <td className="px-4 py-4 text-xs font-semibold text-slate-300">=</td>
+                    <td className="px-4 py-4 text-xs font-semibold text-emerald-800">=</td>
                   </tr>
                 </tbody>
               </table>
             </div>
 
             <p className="text-xs text-slate-500 print:hidden">
-              Cash on hand = Beginning + Remitted + Injected − Disbursement − Expenses. Remitted already includes
-              savings cash, so Savings (Primary + Extra) is subtracted once: Cash available = Cash on hand − Savings.
+              Formula: Beginning + Remitted + Injected − Disbursement − Expenses − Savings (Primary + Extra) = Cash on
+              hand.
             </p>
 
             {data.days.length > 0 && rangeFrom !== rangeTo && (

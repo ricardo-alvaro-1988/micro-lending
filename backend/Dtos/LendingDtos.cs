@@ -1489,7 +1489,7 @@ public record ReportCashflowDto(
     decimal PrimarySavings,
     decimal ExtraSavings,
     int SavingsLoanCount,
-    /// <summary>Cash on hand − Savings.</summary>
+    /// <summary>Cash on hand − Savings. UI labels this as Cash on hand.</summary>
     decimal CashAvailable,
     IReadOnlyList<ReportCashflowDayDto> Days);
 
