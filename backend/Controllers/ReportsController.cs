@@ -759,16 +759,104 @@ public class ReportsController : ControllerBase
         return Ok(results.OrderBy(x => x.ClosedAt).ThenBy(x => x.CustomerName).ToList());
     }
 
-    /// <summary>Group / cluster collection sheet for a due date.</summary>
+    /// <summary>Printable per-group sheet: schedule due for the day, balance, primary/extra savings.</summary>
     [HttpGet("group-collection-sheet")]
-    public async Task<ActionResult<IEnumerable<ReportDueCollectionDto>>> GroupCollectionSheet(
+    public async Task<ActionResult<IEnumerable<ReportGroupSheetRowDto>>> GroupCollectionSheet(
         [FromQuery] DateTime? asOf = null,
         [FromQuery] int? branchId = null,
         [FromQuery] int? groupId = null,
         [FromQuery] string? agent1UserId = null)
     {
-        // Same data as due-collections; UI groups by cluster. Require explicit asOf day focus.
-        return await DueCollections(asOf, branchId, agent1UserId, groupId);
+        var scope = await _branchScope.ResolveAsync(User, branchId);
+        if (scope is null) return Unauthorized();
+        if (scope.IsFieldAgent) return Forbid();
+
+        var day = (asOf ?? DateTime.UtcNow).Date;
+        await _finance.AccrueOpenItemsAsync(day);
+
+        var customers = BranchScopeService.Customers(_db.Customers.AsNoTracking(), scope);
+        var query =
+            from item in _db.LoanScheduleItems.AsNoTracking()
+            join loan in _db.Loans.AsNoTracking() on item.LoanId equals loan.Id
+            join customer in customers on loan.CustomerId equals customer.Id
+            where item.DueDate < day.AddDays(1)
+                  && item.PaidAmount < item.AmountDue + item.PenaltyAmount
+                  && (loan.Status == LoanStatus.ApprovedFinal || loan.Status == LoanStatus.Closed)
+            select new { item, loan, customer };
+
+        if (!string.IsNullOrWhiteSpace(agent1UserId))
+            query = query.Where(x => x.customer.Agent1UserId == agent1UserId);
+        if (groupId is int gid)
+            query = query.Where(x => x.customer.GroupId == gid);
+
+        var raw = await query
+            .OrderBy(x => x.customer.Group != null ? x.customer.Group.Name : "")
+            .ThenBy(x => x.customer.FullName)
+            .ThenBy(x => x.item.DueDate)
+            .ThenBy(x => x.item.InstallmentNumber)
+            .Select(x => new
+            {
+                x.item.Id,
+                CustomerId = x.customer.Id,
+                x.customer.FullName,
+                x.customer.Mobile,
+                x.customer.GroupId,
+                GroupName = x.customer.Group != null ? x.customer.Group.Name : null,
+                x.customer.Agent1UserId,
+                Agent1Name = x.customer.Agent1 != null ? x.customer.Agent1.FullName : null,
+                LoanId = x.loan.Id,
+                x.loan.LoanNumber,
+                x.item.InstallmentNumber,
+                x.item.DueDate,
+                x.item.AmountDue,
+                x.item.PenaltyAmount,
+                x.item.PaidAmount,
+                x.loan.PrimarySavingsBalance,
+                x.loan.ExtraSavingsBalance,
+                LoanStatus = x.loan.Status,
+                x.loan.TotalPayable,
+            })
+            .ToListAsync();
+
+        var loanIds = raw.Select(x => x.LoanId).Distinct().ToList();
+        var paidByLoan = loanIds.Count == 0
+            ? new Dictionary<int, decimal>()
+            : await _db.LoanPayments.AsNoTracking()
+                .Where(p => loanIds.Contains(p.LoanId))
+                .GroupBy(p => p.LoanId)
+                .Select(g => new { LoanId = g.Key, Total = g.Sum(p => p.Amount) })
+                .ToDictionaryAsync(x => x.LoanId, x => x.Total);
+
+        var rows = raw.Select(x =>
+        {
+            paidByLoan.TryGetValue(x.LoanId, out var totalPaid);
+            var loanBalance = Math.Max(0, x.TotalPayable - totalPaid);
+            var remaining = x.AmountDue + x.PenaltyAmount - x.PaidAmount;
+            return new ReportGroupSheetRowDto(
+                x.Id,
+                x.CustomerId,
+                x.FullName,
+                x.Mobile,
+                x.GroupId,
+                x.GroupName,
+                x.Agent1UserId,
+                x.Agent1Name,
+                x.LoanId,
+                x.LoanNumber,
+                x.InstallmentNumber,
+                x.DueDate,
+                x.AmountDue,
+                x.PenaltyAmount,
+                x.PaidAmount,
+                remaining,
+                loanBalance,
+                x.PrimarySavingsBalance,
+                x.ExtraSavingsBalance,
+                x.DueDate.Date < day,
+                x.LoanStatus.ToString());
+        }).ToList();
+
+        return Ok(rows);
     }
 
     /// <summary>Bulk statement lines for export across scoped customers.</summary>

@@ -7,18 +7,38 @@ import { useReportFilters } from './useReportFilters'
 
 type Row = {
   scheduleItemId: number
+  customerId: number
   customerName: string
   customerMobile?: string | null
   groupId?: number | null
   groupName?: string | null
   agent1Name?: string | null
+  loanId: number
   loanNumber: string
   installmentNumber: number
   dueDate: string
   amountDue: number
+  penaltyAmount: number
   paidAmount: number
   remaining: number
+  loanBalance: number
+  primarySavingsBalance: number
+  extraSavingsBalance: number
   isOverdue: boolean
+  loanStatus: string
+}
+
+type CustomerBlock = {
+  customerId: number
+  customerName: string
+  customerMobile?: string | null
+  agent1Name?: string | null
+  rows: Row[]
+  dayTotal: number
+  loanBalance: number
+  primarySavings: number
+  extraSavings: number
+  seenLoans: Set<number>
 }
 
 export function GroupCollectionSheetPage() {
@@ -53,38 +73,93 @@ export function GroupCollectionSheetPage() {
   }, [load])
 
   const sections = useMemo(() => {
-    const map = new Map<string, Row[]>()
+    const byGroup = new Map<string, Map<number, CustomerBlock>>()
     for (const r of rows) {
-      const key = r.groupName || '(No group)'
-      if (!map.has(key)) map.set(key, [])
-      map.get(key)!.push(r)
+      const groupKey = r.groupName || '(No group)'
+      if (!byGroup.has(groupKey)) byGroup.set(groupKey, new Map())
+      const customers = byGroup.get(groupKey)!
+      let block = customers.get(r.customerId)
+      if (!block) {
+        block = {
+          customerId: r.customerId,
+          customerName: r.customerName,
+          customerMobile: r.customerMobile,
+          agent1Name: r.agent1Name,
+          rows: [],
+          dayTotal: 0,
+          loanBalance: 0,
+          primarySavings: 0,
+          extraSavings: 0,
+          seenLoans: new Set<number>(),
+        }
+        customers.set(r.customerId, block)
+      }
+      block.rows.push(r)
+      block.dayTotal += r.remaining
+      if (!block.seenLoans.has(r.loanId)) {
+        block.seenLoans.add(r.loanId)
+        block.loanBalance += r.loanBalance
+        block.primarySavings += r.primarySavingsBalance
+        block.extraSavings += r.extraSavingsBalance
+      }
     }
-    return [...map.entries()].sort(([a], [b]) => a.localeCompare(b))
+
+    return [...byGroup.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([groupName, customers]) => {
+        const customerList = [...customers.values()].sort((a, b) => a.customerName.localeCompare(b.customerName))
+        const dayTotal = customerList.reduce((s, c) => s + c.dayTotal, 0)
+        const primaryTotal = customerList.reduce((s, c) => s + c.primarySavings, 0)
+        const extraTotal = customerList.reduce((s, c) => s + c.extraSavings, 0)
+        const balanceTotal = customerList.reduce((s, c) => s + c.loanBalance, 0)
+        return { groupName, customers: customerList, dayTotal, primaryTotal, extraTotal, balanceTotal }
+      })
   }, [rows])
 
   const totals = useMemo(() => {
-    let expected = 0
-    let collected = 0
-    const customers = new Set<string>()
+    let dayTotal = 0
+    let balance = 0
+    let primary = 0
+    let extra = 0
+    const customers = new Set<number>()
     for (const r of rows) {
-      expected += r.amountDue
-      collected += r.paidAmount
-      customers.add(r.customerName)
+      dayTotal += r.remaining
+      customers.add(r.customerId)
     }
-    return { expected, collected, customers: customers.size, groups: sections.length }
-  }, [rows, sections.length])
+    for (const section of sections) {
+      balance += section.balanceTotal
+      primary += section.primaryTotal
+      extra += section.extraTotal
+    }
+    return { dayTotal, balance, primary, extra, customers: customers.size, groups: sections.length }
+  }, [rows, sections])
 
   return (
     <ReportChrome
-      title="Group / cluster collection sheet"
-      description="Due installments for the day, organized by group for field printing."
+      title="Group printable collection sheet"
+      description="Per group / customer: payment schedule for the day, day total, loan balance, primary and extra savings."
       loading={loading}
       error={error}
       onRefresh={() => void load()}
       onExport={() =>
         downloadCsv(
-          `group-collection-${asOf}.csv`,
-          ['Group', 'Customer', 'Mobile', 'Agent', 'Loan', 'Inst #', 'Due', 'Scheduled', 'Paid', 'Remaining', 'Overdue'],
+          `group-sheet-${asOf}.csv`,
+          [
+            'Group',
+            'Customer',
+            'Mobile',
+            'Agent',
+            'Loan',
+            'Inst #',
+            'Due date',
+            'Amount due',
+            'Paid',
+            'Day remaining',
+            'Loan balance',
+            'Primary savings',
+            'Extra savings',
+            'Overdue',
+          ],
           rows.map((r) => [
             r.groupName,
             r.customerName,
@@ -96,6 +171,9 @@ export function GroupCollectionSheetPage() {
             r.amountDue,
             r.paidAmount,
             r.remaining,
+            r.loanBalance,
+            r.primarySavingsBalance,
+            r.extraSavingsBalance,
             r.isOverdue ? 'Yes' : 'No',
           ]),
         )
@@ -130,53 +208,98 @@ export function GroupCollectionSheetPage() {
       summary={
         <ReportSummary>
           <ReportStat label="Groups" value={String(totals.groups)} hint={`${totals.customers} customer(s)`} />
-          <ReportStat label="Expected" value={money(totals.expected)} />
-          <ReportStat label="Collected" value={money(totals.collected)} tone="good" />
+          <ReportStat label="Day total" value={money(totals.dayTotal)} />
+          <ReportStat label="Loan balances" value={money(totals.balance)} />
+          <ReportStat
+            label="Savings"
+            value={money(totals.primary + totals.extra)}
+            hint={`Primary ${money(totals.primary)} · Extra ${money(totals.extra)}`}
+          />
         </ReportSummary>
       }
     >
-      <div className="space-y-6 p-3">
+      <div className="space-y-8 p-4 print:p-0">
+        <div className="hidden print:block print:mb-3">
+          <h1 className="text-lg font-semibold">Group collection sheet — {asOf}</h1>
+          <p className="text-xs text-slate-600">
+            Day total {money(totals.dayTotal)} · {totals.customers} customer(s) · {totals.groups} group(s)
+          </p>
+        </div>
+
         {sections.length === 0 ? (
           <p className="py-6 text-center text-sm text-slate-500">No dues for these filters.</p>
         ) : (
-          sections.map(([groupName, items]) => {
-            const total = items.reduce((s, r) => s + r.remaining, 0)
-            return (
-              <section key={groupName} className="break-inside-avoid">
-                <div className="mb-2 flex items-end justify-between border-b border-slate-200 pb-1">
-                  <h2 className="text-sm font-semibold text-slate-900">{groupName}</h2>
-                  <div className="text-xs text-slate-500">
-                    {items.length} item(s) · collect {money(total)}
+          sections.map((section) => (
+            <section key={section.groupName} className="break-inside-avoid border-b border-slate-200 pb-6 last:border-0">
+              <div className="mb-3 flex flex-wrap items-end justify-between gap-2 border-b border-slate-300 pb-2">
+                <h2 className="text-base font-semibold text-slate-900">{section.groupName}</h2>
+                <div className="text-xs text-slate-600 sm:text-right">
+                  <div>
+                    Day total <strong>{money(section.dayTotal)}</strong>
+                  </div>
+                  <div>
+                    Balances {money(section.balanceTotal)} · Primary {money(section.primaryTotal)} · Extra{' '}
+                    {money(section.extraTotal)}
                   </div>
                 </div>
-                <table className="min-w-full text-left text-sm">
-                  <thead className="text-xs uppercase text-slate-500">
-                    <tr>
-                      <th className="py-1 pr-2">Customer</th>
-                      <th className="py-1 pr-2">Loan</th>
-                      <th className="py-1 pr-2">#</th>
-                      <th className="py-1 pr-2 text-right">Due</th>
-                      <th className="py-1 text-right">Rem</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {items.map((r) => (
-                      <tr key={r.scheduleItemId}>
-                        <td className="py-1.5 pr-2">
-                          <div className="font-medium">{r.customerName}</div>
-                          <div className="text-xs text-slate-500">{r.customerMobile || '—'}</div>
-                        </td>
-                        <td className="py-1.5 pr-2">{r.loanNumber}</td>
-                        <td className="py-1.5 pr-2">{r.installmentNumber}</td>
-                        <td className="py-1.5 pr-2 text-right">{money(r.amountDue)}</td>
-                        <td className="py-1.5 text-right font-medium">{money(r.remaining)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </section>
-            )
-          })
+              </div>
+
+              <div className="space-y-4">
+                {section.customers.map((c) => (
+                  <div key={c.customerId} className="break-inside-avoid rounded-lg border border-slate-200 p-3 print:rounded-none print:border-slate-300">
+                    <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
+                      <div>
+                        <div className="font-semibold text-slate-900">{c.customerName}</div>
+                        <div className="text-xs text-slate-500">
+                          {[c.customerMobile, c.agent1Name ? `Agent: ${c.agent1Name}` : null]
+                            .filter(Boolean)
+                            .join(' · ') || '—'}
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs sm:text-right">
+                        <span className="text-slate-500">Day total</span>
+                        <span className="font-semibold">{money(c.dayTotal)}</span>
+                        <span className="text-slate-500">Loan balance</span>
+                        <span className="font-medium">{money(c.loanBalance)}</span>
+                        <span className="text-slate-500">Primary savings</span>
+                        <span>{money(c.primarySavings)}</span>
+                        <span className="text-slate-500">Extra savings</span>
+                        <span>{money(c.extraSavings)}</span>
+                      </div>
+                    </div>
+
+                    <table className="min-w-full text-left text-sm">
+                      <thead className="text-xs uppercase tracking-wide text-slate-500">
+                        <tr>
+                          <th className="py-1 pr-2 font-medium">Loan</th>
+                          <th className="py-1 pr-2 font-medium">Sched #</th>
+                          <th className="py-1 pr-2 font-medium">Due date</th>
+                          <th className="py-1 pr-2 font-medium text-right">Amount due</th>
+                          <th className="py-1 pr-2 font-medium text-right">Paid</th>
+                          <th className="py-1 font-medium text-right">Balance due</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {c.rows.map((r) => (
+                          <tr key={r.scheduleItemId}>
+                            <td className="py-1.5 pr-2">{r.loanNumber}</td>
+                            <td className="py-1.5 pr-2">#{r.installmentNumber}</td>
+                            <td className="py-1.5 pr-2">
+                              {r.dueDate.slice(0, 10)}
+                              {r.isOverdue ? <span className="ml-1 text-rose-600">overdue</span> : null}
+                            </td>
+                            <td className="py-1.5 pr-2 text-right">{money(r.amountDue + r.penaltyAmount)}</td>
+                            <td className="py-1.5 pr-2 text-right">{money(r.paidAmount)}</td>
+                            <td className="py-1.5 text-right font-medium">{money(r.remaining)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ))}
+              </div>
+            </section>
+          ))
         )}
       </div>
     </ReportChrome>

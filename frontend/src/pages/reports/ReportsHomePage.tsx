@@ -57,7 +57,7 @@ const reports = [
       {
         to: '/reports/group-collection-sheet',
         title: 'Group collection sheet',
-        blurb: 'Printable due list organized by cluster / group.',
+        blurb: 'Printable per group/customer: day schedule, totals, balance, primary & extra savings.',
       },
       {
         to: '/reports/statements',

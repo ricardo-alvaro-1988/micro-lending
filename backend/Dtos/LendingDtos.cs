@@ -896,6 +896,30 @@ public record ReportDueCollectionDto(
     bool IsOverdue,
     string LoanStatus);
 
+/// <summary>Printable per-group collection sheet with savings and loan balance.</summary>
+public record ReportGroupSheetRowDto(
+    int ScheduleItemId,
+    int CustomerId,
+    string CustomerName,
+    string? CustomerMobile,
+    int? GroupId,
+    string? GroupName,
+    string? Agent1UserId,
+    string? Agent1Name,
+    int LoanId,
+    string LoanNumber,
+    int InstallmentNumber,
+    DateTime DueDate,
+    decimal AmountDue,
+    decimal PenaltyAmount,
+    decimal PaidAmount,
+    decimal Remaining,
+    decimal LoanBalance,
+    decimal PrimarySavingsBalance,
+    decimal ExtraSavingsBalance,
+    bool IsOverdue,
+    string LoanStatus);
+
 public record ReportAgingRowDto(
     int ScheduleItemId,
     int CustomerId,
