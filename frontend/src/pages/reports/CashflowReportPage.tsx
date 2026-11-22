@@ -41,12 +41,21 @@ type Result = {
   days: DayRow[]
 }
 
+type OpeningInfo = {
+  isSet: boolean
+  asOfDate?: string | null
+  amount: number
+}
+
 export function CashflowReportPage() {
   const { filterBranchId } = useReportFilters()
-  const [mode, setMode] = useState<'date' | 'range'>('date')
+  // Default: beginning balance date → today (overall cashflow accuracy).
+  const [mode, setMode] = useState<'date' | 'range'>('range')
   const [asOf, setAsOf] = useState(todayIso())
   const [from, setFrom] = useState(todayIso())
   const [to, setTo] = useState(todayIso())
+  const [openingAsOf, setOpeningAsOf] = useState<string | null>(null)
+  const [rangeReady, setRangeReady] = useState(false)
   const [data, setData] = useState<Result | null>(null)
   const [beginningDate, setBeginningDate] = useState(todayIso())
   const [beginningAmount, setBeginningAmount] = useState('')
@@ -60,24 +69,65 @@ export function CashflowReportPage() {
 
   const rangeFrom = mode === 'date' ? asOf : from
   const rangeTo = mode === 'date' ? asOf : to
+  const isOverallDefault =
+    mode === 'range' && !!openingAsOf && from === openingAsOf && to === todayIso()
+
+  const applyBeginningToPresent = useCallback((beginIso: string | null | undefined) => {
+    const start = (beginIso || todayIso()).slice(0, 10)
+    const end = todayIso()
+    setMode('range')
+    setFrom(start)
+    setTo(end)
+    setAsOf(end)
+    setBeginningDate(start)
+    setInjectDate(end)
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    setRangeReady(false)
+    setLoading(true)
+    setError('')
+    api<OpeningInfo>(withBranchQuery('/api/reports/cashflow/opening', filterBranchId))
+      .then((info) => {
+        if (cancelled) return
+        const begin =
+          info.isSet && info.asOfDate ? String(info.asOfDate).slice(0, 10) : todayIso()
+        setOpeningAsOf(info.isSet && info.asOfDate ? String(info.asOfDate).slice(0, 10) : null)
+        applyBeginningToPresent(begin)
+        if (info.isSet) setBeginningAmount(String(info.amount))
+        setRangeReady(true)
+      })
+      .catch((err) => {
+        if (cancelled) return
+        setOpeningAsOf(null)
+        applyBeginningToPresent(todayIso())
+        setError(err instanceof Error ? err.message : 'Failed to load beginning balance')
+        setRangeReady(true)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [filterBranchId, applyBeginningToPresent])
 
   const load = useCallback(async () => {
+    if (!rangeReady) return
     setLoading(true)
     setError('')
     try {
       const qs = new URLSearchParams({ from: rangeFrom, to: rangeTo })
       const res = await api<Result>(withBranchQuery(`/api/reports/cashflow?${qs}`, filterBranchId))
       setData(res)
-      setBeginningDate(rangeFrom)
       setBeginningAmount(String(res.beginningBalance))
-      setInjectDate(rangeFrom)
+      if (res.beginningBalanceIsSet) setBeginningDate(rangeFrom)
+      setInjectDate(rangeTo)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load')
       setData(null)
     } finally {
       setLoading(false)
     }
-  }, [rangeFrom, rangeTo, filterBranchId])
+  }, [rangeFrom, rangeTo, filterBranchId, rangeReady])
 
   useEffect(() => {
     void load()
@@ -100,7 +150,14 @@ export function CashflowReportPage() {
         method: 'PUT',
         body: JSON.stringify({ asOfDate: beginningDate, amount }),
       })
-      await load()
+      const info = await api<OpeningInfo>(
+        withBranchQuery('/api/reports/cashflow/opening', filterBranchId),
+      )
+      const start =
+        info.isSet && info.asOfDate ? String(info.asOfDate).slice(0, 10) : beginningDate.slice(0, 10)
+      setOpeningAsOf(start)
+      applyBeginningToPresent(start)
+      setBeginningAmount(String(info.isSet ? info.amount : amount))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save beginning balance')
     } finally {
@@ -144,8 +201,8 @@ export function CashflowReportPage() {
   return (
     <ReportChrome
       title="Cashflow report"
-      description="Beginning + Remitted + Injected − Disbursement − Expenses − Savings (Primary + Extra) = Cash on hand."
-      loading={loading}
+      description="Default filter is beginning balance → today so opening cash and all activity since then are included."
+      loading={loading || !rangeReady}
       error={error}
       onRefresh={() => void load()}
       onExport={() => {
@@ -174,15 +231,15 @@ export function CashflowReportPage() {
         )
       }}
       filters={
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-wrap items-end gap-3">
           <FilterField label="Filter mode">
             <select
               className={filterClass}
               value={mode}
               onChange={(e) => setMode(e.target.value === 'range' ? 'range' : 'date')}
             >
-              <option value="date">By date</option>
               <option value="range">By range</option>
+              <option value="date">By date</option>
             </select>
           </FilterField>
           {mode === 'date' ? (
@@ -199,6 +256,21 @@ export function CashflowReportPage() {
               </FilterField>
             </>
           )}
+          <button
+            type="button"
+            className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            onClick={() => applyBeginningToPresent(openingAsOf)}
+            title="Reset filter to beginning balance date through today"
+          >
+            Beginning → today
+          </button>
+          {openingAsOf && (
+            <p className="pb-2 text-xs text-slate-500">
+              {isOverallDefault
+                ? `Overall: ${openingAsOf} → ${todayIso()}`
+                : `Beginning on file: ${openingAsOf}`}
+            </p>
+          )}
         </div>
       }
     >
@@ -214,7 +286,9 @@ export function CashflowReportPage() {
         <div className="grid gap-4 print:hidden lg:grid-cols-2">
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
             <h3 className="text-sm font-semibold text-slate-800">Beginning balance</h3>
-            <p className="mt-0.5 text-xs text-slate-500">Date, then amount only.</p>
+            <p className="mt-0.5 text-xs text-slate-500">
+              Sets the start of overall cashflow. Default filter is this date → today.
+            </p>
             <div className="mt-3 flex flex-wrap items-end gap-3">
               <label className="flex min-w-[10rem] flex-col gap-1 text-xs font-medium text-slate-600">
                 Date

@@ -2070,6 +2070,30 @@ public class ReportsController : ControllerBase
             days));
     }
 
+    /// <summary>
+    /// Earliest beginning balance for the branch (cashflow default From → today).
+    /// </summary>
+    [HttpGet("cashflow/opening")]
+    public async Task<ActionResult<CashflowOpeningInfoDto>> GetCashflowOpening(
+        [FromQuery] int? branchId = null)
+    {
+        var scope = await _branchScope.ResolveAsync(User, branchId);
+        if (scope is null) return Unauthorized();
+        if (scope.IsFieldAgent) return Forbid();
+
+        var balanceBranchId = scope.EffectiveBranchId;
+        var row = await _db.CashflowOpeningBalances.AsNoTracking()
+            .Where(b => b.BranchId == balanceBranchId)
+            .OrderBy(b => b.AsOfDate)
+            .Select(b => new { b.AsOfDate, b.Amount, b.BranchId })
+            .FirstOrDefaultAsync();
+
+        if (row is null)
+            return Ok(new CashflowOpeningInfoDto(false, null, 0m, balanceBranchId));
+
+        return Ok(new CashflowOpeningInfoDto(true, row.AsOfDate.Date, row.Amount, row.BranchId));
+    }
+
     [HttpPut("cashflow/beginning-balance")]
     [Authorize(Policy = $"perm:{PermissionCodes.ReportsView}")]
     public async Task<ActionResult<object>> SetCashflowBeginning(
