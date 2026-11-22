@@ -1511,6 +1511,13 @@ public class SetCashflowBeginningRequest
     public int? BranchId { get; set; }
 }
 
+/// <summary>Earliest beginning balance for the branch — used as cashflow default From.</summary>
+public record CashflowOpeningInfoDto(
+    bool IsSet,
+    DateTime? AsOfDate,
+    decimal Amount,
+    int? BranchId);
+
 public class CreateCashflowFundInjectionRequest
 {
     public DateTime InjectionDate { get; set; }
