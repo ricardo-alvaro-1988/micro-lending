@@ -55,6 +55,11 @@ const reports = [
         blurb: 'Beginning + remitted − disbursement − expenses = cash on hand.',
       },
       {
+        to: '/reports/injected-funds',
+        title: 'Injected funds',
+        blurb: 'Office float top-ups by date, amount, notes, and who recorded them.',
+      },
+      {
         to: '/reports/receivables',
         title: 'Receivables report',
         blurb: 'Outstanding loan balances owed by borrowers — current vs overdue.',
