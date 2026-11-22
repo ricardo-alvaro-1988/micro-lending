@@ -165,6 +165,7 @@ const nav: NavItem[] = [
       { label: 'Daily disbursement', to: '/reports/daily-disbursement', permission: 'reports.view', icon: <IconSchedule /> },
       { label: 'Balancing report', to: '/reports/balancing', permission: 'reports.view', icon: <IconSchedule /> },
       { label: 'Cashflow', to: '/reports/cashflow', permission: 'reports.view', icon: <IconSchedule /> },
+      { label: 'Injected funds', to: '/reports/injected-funds', permission: 'reports.view', icon: <IconSchedule /> },
       { label: 'Receivables', to: '/reports/receivables', permission: 'reports.view', icon: <IconSchedule /> },
       { label: 'Loans granted', to: '/reports/loans-granted', permission: 'reports.view', icon: <IconSchedule /> },
       { label: 'Expected vs actual', to: '/reports/expected-vs-actual', permission: 'reports.view', icon: <IconSchedule /> },
