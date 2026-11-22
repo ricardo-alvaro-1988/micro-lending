@@ -100,6 +100,7 @@ function GroupDayCollection({
   const [method, setMethod] = useState('Cash')
   const [rows, setRows] = useState<GroupDayRow[]>([])
   const [drafts, setDrafts] = useState<Record<number, RowDraft>>({})
+  const [showPreviousPayments, setShowPreviousPayments] = useState(false)
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
 
@@ -138,6 +139,11 @@ function GroupDayCollection({
   }
 
   const openRows = useMemo(() => rows.filter((r) => !r.alreadyPaidForDay && r.remaining > 0.009), [rows])
+  const visibleRows = useMemo(
+    () => (showPreviousPayments ? rows : openRows),
+    [rows, openRows, showPreviousPayments],
+  )
+  const previousCount = rows.length - openRows.length
 
   const selectedCount = useMemo(
     () => openRows.filter((r) => drafts[r.scheduleItemId]?.checked).length,
@@ -303,9 +309,20 @@ function GroupDayCollection({
 
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-4 py-3">
-          <p className="text-sm text-slate-600">
-            {rows.length} installment(s) · {selectedCount} selected
-          </p>
+          <div className="flex flex-wrap items-center gap-3">
+            <p className="text-sm text-slate-600">
+              {visibleRows.length} shown
+              {previousCount > 0 ? ` · ${previousCount} already paid` : ''} · {selectedCount} selected
+            </p>
+            <label className="flex items-center gap-2 text-sm text-slate-700">
+              <input
+                type="checkbox"
+                checked={showPreviousPayments}
+                onChange={(e) => setShowPreviousPayments(e.target.checked)}
+              />
+              Show previous payments
+            </label>
+          </div>
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
@@ -367,14 +384,18 @@ function GroupDayCollection({
                     Loading…
                   </td>
                 </tr>
-              ) : rows.length === 0 ? (
+              ) : visibleRows.length === 0 ? (
                 <tr>
                   <td colSpan={11} className="px-4 py-8 text-center text-slate-500">
-                    {groupId ? 'No dues for this group/date.' : 'Select a group and load dues.'}
+                    {groupId
+                      ? previousCount > 0 && !showPreviousPayments
+                        ? 'All installments for this day are already paid. Check “Show previous payments” to review them.'
+                        : 'No dues for this group/date.'
+                      : 'Select a group and load dues.'}
                   </td>
                 </tr>
               ) : (
-                rows.map((r) => {
+                visibleRows.map((r) => {
                   const draft = drafts[r.scheduleItemId] ?? {
                     checked: false,
                     amount: String(r.remaining),
@@ -615,6 +636,7 @@ function SingleCustomerCollection({
           <RecordPaymentPanel
             customerId={selected.id}
             compact
+            showPreviousPaymentsToggle
             onError={toast.error}
             onMessage={toast.success}
           />
