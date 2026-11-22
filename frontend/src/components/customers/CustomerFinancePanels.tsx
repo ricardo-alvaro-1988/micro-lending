@@ -1252,7 +1252,13 @@ export function RecordPaymentPanel({
   onMessage,
   preferredLoanId,
   compact,
-}: SharedProps & { preferredLoanId?: number | null; compact?: boolean }) {
+  showPreviousPaymentsToggle = false,
+}: SharedProps & {
+  preferredLoanId?: number | null
+  compact?: boolean
+  /** When true, payment history is hidden unless the user checks “Show previous payments”. */
+  showPreviousPaymentsToggle?: boolean
+}) {
   const { can } = useAuth()
   const canManage = can('loans.manage')
   const [loans, setLoans] = useState<Loan[]>([])
@@ -1260,6 +1266,7 @@ export function RecordPaymentPanel({
   const [loanId, setLoanId] = useState<number | ''>('')
   const [payments, setPayments] = useState<LoanPayment[]>([])
   const [schedule, setSchedule] = useState<LoanScheduleItem[]>([])
+  const [showPreviousPayments, setShowPreviousPayments] = useState(!showPreviousPaymentsToggle)
   const [busy, setBusy] = useState(false)
   const [payForm, setPayForm] = useState({
     amount: '',
@@ -1298,6 +1305,7 @@ export function RecordPaymentPanel({
     setLoanId('')
     setPayments([])
     setSchedule([])
+    setShowPreviousPayments(!showPreviousPaymentsToggle)
     setPayForm((prev) => ({ ...prev, amount: '', reference: '', notes: '' }))
     load().catch((err) => onError(err instanceof Error ? err.message : 'Failed to load loans'))
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1453,35 +1461,54 @@ export function RecordPaymentPanel({
 
       {loanId !== '' && (
         <div className="overflow-hidden rounded-lg border border-slate-200">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-slate-50 text-slate-600">
-              <tr>
-                <th className="px-3 py-2 font-medium">Date</th>
-                <th className="px-3 py-2 font-medium">Amount</th>
-                <th className="px-3 py-2 font-medium">Method</th>
-                <th className="px-3 py-2 font-medium">Reference</th>
-                <th className="px-3 py-2 font-medium">By</th>
-              </tr>
-            </thead>
-            <tbody>
-              {payments.map((p) => (
-                <tr key={p.id} className="border-t border-slate-100">
-                  <td className="px-3 py-2">{dateOnly(p.paidAt)}</td>
-                  <td className="px-3 py-2">{money(p.amount)}</td>
-                  <td className="px-3 py-2">{p.method || '—'}</td>
-                  <td className="px-3 py-2">{p.reference || '—'}</td>
-                  <td className="px-3 py-2">{p.recordedBy}</td>
-                </tr>
-              ))}
-              {payments.length === 0 && (
+          {showPreviousPaymentsToggle && (
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-3 py-2">
+              <p className="text-sm text-slate-600">
+                {showPreviousPayments
+                  ? `${payments.length} previous payment${payments.length === 1 ? '' : 's'}`
+                  : 'Previous payments hidden'}
+              </p>
+              <label className="flex items-center gap-2 text-sm text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={showPreviousPayments}
+                  onChange={(e) => setShowPreviousPayments(e.target.checked)}
+                />
+                Show previous payments
+              </label>
+            </div>
+          )}
+          {(!showPreviousPaymentsToggle || showPreviousPayments) && (
+            <table className="w-full text-left text-sm">
+              <thead className="bg-slate-50 text-slate-600">
                 <tr>
-                  <td className="px-3 py-4 text-slate-500" colSpan={5}>
-                    No payments recorded for this loan yet.
-                  </td>
+                  <th className="px-3 py-2 font-medium">Date</th>
+                  <th className="px-3 py-2 font-medium">Amount</th>
+                  <th className="px-3 py-2 font-medium">Method</th>
+                  <th className="px-3 py-2 font-medium">Reference</th>
+                  <th className="px-3 py-2 font-medium">By</th>
                 </tr>
-              )}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {payments.map((p) => (
+                  <tr key={p.id} className="border-t border-slate-100">
+                    <td className="px-3 py-2">{dateOnly(p.paidAt)}</td>
+                    <td className="px-3 py-2">{money(p.amount)}</td>
+                    <td className="px-3 py-2">{p.method || '—'}</td>
+                    <td className="px-3 py-2">{p.reference || '—'}</td>
+                    <td className="px-3 py-2">{p.recordedBy}</td>
+                  </tr>
+                ))}
+                {payments.length === 0 && (
+                  <tr>
+                    <td className="px-3 py-4 text-slate-500" colSpan={5}>
+                      No payments recorded for this loan yet.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          )}
         </div>
       )}
     </div>
