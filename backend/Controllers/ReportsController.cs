@@ -2114,6 +2114,54 @@ public class ReportsController : ControllerBase
         return Ok(new { asOfDate = asOf, branchId = balanceBranchId, amount = row.Amount });
     }
 
+    /// <summary>Injected funds register for a period (office float top-ups).</summary>
+    [HttpGet("injected-funds")]
+    public async Task<ActionResult<ReportInjectedFundsResultDto>> InjectedFunds(
+        [FromQuery] DateTime? from = null,
+        [FromQuery] DateTime? to = null,
+        [FromQuery] int? branchId = null)
+    {
+        var scope = await _branchScope.ResolveAsync(User, branchId);
+        if (scope is null) return Unauthorized();
+        if (scope.IsFieldAgent) return Forbid();
+
+        var start = (from ?? PhilippineTime.Today).Date;
+        var end = (to ?? start).Date;
+        var endExclusive = end.AddDays(1);
+        var balanceBranchId = scope.EffectiveBranchId;
+
+        var query = _db.CashflowFundInjections.AsNoTracking()
+            .Include(i => i.Branch)
+            .Include(i => i.RecordedByUser)
+            .Where(i => i.InjectionDate >= start && i.InjectionDate < endExclusive);
+
+        if (balanceBranchId is int bid)
+            query = query.Where(i => i.BranchId == bid);
+        else if (!scope.IsAdmin)
+            query = query.Where(_ => false);
+
+        var rows = await query
+            .OrderBy(i => i.InjectionDate)
+            .ThenBy(i => i.Id)
+            .Select(i => new CashflowFundInjectionDto(
+                i.Id,
+                i.InjectionDate,
+                i.Amount,
+                i.Notes,
+                i.BranchId,
+                i.Branch != null ? i.Branch.Name : null,
+                i.RecordedByUser.FullName,
+                i.CreatedAt))
+            .ToListAsync();
+
+        return Ok(new ReportInjectedFundsResultDto(
+            start,
+            end,
+            rows.Count,
+            rows.Sum(r => r.Amount),
+            rows));
+    }
+
     [HttpPost("cashflow/inject-fund")]
     [Authorize(Policy = $"perm:{PermissionCodes.ReportsView}")]
     public async Task<ActionResult<CashflowFundInjectionDto>> InjectFund(

@@ -42,6 +42,7 @@ import { LoanReleasesReportPage } from './pages/reports/LoanReleasesReportPage'
 import { DailyLoanDisbursementPage } from './pages/reports/DailyLoanDisbursementPage'
 import { BalancingReportPage } from './pages/reports/BalancingReportPage'
 import { CashflowReportPage } from './pages/reports/CashflowReportPage'
+import { InjectedFundsReportPage } from './pages/reports/InjectedFundsReportPage'
 import { ReceivablesReportPage } from './pages/reports/ReceivablesReportPage'
 import { LoansGrantedReportPage } from './pages/reports/LoansGrantedReportPage'
 import { ExpectedVsActualReportPage } from './pages/reports/ExpectedVsActualReportPage'
@@ -177,6 +178,7 @@ export default function App() {
             <Route path="/reports/daily-disbursement" element={<DailyLoanDisbursementPage />} />
             <Route path="/reports/balancing" element={<BalancingReportPage />} />
             <Route path="/reports/cashflow" element={<CashflowReportPage />} />
+            <Route path="/reports/injected-funds" element={<InjectedFundsReportPage />} />
             <Route path="/reports/receivables" element={<ReceivablesReportPage />} />
             <Route path="/reports/loans-granted" element={<LoansGrantedReportPage />} />
             <Route path="/reports/expected-vs-actual" element={<ExpectedVsActualReportPage />} />

@@ -1531,6 +1531,13 @@ public record CashflowFundInjectionDto(
     string RecordedBy,
     DateTime CreatedAt);
 
+public record ReportInjectedFundsResultDto(
+    DateTime From,
+    DateTime To,
+    int Count,
+    decimal TotalAmount,
+    IReadOnlyList<CashflowFundInjectionDto> Rows);
+
 public record DashboardKpiDto(
     DateTime AsOf,
     /// <summary>Remaining on installments due on asOf (not yet past).</summary>
